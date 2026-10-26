@@ -1,0 +1,13 @@
+{
+  "name": "valkyrieid-docs",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "type": "module",
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  },
+  "private": true
+}

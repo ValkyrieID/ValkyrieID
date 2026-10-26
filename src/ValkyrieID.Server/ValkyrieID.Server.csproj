@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ValkyrieID.Data.Sqlite\ValkyrieID.Data.Sqlite.csproj" />
+    <ProjectReference Include="..\ValkyrieID.Data.PostgreSql\ValkyrieID.Data.PostgreSql.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <AssemblyName>valkyrieid</AssemblyName>
+    <RootNamespace>ValkyrieID.Server</RootNamespace>
+  </PropertyGroup>
+
+</Project>

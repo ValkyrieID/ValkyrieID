@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ValkyrieID.Core/ValkyrieID.Core.csproj" />
+    <Project Path="src/ValkyrieID.Data.PostgreSql/ValkyrieID.Data.PostgreSql.csproj" />
+    <Project Path="src/ValkyrieID.Data.Sqlite/ValkyrieID.Data.Sqlite.csproj" />
+    <Project Path="src/ValkyrieID.Data/ValkyrieID.Data.csproj" />
+    <Project Path="src/ValkyrieID.Server/ValkyrieID.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ValkyrieID.Core.Tests/ValkyrieID.Core.Tests.csproj" />
+    <Project Path="tests/ValkyrieID.Server.IntegrationTests/ValkyrieID.Server.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

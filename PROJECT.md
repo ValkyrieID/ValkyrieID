@@ -29,7 +29,7 @@ A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 
 
 - EF Core with two providers: **SQLite** and **PostgreSQL**, with migrations maintained for each.
 - Migrations are applied automatically on startup (opt-out setting for operators who prefer manual migration).
-- **ASP.NET Data Protection keys** are persisted in the DB, so restarts don't invalidate sessions or cookies.
+- **ASP.NET Data Protection keys** are persisted in the DB (via `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`), so restarts don't invalidate sessions or cookies. They are encrypted at rest with the master encryption key.
 - **Redis** is **required for multi-instance deployments**. It stores shared state:
   - authorization codes
   - rate-limit counters
@@ -211,7 +211,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Base config:** `appsettings.json` and environment variables (DB provider, connection string, Redis, issuer URL, master encryption key).
 - **Master encryption key:**
   - Supplied through env/config; required at startup.
-  - Encrypts secrets at rest: signing keys, TOTP secrets, SMTP password.
+  - Encrypts secrets at rest (AES-256-GCM): signing keys, TOTP secrets, SMTP password, Data Protection keys.
   - Supports key rotation (re-encrypt with a new key while the old one is still configured).
 - **Runtime settings** (lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement):
   - editable in the admin UI and stored in the DB
@@ -221,7 +221,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 - **Audit log** in the DB: logins, failures, lockouts, token issuance, admin changes. Viewable in the admin UI, with configurable retention.
 - **Health endpoints:** liveness and readiness (DB and Redis checks).
-- **OpenTelemetry** metrics and traces.
+- **OpenTelemetry** traces, metrics, and logs over OTLP; enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - Structured logging.
 - **Reverse proxy support:**
   - Forwarded headers (`X-Forwarded-For`, `-Proto`, `-Host`) with configurable trusted proxies.
@@ -330,7 +330,8 @@ Each phase ends with something usable and tested.
    - solution layout, `Directory.Build.props` / `Directory.Packages.props`, `.editorconfig`, lock files
    - EF Core with SQLite and PostgreSQL, auto migrations
    - master encryption key; Data Protection keys in DB
-   - health endpoints, logging, CI pipeline, Dependabot
+   - health endpoints, structured logging, OpenTelemetry
+   - CI pipeline, Dependabot, VitePress docs skeleton
 2. **Token core + client credentials:**
    - signing key generation and rotation, JWKS, discovery
    - client model with multiple secrets
