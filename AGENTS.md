@@ -57,6 +57,7 @@ npm run lint               # in the Angular project
 This is an identity server. Treat every change to protocol, authentication, token, or crypto code as security-sensitive.
 
 - Follow the RFCs/specs referenced in `PROJECT.md` exactly. When unsure about spec behavior, quote the relevant section in your reasoning or a code comment instead of guessing.
+- **Spec compliance is mandatory.** ValkyrieID must follow the OpenID Connect and OAuth 2.0 specifications (e.g. RFC 6749, RFC 6750, RFC 7517/7518/7519, RFC 7636, RFC 8414, RFC 9068, RFC 9207, RFC 9700, OIDC Core/Discovery/Logout). If a user decision or instruction contradicts a spec, don't implement it: point out the conflict, cite the relevant section, and revisit the decision with the user.
 - **Redirect URIs:** exact string match only; the only exception is loopback (`127.0.0.1` / `[::1]`) with any port. Never redirect to an unvalidated URI, including on errors.
 - **Secrets at rest:**
   - Hash client secrets, refresh tokens, authorization codes, and recovery codes.
@@ -113,4 +114,5 @@ npm test        # in the Angular project
   - making architectural changes
   - adding dependencies
   - deviating from `PROJECT.md`
+- When asking the user questions or offering choices, use the built-in question tool instead of listing questions in prose.
 - Don't commit or push unless asked.

@@ -14,12 +14,17 @@ export default defineConfig({
     sidebar: [
       {
         text: 'Guide',
-        items: [{ text: 'Getting started', link: '/guide/getting-started' }],
+        items: [
+          { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Protect an API', link: '/guide/protect-an-api' },
+        ],
       },
       {
         text: 'Reference',
         items: [
           { text: 'Configuration', link: '/reference/configuration' },
+          { text: 'Endpoints', link: '/reference/endpoints' },
+          { text: 'CLI', link: '/reference/cli' },
           { text: 'Health endpoints', link: '/reference/health' },
         ],
       },
@@ -27,6 +32,7 @@ export default defineConfig({
         text: 'Operations',
         items: [
           { text: 'Master encryption key', link: '/operations/master-key' },
+          { text: 'Signing key rotation', link: '/operations/key-rotation' },
           { text: 'Observability', link: '/operations/observability' },
         ],
       },

@@ -31,13 +31,16 @@ curl http://localhost:5102/health/ready
 dotnet publish src/ValkyrieID.Server -c Release -o publish
 ```
 
-Before running the published output, generate a [master encryption key](/operations/master-key) and supply it:
+Before running the published output, generate a [master encryption key](/operations/master-key) and set the public [issuer URL](/reference/configuration#issuer):
 
 ```sh
 export MasterKey__Current="$(openssl rand -base64 32)"   # store this somewhere safe!
+export Issuer__Url="https://id.example.com"
 ./publish/valkyrieid
 ```
 
-ValkyrieID refuses to start without a valid master key.
+ValkyrieID refuses to start without a valid master key and issuer URL.
 
 By default the server uses SQLite at `data/valkyrieid.db` relative to the working directory and applies database migrations on startup. See the [configuration reference](/reference/configuration) to use PostgreSQL.
+
+Next, [protect an API](/guide/protect-an-api) with ValkyrieID access tokens.
