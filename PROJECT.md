@@ -1,0 +1,368 @@
+# ValkyrieID
+
+A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 10 (ASP.NET Core).
+
+- **License:** MIT
+- **Tenancy:** single tenant
+- **Protocol layer:** implemented from scratch (no OpenIddict / Duende)
+- **GitHub organization:** [github.com/ValkyrieID](https://github.com/ValkyrieID), repository `valkyrieid` (server, admin UI, tests, docs)
+- **Documentation:** https://valkyrieid.liesel.dev
+
+## 1. Goals
+
+- Small footprint: small Docker image, low memory, minimal dependencies.
+- Spec-compliant OpenID Provider, targeting the OpenID Foundation conformance suite (Basic OP profile).
+- Runs as a single instance by default; can scale horizontally when Redis is configured.
+- Simple to operate: first-run setup wizard, admin UI, sensible defaults.
+
+## 2. Non-goals
+
+- SQL Server support
+- Multi-tenancy / realms
+- Token exchange (RFC 8693)
+- Implicit flow, resource owner password grant
+- Consent screens
+- Dynamic client registration
+- Front-channel logout
+
+## 3. Storage
+
+- EF Core with two providers: **SQLite** and **PostgreSQL**, with migrations maintained for each.
+- Migrations are applied automatically on startup (opt-out setting for operators who prefer manual migration).
+- **ASP.NET Data Protection keys** are persisted in the DB, so restarts don't invalidate sessions or cookies.
+- **Redis** is **required for multi-instance deployments**. It stores shared state:
+  - authorization codes
+  - rate-limit counters
+  - cache
+- Single instance without Redis uses in-process equivalents.
+
+## 4. Protocol support
+
+### 4.1 Grant types
+
+| Grant | Notes |
+|---|---|
+| `authorization_code` | PKCE (`S256`) **required** for public clients; optional per confidential client (per-client setting) |
+| `client_credentials` | Server-to-server; confidential clients only |
+| `refresh_token` | See token section |
+
+Response type: `code` only. Response modes: `query` (and `form_post` optional).
+
+Authorization responses include the `iss` parameter (RFC 9207) to prevent mix-up attacks; advertised via `authorization_response_iss_parameter_supported` in discovery.
+
+### 4.2 Endpoints
+
+| Endpoint | Spec |
+|---|---|
+| `/.well-known/openid-configuration` | OIDC Discovery |
+| `/.well-known/jwks.json` | JWKS |
+| `/connect/authorize` | OAuth 2.0 / OIDC Core |
+| `/connect/token` | OAuth 2.0 |
+| `/connect/userinfo` | OIDC Core §5.3 |
+| `/connect/revocation` | RFC 7009 (refresh tokens) |
+| `/connect/introspect` | RFC 7662 |
+| `/connect/endsession` | OIDC RP-Initiated Logout |
+
+### 4.3 Client types and authentication
+
+- **Confidential clients:** `client_secret_basic`, `client_secret_post`. Secrets stored hashed.
+  - Multiple active secrets per client, each with an optional expiry and description, for zero-downtime rotation.
+- **Public clients** (SPA / mobile): no secret, PKCE mandatory.
+- **Redirect URIs:**
+  - Exact string matching; no wildcards or partial matching.
+  - Exception for native/CLI apps (RFC 8252): loopback redirects (`http://127.0.0.1` / `http://[::1]`) match on any port.
+- Per-client configuration includes:
+  - redirect URIs and post-logout redirect URIs
+  - allowed grants and allowed scopes
+  - back-channel logout URI
+  - token lifetime overrides
+  - PKCE requirement
+  - allowed CORS origins (for SPAs calling the token, userinfo, and revocation endpoints)
+  - enabled/disabled flag (disabled clients can't obtain tokens; their refresh tokens are revoked)
+
+### 4.4 OIDC Core mandatory features (§15.1)
+
+- ID tokens signed with RS256.
+- `prompt` parameter (`none`, `login`).
+- `display` parameter accepted (may be ignored).
+- `ui_locales` and `claims_locales` accepted (may be ignored).
+- `max_age` and the `auth_time` claim.
+- `acr_values` accepted (may be ignored).
+- `nonce` validation.
+- `at_hash` and `c_hash` claims where they apply.
+- Errors returned to `redirect_uri` per spec; never redirect to unregistered URIs.
+
+### 4.5 Scopes and resources
+
+- **Identity scopes:** `openid`, `profile`, `email`, `roles`, `groups`, `offline_access` (enables refresh tokens).
+- **API resources:** each has its own audience (`aud`) and set of scopes. Requested API scopes determine the access token's `aud`.
+  - An API resource can have its own secret so it can call the introspection endpoint.
+
+### 4.6 Introspection (RFC 7662)
+
+- Callers authenticate as a confidential client or as an API resource with a secret.
+- A caller may only introspect tokens issued to it, or whose audience includes it.
+- **Refresh tokens:** status comes from the database, so revocation, rotation, and reuse detection are reflected exactly.
+- **Access tokens:** validated statelessly (signature, expiry, issuer, audience). Because access tokens are not tracked server-side, introspection cannot report an access token as revoked before it expires.
+- Inactive or unknown tokens return `{"active": false}` with no further details.
+
+### 4.7 Logout
+
+- **RP-initiated logout** through `end_session`, with `id_token_hint` and `post_logout_redirect_uri` validation.
+- **Back-channel logout** (OIDC Back-Channel Logout 1.0):
+  - ValkyrieID POSTs a signed `logout_token` to each client's registered back-channel URI.
+  - ID tokens include a `sid` claim.
+  - Delivery is retried with backoff.
+
+## 5. Tokens
+
+| Token | Format | Default lifetime |
+|---|---|---|
+| Access token | Self-contained JWT (RS256, `typ: at+jwt`, RFC 9068) | 30 min |
+| ID token | JWT (RS256) | 5 min |
+| Refresh token | Opaque, DB-stored (hashed) | 14 days sliding, 30 days absolute |
+| Authorization code | Opaque, single-use | 60 s |
+
+All lifetimes are configurable globally and per client. Token validation allows a small configurable clock skew (default 30 s).
+
+- **Access tokens are not revocable before they expire**; their short lifetime limits the risk.
+- **Refresh tokens rotate on every use.** Reusing an already-used token revokes the entire token family.
+- Refresh tokens are also revoked on logout, revocation endpoint calls, password change, and user disable.
+- **Signing keys:**
+  - RSA keys generated automatically and stored encrypted in the DB.
+  - Rotated on a configurable schedule.
+  - New keys are published in JWKS before they are used for signing; retired keys stay published until the tokens they signed have expired.
+
+## 6. Authentication
+
+- Username and password, hashed with **Argon2id**. Users log in with their **username or email**.
+- **Anti user-enumeration:** login, password reset, and registration-related responses are generic ("invalid credentials", "if the account exists, an email was sent"), and password verification runs in constant time even for unknown users.
+- **TOTP 2FA** (Google Authenticator compatible):
+  - users enroll themselves (QR code)
+  - recovery codes
+  - TOTP codes accepted within ±1 time step (30 s) to tolerate clock drift; each code can be used only once
+  - admins can enforce 2FA globally or per user
+- **Configurable password policy:** length, complexity, breached-password check (optional).
+- **Account lockout** after N failed attempts, for a configurable duration.
+- **Rate limiting** on login, 2FA, and token endpoints.
+- **SSO session cookie** (default 8h), shared across clients; respects `prompt` and `max_age`.
+- **Email features** (enabled only when SMTP is configured):
+  - email verification
+  - password reset
+- **Session management:**
+  - Server-side session records (device/browser, IP, last activity).
+  - Users can view and revoke their own sessions.
+  - Admins can view and revoke any user's sessions (force logout).
+  - Revoking a session triggers back-channel logout and revokes related refresh tokens.
+- **Future:** passkeys / WebAuthn.
+
+## 7. User model
+
+- Subject identifier (`sub`): an immutable GUID assigned at creation, never the username or email.
+- Username, email, email verified, display name, given name, family name.
+- Roles and groups.
+- Custom key/value claims per user.
+- Enabled/disabled flag, lockout state, 2FA state.
+- Claims are emitted according to requested scopes.
+
+## 8. User interface
+
+### 8.1 Login pages (server-rendered Razor Pages)
+
+- Login, 2FA, recovery code, 2FA enrollment, password reset, email verification, and logout pages.
+- No JavaScript required; strict CSP; anti-forgery tokens.
+- **Self-service account page:** change password, update profile (name, email; email change requires re-verification when SMTP is configured), manage 2FA and recovery codes, view and revoke sessions.
+- **Branding:** background image, logo, product name/title, colors (CSS variables), optional custom CSS.
+
+### 8.2 Admin UI (Angular, latest version, signals)
+
+- Built as a SPA and served by the same ASP.NET Core app (single container).
+- Authenticates through ValkyrieID itself as a public PKCE client (dogfooding).
+- Access requires the built-in `admin` role.
+- **Manages:**
+  - users, roles, groups, and claims
+  - clients and API resources/scopes
+  - signing keys
+  - settings and branding
+- Includes an audit log viewer.
+- Talks exclusively to the **Admin REST API**.
+
+### 8.3 First-run setup wizard
+
+- Shown when no users exist. Creates the initial admin user and the admin UI client.
+- Locks itself after completion.
+
+### 8.4 Admin recovery (break-glass)
+
+- **Last-admin guard:** the last enabled user with the `admin` role cannot be deleted, disabled, or have the role removed.
+- **CLI reset:** the server binary/container supports maintenance commands (e.g. `valkyrieid admin reset-password <user>`, `reset-2fa <user>`, `unlock <user>`, `grant-admin <user>`) that run against the configured database without starting the web server. Every use is written to the audit log.
+
+### 8.5 Accessibility
+
+- Login pages and admin UI target **WCAG 2.2 AA** (keyboard navigation, labels, contrast, screen reader support).
+
+## 9. Admin REST API
+
+- JSON API under `/api/admin`, protected by access tokens with the admin scope and role.
+- Used by the admin UI; also usable for automation.
+
+## 10. Configuration
+
+- **Base config:** `appsettings.json` and environment variables (DB provider, connection string, Redis, issuer URL, master encryption key).
+- **Master encryption key:**
+  - Supplied through env/config; required at startup.
+  - Encrypts secrets at rest: signing keys, TOTP secrets, SMTP password.
+  - Supports key rotation (re-encrypt with a new key while the old one is still configured).
+- **Runtime settings** (lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement):
+  - editable in the admin UI and stored in the DB
+  - **values from appsettings/env take precedence** and are shown as locked in the admin UI
+
+## 11. Operations
+
+- **Audit log** in the DB: logins, failures, lockouts, token issuance, admin changes. Viewable in the admin UI, with configurable retention.
+- **Health endpoints:** liveness and readiness (DB and Redis checks).
+- **OpenTelemetry** metrics and traces.
+- Structured logging.
+- **Reverse proxy support:**
+  - Forwarded headers (`X-Forwarded-For`, `-Proto`, `-Host`) with configurable trusted proxies.
+  - Public issuer URL configured explicitly (never derived from the request).
+  - Optional path base (e.g. `/auth`).
+- **Security headers:**
+  - HSTS, Content-Security-Policy, `X-Frame-Options: DENY` / `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`.
+  - Cookies are `Secure` and `HttpOnly`, with an appropriate `SameSite` setting.
+- **CI: GitHub Actions**, kept within the free tier (public repo: free standard runners; private: 2,000 min/month):
+  - **On every push / PR** (fast, Linux runners only):
+    - locked-mode restore
+    - build with warnings as errors
+    - `dotnet format --verify-no-changes`, `prettier --check`, lint
+    - unit tests and SQLite integration tests
+    - Angular tests
+  - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers).
+  - **On release tags / manual trigger only:** Docker image build and publish, OpenID conformance suite, OWASP ZAP scan.
+  - **Cost controls:**
+    - Linux runners only (Windows/macOS minutes cost 2×/10× on private repos).
+    - NuGet and npm caching.
+    - Path filters (e.g. docs-only changes skip builds).
+    - `concurrency` with `cancel-in-progress` so superseded runs stop.
+    - Job timeouts.
+- **Versioning & releases:**
+  - Semantic versioning; Git tags trigger release builds.
+  - Docker images published to GitHub Container Registry as `ghcr.io/valkyrieid/valkyrieid`, tagged with the version and `latest`.
+  - Release notes per version.
+- **Documentation** (in this repository, under `/docs`):
+  - Built with **VitePress** (Markdown, built-in local search).
+  - Hosted on GitHub Pages at **https://valkyrieid.liesel.dev**, deployed by a GitHub Actions workflow on push to `main` when files under `/docs` change.
+  - Contents:
+    - Getting started (Docker and `dotnet publish`).
+    - Configuration reference (all settings and env vars).
+    - Integration guides (ASP.NET Core, Angular/SPA, server-to-server).
+    - Operations guide (reverse proxy, multi-instance with Redis, backups, key rotation, upgrades).
+  - The server repo's README stays short (what it is, quick start) and links to the docs site.
+  - Changes to configuration or behavior include the matching docs update in the same PR.
+- **Deployment:**
+  - small chiseled Docker image
+  - plain `dotnet publish` output
+- **Footprint targets** (measured in CI on release builds):
+  - Docker image < 120 MB
+  - Idle memory < 150 MB
+  - Startup to ready < 2 s (SQLite)
+- **Backups:** documented backup and restore procedures for SQLite (online backup / file copy while stopped) and PostgreSQL (`pg_dump`). Backups must be paired with the master encryption key, since secrets in the DB are unreadable without it.
+
+## 12. Development conventions
+
+- **Central Package Management:** all NuGet versions live in `Directory.Packages.props` (`ManagePackageVersionsCentrally=true`). Project files reference packages without versions.
+- **Adding dependencies:**
+  - Always add packages through the CLI, never by hand-editing project files:
+    - `dotnet add package <name>` (with Central Package Management this writes the version to `Directory.Packages.props`)
+    - `npm install <name>` / `ng add <name>`
+  - Always use the latest stable version at the time of adding.
+  - Check for outdated packages regularly: `dotnet list package --outdated` and `npm outdated`. Also check for vulnerable packages: `dotnet list package --vulnerable` and `npm audit`.
+- **NuGet lock files:** `RestorePackagesWithLockFile=true`; `packages.lock.json` is committed. CI restores with `--locked-mode` (`RestoreLockedMode=true` when `CI=true`).
+- **Shared build settings** in `Directory.Build.props`:
+  - `TreatWarningsAsErrors=true`
+  - `LangVersion=latest` (C# 14 on .NET 10); use the latest syntax, e.g.:
+    - file-scoped namespaces
+    - primary constructors
+    - collection expressions
+    - `field` keyword
+    - extension members
+    - pattern matching
+  - `Nullable=enable`
+  - `ImplicitUsings=enable`
+  - `AnalysisLevel=latest`
+  - `EnforceCodeStyleInBuild=true`
+- **`.editorconfig`** defines code style; style violations fail the build.
+- **Formatting:**
+  - .NET: `dotnet format`. CI runs `dotnet format --verify-no-changes` and fails on unformatted code.
+  - Angular: **Prettier**. CI runs `prettier --check` and fails on unformatted code. ESLint is configured with `eslint-config-prettier` so it doesn't conflict with Prettier's formatting.
+- **Solution format:** `.slnx`.
+- **Angular:**
+  - `package-lock.json` committed; CI uses `npm ci`.
+  - TypeScript `strict` mode; lint errors fail the build.
+  - **Signals for all component state**: `signal`, `computed`, `input()`, `output()`, `model()`, and `resource`/`httpResource` for data loading.
+  - **`ChangeDetectionStrategy.OnPush` on every component**, enforced by lint rule.
+  - Standalone components, built-in control flow (`@if`, `@for`), and `inject()` instead of constructor injection.
+  - **Zoneless** change detection (no zone.js).
+- **Dependabot** opens weekly PRs for NuGet, npm, GitHub Actions, and Docker base image updates (minor/patch updates grouped).
+
+## 13. Testing
+
+- xUnit unit tests and integration tests (`WebApplicationFactory`, against both SQLite and PostgreSQL).
+- Angular unit tests.
+- **OpenID Foundation Conformance Suite** (self-hosted via Docker Compose for local runs, hosted instance for CI/pre-release). Target plans:
+  - Basic OP
+  - Config OP
+  - RP-Initiated Logout
+  - Back-Channel Logout
+- **OAuch** (oauch.io): OAuth 2.0 security best-practice testing (RFC 9700). Covers PKCE downgrade, redirect URI manipulation, code replay, and refresh token rotation.
+- **Client compatibility tests** against real client libraries and apps:
+  - ASP.NET Core `AddOpenIdConnect` / `AddJwtBearer`
+  - oidc-client-ts / angular-auth-oidc-client (via the admin UI)
+  - oauth2-proxy
+  - Grafana generic OAuth
+- **Security scanning** of the login pages and admin API with OWASP ZAP.
+
+## 14. Roadmap
+
+Each phase ends with something usable and tested.
+
+1. **Foundation:**
+   - solution layout, `Directory.Build.props` / `Directory.Packages.props`, `.editorconfig`, lock files
+   - EF Core with SQLite and PostgreSQL, auto migrations
+   - master encryption key; Data Protection keys in DB
+   - health endpoints, logging, CI pipeline, Dependabot
+2. **Token core + client credentials:**
+   - signing key generation and rotation, JWKS, discovery
+   - client model with multiple secrets
+   - `client_credentials` grant, JWT access tokens, API resources and scopes
+   - *Milestone: an API can be protected with ValkyrieID tokens.*
+3. **Users and login:**
+   - user model, Argon2id, Razor login pages with branding
+   - SSO session cookie, lockout, rate limiting, anti-enumeration
+   - setup wizard, CLI maintenance commands
+4. **Authorization code flow:**
+   - authorize endpoint with PKCE, ID tokens, userinfo
+   - `prompt`, `max_age`, `nonce`, `iss` parameter, redirect URI rules, CORS
+   - *Milestone: an ASP.NET Core app and an SPA can log in.* Run the Basic OP and Config OP conformance plans.
+5. **Refresh tokens, revocation, introspection:**
+   - rotation with reuse detection, `offline_access`
+   - revocation and introspection endpoints
+6. **Logout and sessions:**
+   - end session (RP-initiated logout), back-channel logout with retries
+   - session management
+   - Run the logout conformance plans.
+7. **2FA and account self-service:**
+   - TOTP enrollment, recovery codes, 2FA enforcement
+   - self-service account page
+   - SMTP: email verification and password reset
+8. **Admin REST API + Angular admin UI:**
+   - full management of users, clients, resources, settings, branding, keys, and sessions
+   - audit log viewer
+   - DB-backed runtime settings with env precedence
+9. **Multi-instance:**
+   - Redis for authorization codes, rate limits, and cache
+   - multi-instance integration tests
+10. **Hardening and release:**
+    - security headers review, OAuch, OWASP ZAP
+    - footprint targets, accessibility pass
+    - documentation, first tagged release to `ghcr.io`
