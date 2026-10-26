@@ -491,3 +491,6 @@ data/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 
+
+# Conformance suite plan configurations (contain client secrets)
+conformance/out/

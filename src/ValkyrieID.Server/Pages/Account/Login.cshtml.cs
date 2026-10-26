@@ -16,6 +16,14 @@ internal sealed class LoginModel(LoginService login, SessionManager sessions, Lo
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
+    /// <summary><c>prompt=login</c> shows the form even when a session exists (set by the authorize endpoint).</summary>
+    [BindProperty(SupportsGet = true, Name = "prompt")]
+    public string? Prompt { get; set; }
+
+    /// <summary>Pre-fills the identifier (OIDC Core A3.1.2.1 <c>login_hint</c>).</summary>
+    [BindProperty(SupportsGet = true, Name = "login_hint")]
+    public string? LoginHint { get; set; }
+
     [BindProperty]
     public string? Identifier { get; set; }
 
@@ -24,8 +32,16 @@ internal sealed class LoginModel(LoginService login, SessionManager sessions, Lo
 
     public IReadOnlyList<string> Errors { get; private set; } = [];
 
-    public IActionResult OnGet() =>
-        User.Identity?.IsAuthenticated == true ? LocalRedirect(SafeReturnUrl) : Page();
+    public IActionResult OnGet()
+    {
+        if (User.Identity?.IsAuthenticated == true && Prompt != "login")
+        {
+            return LocalRedirect(SafeReturnUrl);
+        }
+
+        Identifier ??= LoginHint is { Length: <= 256 } hint ? hint : null;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {

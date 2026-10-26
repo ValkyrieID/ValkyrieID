@@ -10,12 +10,24 @@ namespace ValkyrieID.Server.Protocol;
 
 internal sealed record DiscoveryDocument(
     [property: JsonPropertyName("issuer")] string Issuer,
-    [property: JsonPropertyName("jwks_uri")] string JwksUri,
+    [property: JsonPropertyName("authorization_endpoint")] string AuthorizationEndpoint,
     [property: JsonPropertyName("token_endpoint")] string TokenEndpoint,
+    [property: JsonPropertyName("userinfo_endpoint")] string UserInfoEndpoint,
+    [property: JsonPropertyName("jwks_uri")] string JwksUri,
+    [property: JsonPropertyName("scopes_supported")] IReadOnlyList<string> ScopesSupported,
+    [property: JsonPropertyName("response_types_supported")] IReadOnlyList<string> ResponseTypesSupported,
+    [property: JsonPropertyName("response_modes_supported")] IReadOnlyList<string> ResponseModesSupported,
     [property: JsonPropertyName("grant_types_supported")] IReadOnlyList<string> GrantTypesSupported,
     [property: JsonPropertyName("token_endpoint_auth_methods_supported")] IReadOnlyList<string> TokenEndpointAuthMethodsSupported,
+    [property: JsonPropertyName("code_challenge_methods_supported")] IReadOnlyList<string> CodeChallengeMethodsSupported,
     [property: JsonPropertyName("subject_types_supported")] IReadOnlyList<string> SubjectTypesSupported,
-    [property: JsonPropertyName("id_token_signing_alg_values_supported")] IReadOnlyList<string> IdTokenSigningAlgValuesSupported);
+    [property: JsonPropertyName("id_token_signing_alg_values_supported")] IReadOnlyList<string> IdTokenSigningAlgValuesSupported,
+    [property: JsonPropertyName("claims_supported")] IReadOnlyList<string> ClaimsSupported,
+    [property: JsonPropertyName("prompt_values_supported")] IReadOnlyList<string> PromptValuesSupported,
+    [property: JsonPropertyName("claims_parameter_supported")] bool ClaimsParameterSupported,
+    [property: JsonPropertyName("request_parameter_supported")] bool RequestParameterSupported,
+    [property: JsonPropertyName("request_uri_parameter_supported")] bool RequestUriParameterSupported,
+    [property: JsonPropertyName("authorization_response_iss_parameter_supported")] bool AuthorizationResponseIssParameterSupported);
 
 internal sealed record JsonWebKey(
     [property: JsonPropertyName("kty")] string KeyType,
@@ -32,6 +44,12 @@ internal static class DiscoveryEndpoints
     public const string ConfigurationPath = "/.well-known/openid-configuration";
     public const string JwksPath = "/.well-known/jwks.json";
 
+    private static readonly string[] ClaimsSupported =
+    [
+        "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "amr", "sid", "at_hash",
+        "name", "given_name", "family_name", "preferred_username", "updated_at", "email", "email_verified", "roles", "groups",
+    ];
+
     /// <summary>
     /// OIDC Discovery 1.0 §3 / RFC 8414 §2. Only implemented features are advertised; later phases add the
     /// authorization and userinfo endpoints.
@@ -42,12 +60,27 @@ internal static class DiscoveryEndpoints
         context.Response.Headers.CacheControl = "public, max-age=3600";
         return Results.Json(new DiscoveryDocument(
             issuer.Issuer,
-            issuer.Endpoint(JwksPath),
+            issuer.Endpoint(AuthorizeEndpoint.Path),
             issuer.Endpoint(TokenEndpoint.Path),
-            [GrantTypes.ClientCredentials],
-            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost],
+            issuer.Endpoint(UserInfoEndpoint.Path),
+            issuer.Endpoint(JwksPath),
+            // offline_access is advertised once refresh tokens are supported.
+            [IdentityScopes.OpenId, IdentityScopes.Profile, IdentityScopes.Email, IdentityScopes.Roles, IdentityScopes.Groups],
+            ["code"],
+            [AuthorizeEndpoint.Query, AuthorizeEndpoint.FormPost],
+            [GrantTypes.AuthorizationCode, GrantTypes.ClientCredentials],
+            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost, ClientAuthenticator.None],
+            [Pkce.S256],
             ["public"],
-            ["RS256"]));
+            ["RS256"],
+            ClaimsSupported,
+            ["none", "login", "consent", "select_account"],
+            // Request objects and the claims parameter are not supported. request_uri_parameter_supported
+            // defaults to true (OIDC Discovery A3), so it is stated explicitly.
+            false,
+            false,
+            false,
+            true));
     }
 
     /// <summary>RFC 7517 §5: every published key, including keys not yet active and recently retired keys.</summary>

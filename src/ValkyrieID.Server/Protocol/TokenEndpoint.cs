@@ -15,7 +15,8 @@ internal sealed record TokenResponse(
     [property: JsonPropertyName("access_token")] string AccessToken,
     [property: JsonPropertyName("token_type")] string TokenType,
     [property: JsonPropertyName("expires_in")] long ExpiresIn,
-    [property: JsonPropertyName("scope")] string Scope);
+    [property: JsonPropertyName("scope")] string Scope,
+    [property: JsonPropertyName("id_token"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? IdToken = null);
 
 internal sealed class TokenResult(TokenResponse response) : IResult
 {
@@ -31,7 +32,10 @@ internal sealed class TokenEndpoint(
     ValkyrieDbContext db,
     ClientAuthenticator authenticator,
     AccessTokenIssuer issuer,
+    IdTokenIssuer idTokenIssuer,
+    IAuthorizationCodeStore codes,
     AuditRecorder audit,
+    TimeProvider timeProvider,
     IOptions<TokenOptions> tokenOptions)
 {
     public const string Path = "/connect/token";
@@ -69,6 +73,7 @@ internal sealed class TokenEndpoint(
 
         return grantType switch
         {
+            GrantTypes.AuthorizationCode => await AuthorizationCodeAsync(context, client, form, cancellationToken),
             GrantTypes.ClientCredentials => await ClientCredentialsAsync(context, client, form, cancellationToken),
             _ => new OAuthError(OAuthError.UnsupportedGrantType, "The grant type is not supported."),
         };
@@ -77,7 +82,8 @@ internal sealed class TokenEndpoint(
     /// <summary>RFC 6749 §4.4.</summary>
     private async Task<IResult> ClientCredentialsAsync(HttpContext context, Client client, IFormCollection form, CancellationToken cancellationToken)
     {
-        if (!client.AllowedGrantTypes.Contains(GrantTypes.ClientCredentials))
+        // RFC 6749 A4.4: client credentials are for confidential clients only.
+        if (!client.AllowedGrantTypes.Contains(GrantTypes.ClientCredentials) || client.Type != ClientType.Confidential)
         {
             return new OAuthError(OAuthError.UnauthorizedClient, "The client is not allowed to use this grant type.");
         }
@@ -138,5 +144,123 @@ internal sealed class TokenEndpoint(
         await db.SaveChangesAsync(cancellationToken);
 
         return new TokenResult(new TokenResponse(token.Token, "Bearer", (long)token.Lifetime.TotalSeconds, string.Join(' ', requested)));
+    }
+
+    /// <summary>RFC 6749 A4.1.3 and OIDC Core A3.1.3.</summary>
+    private async Task<IResult> AuthorizationCodeAsync(HttpContext context, Client client, IFormCollection form, CancellationToken cancellationToken)
+    {
+        if (!client.AllowedGrantTypes.Contains(GrantTypes.AuthorizationCode))
+        {
+            return new OAuthError(OAuthError.UnauthorizedClient, "The client is not allowed to use this grant type.");
+        }
+
+        var code = form["code"].ToString();
+        if (code.Length == 0)
+        {
+            return OAuthError.Request("The code parameter is required.");
+        }
+
+        // The code is consumed before any other check, so a failed attempt can't be retried with the same code.
+        var redemption = codes.Redeem(code);
+        if (redemption.Status == CodeRedemptionStatus.AlreadyRedeemed)
+        {
+            // RFC 6749 A4.1.2: a code used more than once MUST be denied. Refresh tokens issued from it are revoked
+            // once refresh tokens exist.
+            return await InvalidGrantAsync(context, client, "code_replayed", redemption.Grant?.Subject, cancellationToken);
+        }
+
+        if (redemption.Grant is not { } grant)
+        {
+            return await InvalidGrantAsync(context, client, "unknown_or_expired_code", null, cancellationToken);
+        }
+
+        if (!string.Equals(grant.ClientId, client.ClientId, StringComparison.Ordinal))
+        {
+            return await InvalidGrantAsync(context, client, "code_issued_to_another_client", grant.Subject, cancellationToken);
+        }
+
+        // RFC 6749 A4.1.3: redirect_uri must be identical to the one in the authorization request.
+        if (!form.TryGetValue("redirect_uri", out var redirectUri)
+            || !string.Equals(redirectUri.ToString(), grant.RedirectUri, StringComparison.Ordinal))
+        {
+            return await InvalidGrantAsync(context, client, "redirect_uri_mismatch", grant.Subject, cancellationToken);
+        }
+
+        // RFC 7636 A4.6. RFC 9700 A2.1.1: a code_verifier for a code issued without a challenge is rejected, to
+        // prevent PKCE downgrade attacks.
+        var verifier = form.TryGetValue("code_verifier", out var verifierValue) ? verifierValue.ToString() : null;
+        var pkceValid = grant.CodeChallenge is null
+            ? verifier is null
+            : verifier is not null && Pkce.IsValidVerifier(verifier) && Pkce.Verify(verifier, grant.CodeChallenge);
+        if (!pkceValid)
+        {
+            return await InvalidGrantAsync(context, client, "pkce_verification_failed", grant.Subject, cancellationToken);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var session = await db.UserSessions.AsNoTracking().SingleOrDefaultAsync(s => s.Id == grant.SessionId, cancellationToken);
+        var user = await db.Users.AsNoTracking()
+            .Include(u => u.Roles).Include(u => u.Groups).Include(u => u.Claims).AsSplitQuery()
+            .SingleOrDefaultAsync(u => u.Id == grant.Subject, cancellationToken);
+        if (session is null || !session.IsActive(now) || session.UserId != grant.Subject || user is not { Enabled: true })
+        {
+            return await InvalidGrantAsync(context, client, "session_ended", grant.Subject, cancellationToken);
+        }
+
+        // RFC 9068 A3: aud is required; without API scopes the token is only usable at userinfo, so the client is the audience.
+        var audiences = grant.Audiences.Count > 0 ? grant.Audiences : [client.ClientId];
+        var subject = user.Id.ToString();
+        var token = await issuer.IssueAsync(
+            new AccessTokenRequest(client.ClientId, subject, audiences, grant.Scopes, client.AccessTokenLifetime ?? tokenOptions.Value.AccessTokenLifetime),
+            cancellationToken);
+
+        string? idToken = null;
+        if (grant.Scopes.Contains(IdentityScopes.OpenId))
+        {
+            idToken = await idTokenIssuer.IssueAsync(
+                new IdTokenRequest(
+                    client.ClientId,
+                    subject,
+                    grant.SessionId,
+                    grant.AuthTime,
+                    grant.AuthenticationMethods,
+                    grant.Nonce,
+                    token.Token,
+                    UserClaims.For(user, grant.Scopes),
+                    client.IdTokenLifetime ?? tokenOptions.Value.IdTokenLifetime),
+                cancellationToken);
+        }
+
+        var scope = string.Join(' ', grant.Scopes);
+        audit.Add(
+            "token.issued",
+            actor: subject,
+            clientId: client.ClientId,
+            ipAddress: context.Connection.RemoteIpAddress?.ToString(),
+            subjectId: user.Id,
+            details: new Dictionary<string, object?>
+            {
+                ["grant_type"] = GrantTypes.AuthorizationCode,
+                ["scope"] = scope,
+                ["aud"] = audiences,
+                ["sid"] = grant.SessionId,
+            });
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new TokenResult(new TokenResponse(token.Token, "Bearer", (long)token.Lifetime.TotalSeconds, scope, idToken));
+    }
+
+    private async Task<IResult> InvalidGrantAsync(HttpContext context, Client client, string reason, Guid? subject, CancellationToken cancellationToken)
+    {
+        audit.Add(
+            "token.rejected",
+            success: false,
+            actor: client.ClientId,
+            clientId: client.ClientId,
+            ipAddress: context.Connection.RemoteIpAddress?.ToString(),
+            subjectId: subject,
+            details: new Dictionary<string, object?> { ["grant_type"] = GrantTypes.AuthorizationCode, ["reason"] = reason });
+        await db.SaveChangesAsync(cancellationToken);
+        return new OAuthError(OAuthError.InvalidGrant, "The authorization code is invalid, expired, or was issued to another client.");
     }
 }

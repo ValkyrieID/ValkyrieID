@@ -123,6 +123,10 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.Property<TimeSpan?>("AccessTokenLifetime")
                         .HasColumnType("interval");
 
+                    b.PrimitiveCollection<List<string>>("AllowedCorsOrigins")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.PrimitiveCollection<List<string>>("AllowedGrantTypes")
                         .IsRequired()
                         .HasColumnType("text[]");
@@ -144,6 +148,20 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeSpan?>("IdTokenLifetime")
+                        .HasColumnType("interval");
+
+                    b.PrimitiveCollection<List<string>>("PostLogoutRedirectUris")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.PrimitiveCollection<List<string>>("RedirectUris")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<bool>("RequirePkce")
                         .HasColumnType("boolean");
 
                     b.Property<int>("Type")

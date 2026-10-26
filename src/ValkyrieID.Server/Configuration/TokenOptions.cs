@@ -9,6 +9,12 @@ public sealed class TokenOptions
     /// <summary>Default access token lifetime; clients may override it.</summary>
     public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(30);
 
+    /// <summary>Default ID token lifetime; clients may override it.</summary>
+    public TimeSpan IdTokenLifetime { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>Authorization codes are single-use and short-lived (RFC 6749 A4.1.2, RFC 9700 A2.1.1).</summary>
+    public static readonly TimeSpan AuthorizationCodeLifetime = TimeSpan.FromSeconds(60);
+
     /// <summary>Clock skew tolerated when validating tokens and timestamps.</summary>
     public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(30);
 }
@@ -39,6 +45,11 @@ internal sealed class TokenOptionsValidator : IValidateOptions<TokenOptions>
         if (options.AccessTokenLifetime <= TimeSpan.Zero)
         {
             failures.Add("Tokens:AccessTokenLifetime must be positive.");
+        }
+
+        if (options.IdTokenLifetime <= TimeSpan.Zero)
+        {
+            failures.Add("Tokens:IdTokenLifetime must be positive.");
         }
 
         if (options.ClockSkew < TimeSpan.Zero || options.ClockSkew > TimeSpan.FromMinutes(5))

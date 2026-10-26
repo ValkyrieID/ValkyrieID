@@ -16,6 +16,7 @@ internal static class RateLimitPolicies
 {
     public const string Login = "login";
     public const string Token = "token";
+    public const string Authorize = "authorize";
 }
 
 internal static class AccountExtensions
@@ -50,7 +51,8 @@ internal static class AccountExtensions
                 options.Cookie.Name = SessionClaims.CookieName;
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                // Lax: the cookie must be sent when a relying party redirects the browser to the authorize endpoint.
+                // Lax: the cookie is sent when a relying party redirects the browser to the authorize endpoint (a
+                // top-level GET navigation).
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.Path = "/";
                 options.LoginPath = "/account/login";
@@ -90,6 +92,7 @@ internal static class AccountExtensions
                 ? FixedWindowPerIp(context, RateLimitPolicies.Login, o => o.Login)
                 : RateLimitPartition.GetNoLimiter(string.Empty));
             options.AddPolicy(RateLimitPolicies.Token, context => FixedWindowPerIp(context, RateLimitPolicies.Token, o => o.Token));
+            options.AddPolicy(RateLimitPolicies.Authorize, context => FixedWindowPerIp(context, RateLimitPolicies.Authorize, o => o.Authorize));
         });
 
         return services;

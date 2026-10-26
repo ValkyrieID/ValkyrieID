@@ -41,7 +41,10 @@ The issuer is published in discovery and in the `iss` claim. Every endpoint URL 
 | Key | Default | Description |
 |---|---|---|
 | `Tokens:AccessTokenLifetime` | `00:30:00` | Default access token lifetime. Clients can override it. |
+| `Tokens:IdTokenLifetime` | `00:05:00` | Default ID token lifetime. Clients can override it. |
 | `Tokens:ClockSkew` | `00:00:30` | Clock skew tolerated when validating tokens (0 to 5 minutes). |
+
+Authorization codes always live 60 seconds and can be redeemed once. They are kept in memory, so a restart invalidates codes that haven't been redeemed yet; the user simply signs in again.
 
 ## Signing keys
 
@@ -120,7 +123,8 @@ Because the cookie is `Secure`, sign-in only works over HTTPS (or `http://localh
 |---|---|---|
 | `RateLimits:Login:PermitLimit` / `:Window` | `10` / `00:01:00` | Login and setup form submissions per client IP address. |
 | `RateLimits:LoginAccount:PermitLimit` / `:Window` | `10` / `00:15:00` | Login attempts per username or email, whether or not the account exists. |
-| `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token endpoint requests per client IP address. |
+| `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token and userinfo endpoint requests per client IP address. |
+| `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
 
 Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance.
 

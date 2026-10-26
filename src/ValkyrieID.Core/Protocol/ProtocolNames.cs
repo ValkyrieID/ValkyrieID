@@ -9,9 +9,16 @@ public static class GrantTypes
 
 public static class IdentityScopes
 {
+    public const string OpenId = "openid";
+    public const string Profile = "profile";
+    public const string Email = "email";
+    public const string Roles = "roles";
+    public const string Groups = "groups";
+    public const string OfflineAccess = "offline_access";
+
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
-        "openid", "profile", "email", "roles", "groups", "offline_access",
+        OpenId, Profile, Email, Roles, Groups, OfflineAccess,
     };
 }
 

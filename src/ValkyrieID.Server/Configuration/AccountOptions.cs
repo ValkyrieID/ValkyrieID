@@ -83,8 +83,11 @@ public sealed class RateLimitOptions
     /// <summary>Login attempts per username or email, whether or not the account exists.</summary>
     public RateLimitRule LoginAccount { get; set; } = new() { PermitLimit = 10, Window = TimeSpan.FromMinutes(15) };
 
-    /// <summary>Token endpoint requests per client IP address.</summary>
+    /// <summary>Token and userinfo endpoint requests per client IP address.</summary>
     public RateLimitRule Token { get; set; } = new() { PermitLimit = 100, Window = TimeSpan.FromMinutes(1) };
+
+    /// <summary>Authorization endpoint requests per client IP address.</summary>
+    public RateLimitRule Authorize { get; set; } = new() { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) };
 }
 
 public sealed partial class BrandingOptions
@@ -214,7 +217,7 @@ internal sealed class AccountOptionsValidator :
     public ValidateOptionsResult Validate(string? name, RateLimitOptions options)
     {
         List<string> failures = [];
-        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token) })
+        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize) })
         {
             if (rule.PermitLimit < 1 || rule.Window <= TimeSpan.Zero)
             {

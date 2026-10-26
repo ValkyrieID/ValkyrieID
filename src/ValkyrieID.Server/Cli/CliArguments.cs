@@ -4,7 +4,7 @@ namespace ValkyrieID.Server.Cli;
 internal sealed class CliArguments
 {
     /// <summary>Options that take no value.</summary>
-    private static readonly HashSet<string> FlagNames = new(StringComparer.Ordinal) { "check" };
+    private static readonly HashSet<string> FlagNames = new(StringComparer.Ordinal) { "check", "public", "no-pkce" };
 
     private readonly Dictionary<string, List<string>> _options = new(StringComparer.Ordinal);
     private readonly HashSet<string> _flags = new(StringComparer.Ordinal);

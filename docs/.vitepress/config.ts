@@ -18,6 +18,7 @@ export default defineConfig({
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'First run', link: '/guide/first-run' },
           { text: 'Protect an API', link: '/guide/protect-an-api' },
+          { text: 'Sign in users', link: '/guide/sign-in-users' },
         ],
       },
       {
@@ -35,6 +36,7 @@ export default defineConfig({
           { text: 'Master encryption key', link: '/operations/master-key' },
           { text: 'Signing key rotation', link: '/operations/key-rotation' },
           { text: 'Observability', link: '/operations/observability' },
+          { text: 'Conformance testing', link: '/operations/conformance' },
         ],
       },
     ],

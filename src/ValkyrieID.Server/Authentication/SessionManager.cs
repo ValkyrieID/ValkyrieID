@@ -36,6 +36,17 @@ internal sealed class SessionManager(
     public async Task SignInAsync(HttpContext context, User user, IReadOnlyList<string> methods, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
+
+        // A new login (e.g. forced by prompt=login) replaces the current session instead of leaving it active.
+        if (context.User.FindFirstValue(SessionClaims.SessionId) is { } previousId)
+        {
+            var previous = await db.UserSessions.SingleOrDefaultAsync(s => s.Id == previousId, cancellationToken);
+            if (previous is { RevokedAt: null })
+            {
+                previous.RevokedAt = now;
+            }
+        }
+
         var session = new UserSession
         {
             UserId = user.Id,

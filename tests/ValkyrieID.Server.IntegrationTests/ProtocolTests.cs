@@ -65,8 +65,8 @@ public abstract class ProtocolTests
         Assert.Equal(ValkyrieAppFactory.DefaultIssuer, document.GetProperty("issuer").GetString());
         Assert.Equal($"{ValkyrieAppFactory.DefaultIssuer}/.well-known/jwks.json", document.GetProperty("jwks_uri").GetString());
         Assert.Equal($"{ValkyrieAppFactory.DefaultIssuer}/connect/token", document.GetProperty("token_endpoint").GetString());
-        Assert.Equal(["client_credentials"], Strings(document.GetProperty("grant_types_supported")));
-        Assert.Equal(["client_secret_basic", "client_secret_post"], Strings(document.GetProperty("token_endpoint_auth_methods_supported")));
+        Assert.Equal(["authorization_code", "client_credentials"], Strings(document.GetProperty("grant_types_supported")));
+        Assert.Equal(["client_secret_basic", "client_secret_post", "none"], Strings(document.GetProperty("token_endpoint_auth_methods_supported")));
     }
 
     [Fact]

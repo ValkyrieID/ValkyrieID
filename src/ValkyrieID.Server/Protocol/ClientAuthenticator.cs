@@ -10,11 +10,15 @@ namespace ValkyrieID.Server.Protocol;
 
 internal sealed record ClientAuthenticationResult(Client? Client, OAuthError? Error);
 
-/// <summary>Authenticates confidential clients with <c>client_secret_basic</c> or <c>client_secret_post</c>.</summary>
+/// <summary>
+/// Authenticates confidential clients with <c>client_secret_basic</c> or <c>client_secret_post</c>, and identifies
+/// public clients by <c>client_id</c> (<c>none</c>).
+/// </summary>
 internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder audit, TimeProvider timeProvider)
 {
     public const string ClientSecretBasic = "client_secret_basic";
     public const string ClientSecretPost = "client_secret_post";
+    public const string None = "none";
 
     public async Task<ClientAuthenticationResult> AuthenticateAsync(HttpContext context, IFormCollection form, CancellationToken cancellationToken)
     {
@@ -45,6 +49,20 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
         {
             clientId = bodyClientId;
             secret = bodySecret;
+        }
+
+        // Public clients have no secret and identify themselves with client_id only (RFC 6749 A2.1, A3.2.1;
+        // token endpoint auth method "none"). Their ids aren't secret, so no constant-time path is needed.
+        if (!string.IsNullOrEmpty(clientId) && secret is null && context.Request.Headers.Authorization.Count == 0)
+        {
+            var publicClient = await db.Clients.SingleOrDefaultAsync(c => c.ClientId == clientId, cancellationToken);
+            return publicClient switch
+            {
+                { Enabled: true, Type: ClientType.Public } => new ClientAuthenticationResult(publicClient, null),
+                null => await RejectAsync(context, clientId, "unknown_client", cancellationToken),
+                { Type: ClientType.Public } => await RejectAsync(context, clientId, "client_not_usable", cancellationToken),
+                _ => await RejectAsync(context, clientId, "missing_credentials", cancellationToken),
+            };
         }
 
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(secret))

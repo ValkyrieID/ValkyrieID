@@ -360,14 +360,18 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
 4. **Authorization code flow:**
    - authorize endpoint with PKCE, ID tokens, userinfo
    - `prompt`, `max_age`, `nonce`, `iss` parameter, redirect URI rules, CORS
-   - *Milestone: an ASP.NET Core app and an SPA can log in.* Run the Basic OP and Config OP conformance plans.
+   - *Milestone: an ASP.NET Core app and an SPA can log in.*
+   - conformance setup (test clients, plan configuration, runbook)
+     - running the Basic OP and Config OP plans *(deferred: phase 10)*
 5. **Refresh tokens, revocation, introspection:**
    - rotation with reuse detection, `offline_access`
    - revocation and introspection endpoints
+   - reverse proxy support: forwarded headers, trusted proxies, path base *(planned: from §11, unscheduled)*
 6. **Logout and sessions:**
    - end session (RP-initiated logout), back-channel logout with retries
    - session management
-   - Run the logout conformance plans.
+   - logout conformance setup (test clients, plan configuration)
+     - running the RP-Initiated and Back-Channel Logout plans *(deferred: phase 10)*
 7. **2FA and account self-service:**
    - TOTP enrollment, recovery codes, 2FA enforcement
      - `admin reset-2fa`, 2FA rate limiting, 2FA state on the user model *(deferred: from phase 3)*
@@ -377,12 +381,14 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
    - full management of users, clients, resources, settings, branding, keys, and sessions
      - seed the admin UI client *(deferred: from phase 3)*
    - audit log viewer
+   - audit log retention *(planned: from §11, unscheduled)*
    - DB-backed runtime settings with env precedence
 9. **Multi-instance:**
    - Redis for authorization codes, rate limits, and cache
    - multi-instance integration tests
 10. **Hardening and release:**
     - security headers review, OAuch, OWASP ZAP
+    - run the OpenID conformance plans: Basic OP, Config OP *(deferred: from phase 4)*, RP-Initiated Logout, Back-Channel Logout *(deferred: from phase 6)*
     - footprint targets, accessibility pass
     - documentation, first tagged release to `ghcr.io`
 
@@ -402,4 +408,8 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Baseline security headers and CSP | 10 | 3 | The login pages need a strict CSP from the start (§8.1). Phase 10 still reviews them. |
 | Setup wizard creates the admin UI client | 3 | 8 | The admin UI and the authorization code flow it needs don't exist before phases 4 and 8. Seeding is idempotent, so existing installs get the client on upgrade. |
 | `admin reset-2fa`, 2FA rate limiting, 2FA flags on the user model | 3 | 7 | There is no 2FA state to reset or limit before phase 7. |
+| Running the Basic OP and Config OP conformance plans | 4 | 10 | The suite needs a publicly reachable HTTPS deployment, which comes with the release work. The setup scripts and runbook were done in phase 4. |
+| Running the RP-Initiated and Back-Channel Logout conformance plans | 6 | 10 | Same reason: needs a publicly reachable HTTPS deployment. Phase 6 still prepares the test clients and plan configuration. |
+| Reverse proxy support (forwarded headers, trusted proxies, path base) | (§11, unscheduled) | 5 | Needed before deployments behind a proxy get correct client IPs; not part of the phase 4 protocol work. |
+| Audit log retention | (§11, unscheduled) | 8 | Belongs with the audit log viewer. |
 | Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |

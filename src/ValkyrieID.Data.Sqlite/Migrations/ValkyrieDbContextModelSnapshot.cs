@@ -115,6 +115,10 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.Property<TimeSpan?>("AccessTokenLifetime")
                         .HasColumnType("TEXT");
 
+                    b.PrimitiveCollection<string>("AllowedCorsOrigins")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.PrimitiveCollection<string>("AllowedGrantTypes")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -136,6 +140,20 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeSpan?>("IdTokenLifetime")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("PostLogoutRedirectUris")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("RedirectUris")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RequirePkce")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Type")

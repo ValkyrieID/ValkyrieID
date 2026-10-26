@@ -7,6 +7,10 @@
 <partial name="_Errors" model="Model.Errors" />
 <form method="post" novalidate>
     <input type="hidden" asp-for="ReturnUrl">
+    @if (Model.Prompt == "login")
+    {
+        <input type="hidden" name="prompt" value="login">
+    }
     <div class="field">
         <label for="identifier">Username or email</label>
         <input id="identifier" name="Identifier" type="text" value="@Model.Identifier" autocomplete="username"

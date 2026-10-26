@@ -24,8 +24,25 @@ public sealed class Client
 
     public List<string> AllowedScopes { get; set; } = [];
 
+    /// <summary>Registered redirect URIs, matched exactly (see <see cref="RedirectUris.Matches"/>).</summary>
+    public List<string> RedirectUris { get; set; } = [];
+
+    /// <summary>Registered post-logout redirect URIs (used by RP-initiated logout).</summary>
+    public List<string> PostLogoutRedirectUris { get; set; } = [];
+
+    /// <summary>Browser origins allowed to call the token and userinfo endpoints (CORS).</summary>
+    public List<string> AllowedCorsOrigins { get; set; } = [];
+
+    /// <summary>Whether authorization requests must use PKCE. Always enforced for public clients.</summary>
+    public bool RequirePkce { get; set; } = true;
+
     /// <summary>Overrides the global access token lifetime for this client.</summary>
     public TimeSpan? AccessTokenLifetime { get; set; }
+
+    /// <summary>Overrides the global ID token lifetime for this client.</summary>
+    public TimeSpan? IdTokenLifetime { get; set; }
+
+    public bool PkceRequired => RequirePkce || Type == ClientType.Public;
 
     public required DateTimeOffset CreatedAt { get; init; }
 

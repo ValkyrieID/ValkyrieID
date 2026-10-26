@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Server.Cli;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Protocol;
 
 // Maintenance commands (e.g. `valkyrieid client create ...`) take their own arguments; configuration then
 // comes from appsettings.json and environment variables only.
@@ -37,6 +38,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseProtocolCors();
 app.UseValkyrieAccounts();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });

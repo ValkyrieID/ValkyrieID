@@ -22,7 +22,11 @@ internal static class ProtocolExtensions
         services.AddHostedService<SigningKeyRotationService>();
         services.AddScoped<AccessTokenIssuer>();
         services.AddScoped<ClientAuthenticator>();
+        services.AddScoped<IdTokenIssuer>();
+        services.AddSingleton<IAuthorizationCodeStore, InMemoryAuthorizationCodeStore>();
         services.AddScoped<TokenEndpoint>();
+        services.AddScoped<AuthorizeEndpoint>();
+        services.AddScoped<UserInfoEndpoint>();
 
         return services;
     }
@@ -39,6 +43,10 @@ internal static class ProtocolExtensions
         endpoints.MapGet(DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.Configuration);
         endpoints.MapGet(DiscoveryEndpoints.JwksPath, DiscoveryEndpoints.Jwks);
         endpoints.MapPost(TokenEndpoint.Path, (HttpContext context, TokenEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Token);
+        endpoints.MapMethods(AuthorizeEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, AuthorizeEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Authorize);
+        endpoints.MapMethods(UserInfoEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, UserInfoEndpoint endpoint) => endpoint.HandleAsync(context))
             .RequireRateLimiting(RateLimitPolicies.Token);
         return endpoints;
     }

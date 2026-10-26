@@ -44,6 +44,12 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+      - name: Check migrations are up to date
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes --project src/ValkyrieID.Data.Sqlite --no-build --configuration Release
+          dotnet ef migrations has-pending-model-changes --project src/ValkyrieID.Data.PostgreSql --no-build --configuration Release
+
       - name: Unit and SQLite integration tests
         run: dotnet test --no-build -c Release -- --filter-not-trait "Category=PostgreSql"
 
