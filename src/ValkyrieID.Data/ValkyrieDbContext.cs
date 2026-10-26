@@ -5,6 +5,7 @@ using ValkyrieID.Core.Auditing;
 using ValkyrieID.Core.Clients;
 using ValkyrieID.Core.Resources;
 using ValkyrieID.Core.Tokens;
+using ValkyrieID.Core.Users;
 
 namespace ValkyrieID.Data;
 
@@ -24,6 +25,14 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
     public DbSet<ApiScope> ApiScopes => Set<ApiScope>();
 
     public DbSet<SigningKey> SigningKeys => Set<SigningKey>();
+
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<Group> Groups => Set<Group>();
+
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

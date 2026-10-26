@@ -3,7 +3,11 @@ namespace ValkyrieID.Server.Cli;
 /// <summary>Parsed command-line arguments: positional values plus repeatable <c>--name value</c> options.</summary>
 internal sealed class CliArguments
 {
+    /// <summary>Options that take no value.</summary>
+    private static readonly HashSet<string> FlagNames = new(StringComparer.Ordinal) { "check" };
+
     private readonly Dictionary<string, List<string>> _options = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _flags = new(StringComparer.Ordinal);
     private readonly HashSet<string> _used = new(StringComparer.Ordinal);
 
     private CliArguments(List<string> positional) => Positional = positional;
@@ -20,6 +24,12 @@ internal sealed class CliArguments
             var arg = enumerator.Current;
             if (arg.StartsWith("--", StringComparison.Ordinal) && arg.Length > 2)
             {
+                if (FlagNames.Contains(arg[2..]))
+                {
+                    parsed._flags.Add(arg[2..]);
+                    continue;
+                }
+
                 if (!enumerator.MoveNext())
                 {
                     throw new CliException($"Option {arg} requires a value.");
@@ -75,10 +85,16 @@ internal sealed class CliArguments
             : throw new CliException($"Option --{name} must be a positive integer.");
     }
 
+    public bool Flag(string name)
+    {
+        _used.Add(name);
+        return _flags.Contains(name);
+    }
+
     /// <summary>Fails on options a command didn't read and on extra positional arguments.</summary>
     public void EnsureConsumed(int positionalCount)
     {
-        var unknown = _options.Keys.FirstOrDefault(k => !_used.Contains(k));
+        var unknown = _options.Keys.Concat(_flags).FirstOrDefault(k => !_used.Contains(k));
         if (unknown is not null)
         {
             throw new CliException($"Unknown option --{unknown}.");

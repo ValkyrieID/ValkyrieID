@@ -32,5 +32,20 @@ Supply it as `MasterKey__Current` (environment variable) or `MasterKey:Current` 
 1. Generate a new key.
 2. Set the new key as `MasterKey:Current` and move the old key to `MasterKey:Previous:0`.
 3. Restart all instances.
+4. Re-encrypt the stored secrets with the new key:
 
-New secrets are encrypted with the current key; existing secrets can still be decrypted with the previous key. Data Protection keys are replaced automatically every 90 days, so keep the previous master key configured for at least 90 days plus your longest session lifetime before removing it.
+   ```sh
+   ./valkyrieid admin reencrypt
+   ```
+
+5. Confirm nothing uses the old key any more:
+
+   ```sh
+   ./valkyrieid admin reencrypt --check   # exit code 0 when done
+   ```
+
+6. Remove `MasterKey:Previous:0` and restart all instances.
+
+New secrets are encrypted with the current key, and existing secrets can still be decrypted with a previous key until step 4 has run. `admin reencrypt` runs in a single database transaction and is safe to repeat. It fails, without changing anything, if some data was encrypted with a key that isn't configured.
+
+Run step 4 after every instance uses the new key (step 3), so no instance writes new secrets with the old key in the meantime.

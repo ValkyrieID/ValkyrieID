@@ -1,0 +1,19 @@
+@page
+@model LogoutModel
+@{
+    ViewData["Title"] = "Sign out";
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <h1>Sign out</h1>
+    <p>Do you want to sign out?</p>
+    <form method="post">
+        <button type="submit">Sign out</button>
+    </form>
+}
+else
+{
+    <h1>Signed out</h1>
+    <p>You are signed out.</p>
+    <p><a href="~/account/login">Sign in again</a></p>
+}

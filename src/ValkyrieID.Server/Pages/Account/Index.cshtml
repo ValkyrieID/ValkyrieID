@@ -1,0 +1,8 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Your account";
+}
+<h1>Your account</h1>
+<p>You are signed in as <strong>@User.Identity?.Name</strong>.</p>
+<p><a href="~/account/logout">Sign out</a></p>

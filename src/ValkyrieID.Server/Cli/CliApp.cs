@@ -6,12 +6,20 @@ namespace ValkyrieID.Server.Cli;
 /// </summary>
 internal static class CliApp
 {
-    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "help" };
+    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "admin", "help" };
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
 
-    public static async Task<int> RunAsync(IServiceProvider services, IReadOnlyList<string> args, TextWriter output, TextWriter error, CancellationToken cancellationToken = default)
+    /// <param name="input">Source of passwords; defaults to the console.</param>
+    public static async Task<int> RunAsync(
+        IServiceProvider services,
+        IReadOnlyList<string> args,
+        TextWriter output,
+        TextWriter error,
+        CancellationToken cancellationToken = default,
+        TextReader? input = null)
     {
+        input ??= Console.In;
         try
         {
             var parsed = CliArguments.Parse(args);
@@ -25,6 +33,11 @@ internal static class CliApp
                 case "resource":
                     await new ResourceCommands(scope.ServiceProvider, output).RunAsync(parsed, cancellationToken);
                     break;
+                case "user":
+                    await new UserCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
+                    break;
+                case "admin":
+                    return await new AdminCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
                 default:
                     await output.WriteLineAsync(Usage);
                     break;
@@ -41,6 +54,21 @@ internal static class CliApp
 
     public const string Usage = """
         Usage: valkyrieid <command> [arguments]
+
+        Users (<user> is a username or email address):
+          user create <username> [--email <email>] [--name <display name>]
+          user list
+          user enable <user>
+          user disable <user>
+
+        Admin recovery:
+          admin reset-password <user>
+          admin unlock <user>
+          admin grant-admin <user>
+          admin revoke-admin <user>
+          admin reencrypt [--check]
+
+        Passwords are read from a hidden prompt, or as one line from standard input when it is redirected.
 
         Clients:
           client create <client-id> --scope <scope>... [--name <display name>]

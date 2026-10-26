@@ -12,6 +12,7 @@ ValkyrieID is a minimal, lightweight OpenID Connect / OAuth 2.0 identity server.
 - Admin UI: Angular (latest), served by the ASP.NET Core app, talking only to the Admin REST API.
 - Docs: VitePress in `/docs`, published to https://valkyrieid.liesel.dev.
 - Work follows the phased roadmap in `PROJECT.md` §14. Don't build features from later phases unless asked.
+- When an item is moved to an earlier or later phase, record it in `PROJECT.md` §14 (roadmap markers and the "Roadmap changes" table) in the same change.
 
 ## Rules
 

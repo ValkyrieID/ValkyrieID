@@ -10,6 +10,28 @@ All URLs are relative to the configured [issuer](/reference/configuration#issuer
 
 The authorization, userinfo, revocation, introspection, and end session endpoints arrive in later releases. Discovery only advertises what is implemented.
 
+## Pages
+
+Server-rendered pages for people, not clients. They work without JavaScript, and forms are protected with anti-forgery tokens.
+
+| Page | Description |
+|---|---|
+| `/setup` | First-run setup wizard. Only available while no user exists; returns `404` afterwards. See [First run](/guide/first-run). |
+| `/account/login` | Sign in with a username or email address and password. Accepts a local `returnUrl`; other URLs are ignored. |
+| `/account/logout` | Asks for confirmation, then ends the session. |
+| `/account` | Shows who is signed in. |
+
+Every response carries these headers:
+
+| Header | Value |
+|---|---|
+| `Content-Security-Policy` | `default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'` |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `no-referrer` |
+
+`Strict-Transport-Security` is added to HTTPS responses outside the `Development` environment.
+
 ## Discovery
 
 Returns the issuer, `jwks_uri`, `token_endpoint`, `grant_types_supported` (`client_credentials`), and `token_endpoint_auth_methods_supported` (`client_secret_basic`, `client_secret_post`).
@@ -76,5 +98,7 @@ Errors follow RFC 6749 §5.2:
 | `unauthorized_client` | 400 | The client may not use this grant type |
 | `unsupported_grant_type` | 400 | The grant type isn't supported |
 | `invalid_scope` | 400 | A scope is malformed, unknown, disabled, an identity scope, or not allowed for the client |
+
+Requests over the [rate limit](/reference/configuration#rate-limits) get `429 Too Many Requests` with a `Retry-After` header.
 
 All client authentication failures return the same response, so callers can't tell which clients exist.

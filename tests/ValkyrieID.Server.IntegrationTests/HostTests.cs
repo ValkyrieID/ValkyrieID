@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Data;
+using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.IntegrationTests;
 
@@ -114,6 +115,61 @@ public abstract class HostTests
         await using var rotated = CreateFactory(MasterKey.Generate().ToBase64(), previousMasterKey: oldMasterKey);
 
         Assert.Equal(Payload, Protector(rotated).Unprotect(protectedPayload));
+    }
+
+    [Fact]
+    public async Task Reencrypt_moves_all_secrets_to_the_current_master_key()
+    {
+        string protectedPayload;
+        string oldMasterKey;
+
+        await using (var first = CreateFactory())
+        {
+            oldMasterKey = first.MasterKey;
+            protectedPayload = Protector(first).Protect(Payload);
+        }
+
+        var newMasterKey = MasterKey.Generate().ToBase64();
+        await using (var rotated = CreateFactory(newMasterKey, previousMasterKey: oldMasterKey))
+        {
+            var before = await rotated.RunCliAsync("admin", "reencrypt", "--check");
+            Assert.Equal(1, before.ExitCode);
+            Assert.Contains("signing keys: 1", before.Output, StringComparison.Ordinal);
+
+            Assert.Equal(0, (await rotated.RunCliAsync("admin", "reencrypt")).ExitCode);
+
+            var after = await rotated.RunCliAsync("admin", "reencrypt", "--check");
+            Assert.Equal(0, after.ExitCode);
+            var again = await rotated.RunCliAsync("admin", "reencrypt");
+            Assert.Contains("signing keys: 0, data protection keys: 0", again.Output, StringComparison.Ordinal);
+
+            await using var scope = rotated.Services.CreateAsyncScope();
+            Assert.True(await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>()
+                .AuditLog.AnyAsync(e => e.EventType == "masterkey.reencrypted" && e.Actor == "cli", CancellationToken));
+        }
+
+        // The previous master key is no longer needed.
+        await using var current = CreateFactory(newMasterKey);
+        Assert.Equal(Payload, Protector(current).Unprotect(protectedPayload));
+        var keys = await current.Services.GetRequiredService<SigningKeyStore>().GetAsync(CancellationToken);
+        Assert.Single(keys.Keys);
+        Assert.Equal(HttpStatusCode.OK, (await current.CreateClient().GetAsync("/.well-known/jwks.json", CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Reencrypt_fails_without_the_previous_master_key()
+    {
+        await using (var first = CreateFactory())
+        {
+            Protector(first).Protect(Payload);
+        }
+
+        // Startup itself doesn't decrypt anything yet, so the CLI can report the problem.
+        await using var wrong = CreateFactory(MasterKey.Generate().ToBase64());
+        var result = await wrong.RunCliAsync("admin", "reencrypt", "--check");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("can't be decrypted", result.Error, StringComparison.Ordinal);
     }
 
     [Theory]

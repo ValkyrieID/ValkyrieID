@@ -1,0 +1,22 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<h1>Sign in</h1>
+<partial name="_Errors" model="Model.Errors" />
+<form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl">
+    <div class="field">
+        <label for="identifier">Username or email</label>
+        <input id="identifier" name="Identifier" type="text" value="@Model.Identifier" autocomplete="username"
+               autocapitalize="none" spellcheck="false" required autofocus
+               aria-invalid="@(Model.Errors.Count > 0 ? "true" : null)" aria-describedby="@(Model.Errors.Count > 0 ? "errors" : null)">
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="Password" type="password" autocomplete="current-password" required
+               aria-invalid="@(Model.Errors.Count > 0 ? "true" : null)" aria-describedby="@(Model.Errors.Count > 0 ? "errors" : null)">
+    </div>
+    <button type="submit">Sign in</button>
+</form>

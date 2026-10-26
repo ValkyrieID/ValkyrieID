@@ -1,0 +1,36 @@
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
+@inject IOptions<BrandingOptions> BrandingOptions
+@{
+    var branding = BrandingOptions.Value;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>@ViewData["Title"] – @branding.ProductName</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/theme.css">
+    @if (branding.CustomCss is not null)
+    {
+        <link rel="stylesheet" href="~/branding/@branding.CustomCss">
+    }
+</head>
+<body>
+    <main class="card">
+        <header class="brand">
+            @if (branding.Logo is not null)
+            {
+                <img src="~/branding/@branding.Logo" alt="@branding.ProductName">
+            }
+            else
+            {
+                <p class="product-name">@branding.ProductName</p>
+            }
+        </header>
+        @RenderBody()
+    </main>
+</body>
+</html>

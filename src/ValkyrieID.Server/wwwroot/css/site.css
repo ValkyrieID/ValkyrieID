@@ -1,0 +1,144 @@
+:root {
+  --vid-primary: #1f4fd1;
+  --vid-primary-text: #ffffff;
+  --vid-background: #eef1f6;
+  --vid-surface: #ffffff;
+  --vid-text: #1a1d23;
+  --vid-muted: #4a5160;
+  --vid-error: #a4161a;
+  --vid-error-background: #fdecec;
+  --vid-border: #6b7280;
+  --vid-background-image: none;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 100%;
+  line-height: 1.5;
+  color: var(--vid-text);
+  background-color: var(--vid-background);
+  background-image: var(--vid-background-image);
+  background-size: cover;
+  background-position: center;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem;
+  background: var(--vid-surface);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 1.5rem rgb(0 0 0 / 15%);
+}
+
+.brand img {
+  display: block;
+  max-width: 12rem;
+  max-height: 4rem;
+  margin: 0 auto 1rem;
+}
+
+.product-name {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.optional,
+.hint {
+  color: var(--vid-muted);
+  font-weight: 400;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+}
+
+input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font: inherit;
+  color: var(--vid-text);
+  background: var(--vid-surface);
+  border: 1px solid var(--vid-border);
+  border-radius: 0.25rem;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--vid-error);
+}
+
+button {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--vid-primary-text);
+  background: var(--vid-primary);
+  border: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+a {
+  color: var(--vid-primary);
+}
+
+input:focus-visible,
+button:focus-visible,
+a:focus-visible,
+.alert:focus-visible {
+  outline: 3px solid var(--vid-primary);
+  outline-offset: 2px;
+}
+
+.alert {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  color: var(--vid-error);
+  background: var(--vid-error-background);
+  border-left: 4px solid var(--vid-error);
+  border-radius: 0.25rem;
+}
+
+.alert p,
+.alert ul {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

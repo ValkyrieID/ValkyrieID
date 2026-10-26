@@ -13,6 +13,44 @@ docker run --rm -e MasterKey__Current=... -e Issuer__Url=... -v valkyrieid-data:
 
 Every change is written to the audit log with the actor `cli`.
 
+## Users
+
+`<user>` is a username or an email address.
+
+| Command | Description |
+|---|---|
+| `user create <username> [--email <email>] [--name <display name>]` | Create a user. Prompts for the password. |
+| `user list` | List users with their state (`enabled`, `locked`, `disabled`), email, and roles. |
+| `user enable <user>` / `user disable <user>` | Disabled users can't sign in; disabling also ends their sessions. |
+
+Usernames are 1-64 letters, digits, `.`, `_` or `-`. They can't contain `@`, so a sign-in name with `@` is always treated as an email address. Usernames and email addresses are unique, ignoring case.
+
+### Passwords
+
+Passwords are never accepted as arguments, because arguments end up in shell history and process listings. Commands that need a password show a hidden prompt (asking twice), or read one line from standard input when it is redirected:
+
+```sh
+printf '%s\n' "$NEW_PASSWORD" | ./valkyrieid user create alice --email alice@example.com
+```
+
+Passwords must satisfy the [password policy](/reference/configuration#passwords).
+
+## Admin recovery
+
+Break-glass commands for when nobody can sign in as an admin.
+
+| Command | Description |
+|---|---|
+| `admin reset-password <user>` | Set a new password. Also unlocks the account and ends its sessions. |
+| `admin unlock <user>` | Clear a lockout. |
+| `admin grant-admin <user>` | Give the user the built-in `admin` role. |
+| `admin revoke-admin <user>` | Remove the `admin` role. |
+| `admin reencrypt [--check]` | Re-encrypt secrets with the current master key. See [Rotate the key](/operations/master-key#rotate-the-key). |
+
+The last enabled admin can't be disabled or lose the `admin` role, so there is always someone who can administer the server.
+
+`admin reencrypt --check` changes nothing. It exits with code `1` if any secret is still encrypted with a previous master key, and `0` otherwise.
+
 ## API resources
 
 An API resource is an API that accepts access tokens. Its name is the token audience (`aud`), and it owns one or more scopes. Scope names are unique across all resources, and identity scopes (`openid`, `profile`, `email`, `roles`, `groups`, `offline_access`) are reserved.

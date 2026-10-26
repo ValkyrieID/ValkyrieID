@@ -13,6 +13,7 @@ builder.Services.AddValkyrieMasterKey(builder.Configuration);
 builder.Services.AddValkyrieDatabase(builder.Configuration);
 builder.Services.AddValkyrieDataProtection();
 builder.Services.AddValkyrieProtocol(builder.Configuration);
+builder.Services.AddValkyrieAccounts(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 builder.AddValkyrieTelemetry();
@@ -30,9 +31,18 @@ if (isCli)
 
 await app.Services.EnsureSigningKeysAsync(app.Lifetime.ApplicationStopping);
 
+app.UseSecurityHeaders();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.UseValkyrieAccounts();
+
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 app.MapValkyrieProtocol();
+app.MapValkyrieAccounts();
 
 await app.RunAsync();
 return 0;

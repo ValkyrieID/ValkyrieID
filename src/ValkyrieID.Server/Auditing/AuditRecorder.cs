@@ -16,12 +16,14 @@ internal sealed class AuditRecorder(ValkyrieDbContext db, TimeProvider timeProvi
         string? actor = null,
         string? clientId = null,
         string? ipAddress = null,
-        IReadOnlyDictionary<string, object?>? details = null) =>
+        IReadOnlyDictionary<string, object?>? details = null,
+        Guid? subjectId = null) =>
         db.AuditLog.Add(new AuditLogEntry
         {
             Timestamp = timeProvider.GetUtcNow(),
             EventType = eventType,
             Success = success,
+            SubjectId = subjectId,
             Actor = Truncate(actor, 200),
             ClientId = Truncate(clientId, 200),
             IpAddress = ipAddress,

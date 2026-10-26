@@ -47,13 +47,26 @@ public sealed class ValkyrieAppFactory(
         }
     }
 
-    public async Task<(int ExitCode, string Output, string Error)> RunCliAsync(params string[] args)
+    public async Task<(int ExitCode, string Output, string Error)> RunCliAsync(params string[] args) =>
+        await RunCliWithInputAsync(string.Empty, args);
+
+    /// <summary>Runs a CLI command with <paramref name="input"/> as redirected standard input (e.g. a password).</summary>
+    public async Task<(int ExitCode, string Output, string Error)> RunCliWithInputAsync(string input, params string[] args)
     {
+        using var reader = new StringReader(input);
         using var output = new StringWriter();
         using var error = new StringWriter();
-        var exitCode = await CliApp.RunAsync(Services, args, output, error, TestContext.Current.CancellationToken);
+        var exitCode = await CliApp.RunAsync(Services, args, output, error, TestContext.Current.CancellationToken, reader);
         return (exitCode, output.ToString(), error.ToString());
     }
+
+    /// <summary>A client that keeps cookies over https and doesn't follow redirects, like a browser under test.</summary>
+    public HttpClient CreateBrowser() => CreateClient(new WebApplicationFactoryClientOptions
+    {
+        BaseAddress = new Uri("https://localhost"),
+        AllowAutoRedirect = false,
+        HandleCookies = true,
+    });
 }
 
 /// <summary>A manually advanced clock.</summary>

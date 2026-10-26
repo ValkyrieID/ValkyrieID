@@ -1,0 +1,30 @@
+@page "/setup"
+@model SetupModel
+@{
+    ViewData["Title"] = "Set up";
+}
+<h1>Set up</h1>
+<p>Create the first administrator account. This page is only available until the first user exists.</p>
+<partial name="_Errors" model="Model.Errors" />
+<form method="post" novalidate>
+    <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="UserName" type="text" value="@Model.UserName" autocomplete="username"
+               autocapitalize="none" spellcheck="false" required maxlength="64" aria-describedby="username-hint">
+        <p class="hint" id="username-hint">Letters, digits, '.', '_' or '-'.</p>
+    </div>
+    <div class="field">
+        <label for="email">Email <span class="optional">(optional)</span></label>
+        <input id="email" name="Email" type="email" value="@Model.Email" autocomplete="email" maxlength="254">
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="Password" type="password" autocomplete="new-password" required aria-describedby="password-hint">
+        <p class="hint" id="password-hint">At least @Model.MinimumPasswordLength characters.</p>
+    </div>
+    <div class="field">
+        <label for="confirm-password">Confirm password</label>
+        <input id="confirm-password" name="ConfirmPassword" type="password" autocomplete="new-password" required>
+    </div>
+    <button type="submit">Create administrator</button>
+</form>

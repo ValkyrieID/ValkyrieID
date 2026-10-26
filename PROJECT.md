@@ -138,6 +138,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 ## 6. Authentication
 
 - Username and password, hashed with **Argon2id**. Users log in with their **username or email**.
+  - Hashing parameters are configurable; the server rejects values below the OWASP Password Storage Cheat Sheet minimums. Default: m=12 MiB, t=3, p=1. Hashes are upgraded to the current parameters at login.
 - **Anti user-enumeration:** login, password reset, and registration-related responses are generic ("invalid credentials", "if the account exists, an email was sent"), and password verification runs in constant time even for unknown users.
 - **TOTP 2FA** (Google Authenticator compatible):
   - users enroll themselves (QR code)
@@ -191,14 +192,16 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 ### 8.3 First-run setup wizard
 
-- Shown when no users exist. Creates the initial admin user and the admin UI client.
+- Shown when no users exist. Creates the initial admin user. The admin UI client is seeded in phase 8, when the admin UI exists (see §14, roadmap changes).
 - Locks itself after completion.
 
 ### 8.4 Admin recovery (break-glass)
 
 - **Last-admin guard:** the last enabled user with the `admin` role cannot be deleted, disabled, or have the role removed.
 - **CLI reset:** the server binary/container supports maintenance commands (e.g. `valkyrieid admin reset-password <user>`, `reset-2fa <user>`, `unlock <user>`, `grant-admin <user>`) that run against the configured database without starting the web server. Every use is written to the audit log.
-- **CLI management:** the same binary also manages clients and API resources (`valkyrieid client …`, `valkyrieid resource …`). Until the Admin API exists (phase 8) this is the only way to create them.
+  - `admin reencrypt` re-encrypts secrets with the current master key so previous keys can be removed (§10).
+- **CLI management:** the same binary also manages users, clients, and API resources (`valkyrieid user …`, `valkyrieid client …`, `valkyrieid resource …`). Until the Admin API exists (phase 8) this is the only way to create them.
+- Passwords are never accepted as CLI arguments; they are read from a hidden prompt or standard input.
 
 ### 8.5 Accessibility
 
@@ -215,7 +218,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Master encryption key:**
   - Supplied through env/config; required at startup.
   - Encrypts secrets at rest (AES-256-GCM): signing keys, TOTP secrets, SMTP password, Data Protection keys.
-  - Supports key rotation (re-encrypt with a new key while the old one is still configured).
+  - Supports key rotation (re-encrypt with a new key while the old one is still configured, using `valkyrieid admin reencrypt`).
 - **Runtime settings** (lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement):
   - editable in the admin UI and stored in the DB
   - **values from appsettings/env take precedence** and are shown as locked in the admin UI
@@ -327,23 +330,33 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 ## 14. Roadmap
 
-Each phase ends with something usable and tested.
+Each phase ends with something usable and tested. Items marked *(early: phase N)* or *(deferred: phase N)* were moved between phases; see [Roadmap changes](#roadmap-changes).
 
 1. **Foundation:**
    - solution layout, `Directory.Build.props` / `Directory.Packages.props`, `.editorconfig`, lock files
    - EF Core with SQLite and PostgreSQL, auto migrations
    - master encryption key; Data Protection keys in DB
+     - key rotation re-encryption *(deferred: phase 3)*
    - health endpoints, structured logging, OpenTelemetry
    - CI pipeline, Dependabot, VitePress docs skeleton
 2. **Token core + client credentials:**
    - signing key generation and rotation, JWKS, discovery
    - client model with multiple secrets
    - `client_credentials` grant, JWT access tokens, API resources and scopes
+   - CLI `client` and `resource` commands *(early: from phase 3)*
+   - per-client access token lifetime override, public client type, allowed grant types *(early: from phases 4 and 8)*
    - *Milestone: an API can be protected with ValkyrieID tokens.*
 3. **Users and login:**
    - user model, Argon2id, Razor login pages with branding
    - SSO session cookie, lockout, rate limiting, anti-enumeration
    - setup wizard, CLI maintenance commands
+     - admin UI client seeding *(deferred: phase 8)*
+     - `admin reset-2fa` *(deferred: phase 7)*
+   - master key re-encryption, `admin reencrypt` *(deferred: from phase 1)*
+   - server-side session records with `sid` *(early: from phase 6)*
+   - CLI `user` commands, shared user administration with the last-admin guard *(early: from phase 8)*
+   - breached-password check, opt-in
+   - baseline security headers and CSP *(early: from phase 10, which still reviews them)*
 4. **Authorization code flow:**
    - authorize endpoint with PKCE, ID tokens, userinfo
    - `prompt`, `max_age`, `nonce`, `iss` parameter, redirect URI rules, CORS
@@ -357,10 +370,12 @@ Each phase ends with something usable and tested.
    - Run the logout conformance plans.
 7. **2FA and account self-service:**
    - TOTP enrollment, recovery codes, 2FA enforcement
+     - `admin reset-2fa`, 2FA rate limiting, 2FA state on the user model *(deferred: from phase 3)*
    - self-service account page
    - SMTP: email verification and password reset
 8. **Admin REST API + Angular admin UI:**
    - full management of users, clients, resources, settings, branding, keys, and sessions
+     - seed the admin UI client *(deferred: from phase 3)*
    - audit log viewer
    - DB-backed runtime settings with env precedence
 9. **Multi-instance:**
@@ -370,3 +385,21 @@ Each phase ends with something usable and tested.
     - security headers review, OAuch, OWASP ZAP
     - footprint targets, accessibility pass
     - documentation, first tagged release to `ghcr.io`
+
+### Roadmap changes
+
+Every item done earlier or later than planned is listed here, with the reason.
+
+| Item | Planned | Done | Reason |
+|---|---|---|---|
+| CLI `client` and `resource` commands | 3 | 2 | Clients and API resources had to be created somehow before the Admin API (phase 8). |
+| Per-client access token lifetime override | 8 | 2 | Small model field, needed by `client_credentials` clients. |
+| Public client type and allowed grant types on clients | 4 | 2 | Part of the client model from the start, so phase 4 needs no breaking migration. Only `client_credentials` is usable before phase 4. |
+| Master key re-encryption (`admin reencrypt`) | 1 | 3 | Phase 1 could only decrypt with previous keys, so they could never be removed. |
+| Server-side session records (`UserSession`, `sid`) | 6 | 3 | The SSO cookie references a database session from the start, so revocation and `sid` (phase 6) need no cookie format change. Listing and revoking sessions stays in phase 6. |
+| CLI `user` commands and shared user administration (last-admin guard) | 8 | 3 | Users must be manageable before the Admin API; the CLI and the Admin API share one service. |
+| Breached-password check (opt-in) | (§6, unscheduled) | 3 | Belongs with the password policy. |
+| Baseline security headers and CSP | 10 | 3 | The login pages need a strict CSP from the start (§8.1). Phase 10 still reviews them. |
+| Setup wizard creates the admin UI client | 3 | 8 | The admin UI and the authorization code flow it needs don't exist before phases 4 and 8. Seeding is idempotent, so existing installs get the client on upgrade. |
+| `admin reset-2fa`, 2FA rate limiting, 2FA flags on the user model | 3 | 7 | There is no 2FA state to reset or limit before phase 7. |
+| Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |

@@ -38,7 +38,8 @@ internal static class ProtocolExtensions
     {
         endpoints.MapGet(DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.Configuration);
         endpoints.MapGet(DiscoveryEndpoints.JwksPath, DiscoveryEndpoints.Jwks);
-        endpoints.MapPost(TokenEndpoint.Path, (HttpContext context, TokenEndpoint endpoint) => endpoint.HandleAsync(context));
+        endpoints.MapPost(TokenEndpoint.Path, (HttpContext context, TokenEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Token);
         return endpoints;
     }
 }

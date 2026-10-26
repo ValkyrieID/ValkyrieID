@@ -43,4 +43,4 @@ ValkyrieID refuses to start without a valid master key and issuer URL.
 
 By default the server uses SQLite at `data/valkyrieid.db` relative to the working directory and applies database migrations on startup. See the [configuration reference](/reference/configuration) to use PostgreSQL.
 
-Next, [protect an API](/guide/protect-an-api) with ValkyrieID access tokens.
+Next, open `/setup` to [create the first administrator](/guide/first-run), or [protect an API](/guide/protect-an-api) with ValkyrieID access tokens.
