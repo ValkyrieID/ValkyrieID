@@ -36,6 +36,18 @@ The server fails to start if `MasterKey:Current` is missing or invalid. See [Mas
 
 The issuer is published in discovery and in the `iss` claim. Every endpoint URL is derived from it. It is never derived from request headers, so set it to the URL clients use, including when running behind a reverse proxy.
 
+## Reverse proxy
+
+| Key | Default | Description |
+|---|---|---|
+| `ReverseProxy:KnownProxies:0`, `:1`, … | *(none)* | IP addresses of proxies whose forwarded headers are trusted. |
+| `ReverseProxy:KnownNetworks:0`, `:1`, … | *(none)* | Trusted proxy networks in CIDR notation, e.g. `10.0.0.0/8`. |
+| `ReverseProxy:ForwardedHeaders` | `XForwardedFor, XForwardedProto` | Forwarded headers to apply. `XForwardedHost` can be added; the issuer is never affected. |
+| `ReverseProxy:ForwardLimit` | `1` | How many proxy hops in `X-Forwarded-For` to process. |
+| `ReverseProxy:PathBase` | *(none)* | Path prefix to serve under when the proxy doesn't strip it, e.g. `/auth`. Must equal the path of `Issuer:Url`. |
+
+Forwarded headers are ignored unless at least one proxy or network is configured. See [Reverse proxy](/operations/reverse-proxy).
+
 ## Tokens
 
 | Key | Default | Description |
@@ -43,8 +55,12 @@ The issuer is published in discovery and in the `iss` claim. Every endpoint URL 
 | `Tokens:AccessTokenLifetime` | `00:30:00` | Default access token lifetime. Clients can override it. |
 | `Tokens:IdTokenLifetime` | `00:05:00` | Default ID token lifetime. Clients can override it. |
 | `Tokens:ClockSkew` | `00:00:30` | Clock skew tolerated when validating tokens (0 to 5 minutes). |
+| `Tokens:RefreshTokenSlidingLifetime` | `14.00:00:00` | A refresh token expires when unused this long. Clients can override it. |
+| `Tokens:RefreshTokenAbsoluteLifetime` | `30.00:00:00` | A refresh token family ends this long after the original sign-in, however often it is refreshed. At least the sliding lifetime. Clients can override it. |
 
 Authorization codes always live 60 seconds and can be redeemed once. They are kept in memory, so a restart invalidates codes that haven't been redeemed yet; the user simply signs in again.
+
+Refresh tokens are stored (hashed) in the database. Families past their absolute lifetime are deleted hourly. See [Refresh tokens](/reference/endpoints#refresh-token-grant).
 
 ## Signing keys
 
@@ -123,10 +139,10 @@ Because the cookie is `Secure`, sign-in only works over HTTPS (or `http://localh
 |---|---|---|
 | `RateLimits:Login:PermitLimit` / `:Window` | `10` / `00:01:00` | Login and setup form submissions per client IP address. |
 | `RateLimits:LoginAccount:PermitLimit` / `:Window` | `10` / `00:15:00` | Login attempts per username or email, whether or not the account exists. |
-| `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token and userinfo endpoint requests per client IP address. |
+| `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token, userinfo, revocation, and introspection endpoint requests per client IP address. |
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
 
-Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance.
+Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 
 ## Branding
 

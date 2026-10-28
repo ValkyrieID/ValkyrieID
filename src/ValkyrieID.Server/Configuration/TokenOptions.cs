@@ -17,6 +17,12 @@ public sealed class TokenOptions
 
     /// <summary>Clock skew tolerated when validating tokens and timestamps.</summary>
     public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>A refresh token expires when unused for this long; clients may override it.</summary>
+    public TimeSpan RefreshTokenSlidingLifetime { get; set; } = TimeSpan.FromDays(14);
+
+    /// <summary>A refresh token family ends this long after the original login, however often it is used.</summary>
+    public TimeSpan RefreshTokenAbsoluteLifetime { get; set; } = TimeSpan.FromDays(30);
 }
 
 public sealed class SigningKeyOptions
@@ -55,6 +61,16 @@ internal sealed class TokenOptionsValidator : IValidateOptions<TokenOptions>
         if (options.ClockSkew < TimeSpan.Zero || options.ClockSkew > TimeSpan.FromMinutes(5))
         {
             failures.Add("Tokens:ClockSkew must be between 0 and 5 minutes.");
+        }
+
+        if (options.RefreshTokenSlidingLifetime <= TimeSpan.Zero)
+        {
+            failures.Add("Tokens:RefreshTokenSlidingLifetime must be positive.");
+        }
+
+        if (options.RefreshTokenAbsoluteLifetime < options.RefreshTokenSlidingLifetime)
+        {
+            failures.Add("Tokens:RefreshTokenAbsoluteLifetime must be at least Tokens:RefreshTokenSlidingLifetime.");
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

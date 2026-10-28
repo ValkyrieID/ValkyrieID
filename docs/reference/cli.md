@@ -58,10 +58,12 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | Command | Description |
 |---|---|
 | `resource create <name> --scope <scope>... [--name <display name>]` | Create a resource with its scopes. |
-| `resource list` | List resources and their scopes. |
+| `resource list` | List resources with their scopes and secrets (ids and expiry only). |
 | `resource add-scope <name> <scope> [--description <text>]` | Add a scope. |
-| `resource enable <name>` / `resource disable <name>` | Tokens can't be issued for scopes of a disabled resource. |
-| `resource delete <name>` | Delete a resource and its scopes. |
+| `resource add-secret <name> [--description <text>] [--expires-days <days>]` | Add a secret and print it. The API uses it to call the [introspection endpoint](/reference/endpoints#introspection-endpoint). |
+| `resource remove-secret <name> <secret-id>` | Remove a secret. |
+| `resource enable <name>` / `resource disable <name>` | Tokens can't be issued for scopes of a disabled resource, and it can't call introspection. |
+| `resource delete <name>` | Delete a resource with its scopes and secrets. |
 
 ## Clients
 
@@ -73,16 +75,16 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `client remove-secret <client-id> <secret-id>` | Remove a secret. |
 | `client add-redirect-uri <client-id> <uri>` / `client remove-redirect-uri <client-id> <uri>` | Manage redirect URIs. A client using `authorization_code` keeps at least one. |
 | `client add-post-logout-redirect-uri <client-id> <uri>` / `client remove-post-logout-redirect-uri <client-id> <uri>` | Manage post-logout redirect URIs. |
-| `client add-cors-origin <client-id> <origin>` / `client remove-cors-origin <client-id> <origin>` | Manage browser origins allowed to call the token and userinfo endpoints. |
-| `client enable <client-id>` / `client disable <client-id>` | Disabled clients can't authenticate or start sign-ins. |
-| `client delete <client-id>` | Delete a client and its secrets. |
+| `client add-cors-origin <client-id> <origin>` / `client remove-cors-origin <client-id> <origin>` | Manage browser origins allowed to call the token, userinfo, and revocation endpoints. |
+| `client enable <client-id>` / `client disable <client-id>` | Disabled clients can't authenticate or start sign-ins. Disabling also revokes the client's refresh tokens. |
+| `client delete <client-id>` | Delete a client with its secrets and refresh tokens. |
 
 `client create` options:
 
 | Option | Description |
 |---|---|
-| `--scope <scope>` | Allowed scope, repeatable. API scopes, or identity scopes (`openid`, `profile`, `email`, `roles`, `groups`) for sign-in. |
-| `--grant <grant>` | `client_credentials` (default) or `authorization_code`, repeatable. |
+| `--scope <scope>` | Allowed scope, repeatable. API scopes, or identity scopes (`openid`, `profile`, `email`, `roles`, `groups`, `offline_access`) for sign-in. |
+| `--grant <grant>` | `client_credentials` (default), `authorization_code`, or `refresh_token`, repeatable. `refresh_token` needs `authorization_code`, and refresh tokens are only issued if the client is also allowed `--scope offline_access`. |
 | `--redirect-uri <uri>` | Redirect URI, repeatable. Required for `authorization_code`. |
 | `--post-logout-redirect-uri <uri>` | Post-logout redirect URI, repeatable. |
 | `--cors-origin <origin>` | Allowed browser origin, repeatable, e.g. `https://app.example.com`. |
@@ -90,13 +92,14 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `--no-pkce` | Let a confidential client use `authorization_code` without PKCE. PKCE is required by default. |
 | `--name <display name>` | Display name. |
 | `--access-token-lifetime <seconds>` / `--id-token-lifetime <seconds>` | Override the global token lifetimes. |
+| `--refresh-token-lifetime <seconds>` / `--refresh-token-absolute-lifetime <seconds>` | Override the global sliding and absolute refresh token lifetimes. Only with the `refresh_token` grant. |
 | `--secret-expires-days <days>` | Expiry of the first secret. |
 
 ```sh
-# A server-rendered web app (confidential, PKCE)
-valkyrieid client create webapp --grant authorization_code \
+# A server-rendered web app (confidential, PKCE) that keeps users signed in with refresh tokens
+valkyrieid client create webapp --grant authorization_code --grant refresh_token \
   --redirect-uri https://app.example.com/signin-oidc \
-  --scope openid --scope profile --scope email
+  --scope openid --scope profile --scope email --scope offline_access
 
 # A single-page app (public)
 valkyrieid client create spa --public --grant authorization_code \
@@ -107,6 +110,8 @@ valkyrieid client create spa --public --grant authorization_code \
 Redirect URIs are matched exactly, character for character. They must be absolute without a fragment and use `https`, `http` on a loopback host, or a private-use scheme in reverse domain notation (`com.example.app:/callback`, RFC 8252). For `http://127.0.0.1` and `http://[::1]` any port is accepted at sign-in, so native and CLI apps can use an ephemeral port. CORS origins are `scheme://host[:port]` without a path or trailing slash.
 
 Secrets are 256-bit random values generated by the server. They are printed **once** and stored only as a SHA-256 hash.
+
+Grants, scopes, and lifetimes are set when a client is created; recreate the client to change them (the Admin API will allow editing).
 
 ### Rotating a client secret
 

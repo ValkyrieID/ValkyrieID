@@ -129,7 +129,9 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Access tokens are not revocable before they expire**; their short lifetime limits the risk.
 - JWTs are serialized and signed with `Microsoft.IdentityModel.JsonWebTokens` (a JWT library, not a protocol framework). All protocol logic stays in ValkyrieID.
 - **Refresh tokens rotate on every use.** Reusing an already-used token revokes the entire token family.
-- Refresh tokens are also revoked on logout, revocation endpoint calls, password change, and user disable.
+- Refresh tokens are also revoked on revocation endpoint calls, password change, user disable, and client disable, and when an authorization code is replayed.
+- **Logout does not revoke refresh tokens.** They are only issued with `offline_access`, which grants access while the user is not signed in (OIDC Core §11); OIDC Back-Channel Logout §2.7 says such tokens normally SHOULD NOT be revoked at logout. Each token still records its session (`sid`).
+- `offline_access` is only honored for clients an administrator allowed both the `offline_access` scope and the `refresh_token` grant. With no consent screen, that admin approval is the consent OIDC Core §11 requires; otherwise the scope is ignored.
 - **Signing keys:**
   - RSA keys generated automatically and stored encrypted in the DB.
   - Rotated on a configurable schedule.
@@ -156,7 +158,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Server-side session records (device/browser, IP, last activity).
   - Users can view and revoke their own sessions.
   - Admins can view and revoke any user's sessions (force logout).
-  - Revoking a session triggers back-channel logout and revokes related refresh tokens.
+  - Revoking a session (an explicit user or admin action, not a normal logout) triggers back-channel logout and revokes the refresh tokens issued from it.
 - **Future:** passkeys / WebAuthn.
 
 ## 7. User model

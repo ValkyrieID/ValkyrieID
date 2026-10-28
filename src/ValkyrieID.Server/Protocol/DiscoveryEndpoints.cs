@@ -27,7 +27,11 @@ internal sealed record DiscoveryDocument(
     [property: JsonPropertyName("claims_parameter_supported")] bool ClaimsParameterSupported,
     [property: JsonPropertyName("request_parameter_supported")] bool RequestParameterSupported,
     [property: JsonPropertyName("request_uri_parameter_supported")] bool RequestUriParameterSupported,
-    [property: JsonPropertyName("authorization_response_iss_parameter_supported")] bool AuthorizationResponseIssParameterSupported);
+    [property: JsonPropertyName("authorization_response_iss_parameter_supported")] bool AuthorizationResponseIssParameterSupported,
+    [property: JsonPropertyName("revocation_endpoint")] string RevocationEndpoint,
+    [property: JsonPropertyName("revocation_endpoint_auth_methods_supported")] IReadOnlyList<string> RevocationEndpointAuthMethodsSupported,
+    [property: JsonPropertyName("introspection_endpoint")] string IntrospectionEndpoint,
+    [property: JsonPropertyName("introspection_endpoint_auth_methods_supported")] IReadOnlyList<string> IntrospectionEndpointAuthMethodsSupported);
 
 internal sealed record JsonWebKey(
     [property: JsonPropertyName("kty")] string KeyType,
@@ -51,8 +55,7 @@ internal static class DiscoveryEndpoints
     ];
 
     /// <summary>
-    /// OIDC Discovery 1.0 §3 / RFC 8414 §2. Only implemented features are advertised; later phases add the
-    /// authorization and userinfo endpoints.
+    /// OIDC Discovery 1.0 §3 / RFC 8414 §2. Only implemented features are advertised.
     /// </summary>
     public static IResult Configuration(HttpContext context, IOptions<IssuerOptions> issuerOptions)
     {
@@ -64,11 +67,10 @@ internal static class DiscoveryEndpoints
             issuer.Endpoint(TokenEndpoint.Path),
             issuer.Endpoint(UserInfoEndpoint.Path),
             issuer.Endpoint(JwksPath),
-            // offline_access is advertised once refresh tokens are supported.
-            [IdentityScopes.OpenId, IdentityScopes.Profile, IdentityScopes.Email, IdentityScopes.Roles, IdentityScopes.Groups],
+            [IdentityScopes.OpenId, IdentityScopes.Profile, IdentityScopes.Email, IdentityScopes.Roles, IdentityScopes.Groups, IdentityScopes.OfflineAccess],
             ["code"],
             [AuthorizeEndpoint.Query, AuthorizeEndpoint.FormPost],
-            [GrantTypes.AuthorizationCode, GrantTypes.ClientCredentials],
+            [GrantTypes.AuthorizationCode, GrantTypes.ClientCredentials, GrantTypes.RefreshToken],
             [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost, ClientAuthenticator.None],
             [Pkce.S256],
             ["public"],
@@ -80,7 +82,11 @@ internal static class DiscoveryEndpoints
             false,
             false,
             false,
-            true));
+            true,
+            issuer.Endpoint(RevocationEndpoint.Path),
+            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost, ClientAuthenticator.None],
+            issuer.Endpoint(IntrospectionEndpoint.Path),
+            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost]));
     }
 
     /// <summary>RFC 7517 §5: every published key, including keys not yet active and recently retired keys.</summary>

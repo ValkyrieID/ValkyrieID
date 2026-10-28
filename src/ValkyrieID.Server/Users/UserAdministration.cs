@@ -5,6 +5,7 @@ using ValkyrieID.Core.Security;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Users;
 
@@ -29,6 +30,7 @@ internal sealed class UserAdministration(
     ValkyrieDbContext db,
     PasswordHasher hasher,
     PasswordValidator passwordValidator,
+    RefreshTokenStore refreshTokens,
     AuditRecorder audit,
     TimeProvider timeProvider)
 {
@@ -245,12 +247,18 @@ internal sealed class UserAdministration(
         user.SecurityStamp = User.NewSecurityStamp();
     }
 
+    /// <summary>
+    /// Ends the user's sessions and revokes their refresh tokens (PROJECT.md: refresh tokens are revoked on password
+    /// change and user disable).
+    /// </summary>
     private async Task RevokeSessionsAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
     {
         foreach (var session in await db.UserSessions.Where(s => s.UserId == user.Id && s.RevokedAt == null).ToListAsync(cancellationToken))
         {
             session.RevokedAt = now;
         }
+
+        await refreshTokens.RevokeForUserAsync(user.Id, cancellationToken);
     }
 
     private void AddAudit(string eventType, User user, AuditActor actor, IReadOnlyDictionary<string, object?>? details = null) =>

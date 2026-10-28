@@ -21,8 +21,8 @@ PASSWORD="$(openssl rand -base64 24)"
 printf '%s\n' "$PASSWORD" | "${CLI[@]}" user create conformance --email conformance@example.test --name "Conformance Tester"
 
 create_client() {
-  "${CLI[@]}" client create "$1" --grant authorization_code --redirect-uri "$CALLBACK" \
-    --scope openid --scope profile --scope email --scope roles --scope groups --no-pkce \
+  "${CLI[@]}" client create "$1" --grant authorization_code --grant refresh_token --redirect-uri "$CALLBACK" \
+    --scope openid --scope profile --scope email --scope roles --scope groups --scope offline_access --no-pkce \
     | sed -n 's/^client_secret: //p'
 }
 

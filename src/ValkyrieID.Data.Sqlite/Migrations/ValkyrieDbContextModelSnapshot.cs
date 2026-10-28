@@ -153,6 +153,12 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<TimeSpan?>("RefreshTokenAbsoluteLifetime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan?>("RefreshTokenSlidingLifetime")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("RequirePkce")
                         .HasColumnType("INTEGER");
 
@@ -280,6 +286,76 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("ApiScopes", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("AuthTime")
+                        .HasColumnType("INTEGER");
+
+                    b.PrimitiveCollection<string>("AuthenticationMethods")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ConsumedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("FamilyExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid?>("ReplacedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("RevokedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.PrimitiveCollection<string>("Scopes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("FamilyExpiresAt");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("ValkyrieID.Core.Tokens.SigningKey", b =>
@@ -560,6 +636,22 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.HasOne("ValkyrieID.Core.Resources.ApiResource", null)
                         .WithMany("Scopes")
                         .HasForeignKey("ApiResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Clients.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

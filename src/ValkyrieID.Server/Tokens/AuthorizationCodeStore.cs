@@ -17,7 +17,11 @@ internal sealed record AuthorizationCodeGrant(
     IReadOnlyList<string> Audiences,
     string? Nonce,
     string? CodeChallenge,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt)
+{
+    /// <summary>Identifies the grant; refresh tokens issued from the code form a family with this id.</summary>
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+}
 
 internal enum CodeRedemptionStatus
 {

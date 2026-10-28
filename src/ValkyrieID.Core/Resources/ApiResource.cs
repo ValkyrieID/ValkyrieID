@@ -45,4 +45,6 @@ public sealed class ApiResourceSecret
     public required DateTimeOffset CreatedAt { get; init; }
 
     public DateTimeOffset? ExpiresAt { get; set; }
+
+    public bool IsActive(DateTimeOffset now) => ExpiresAt is null || now < ExpiresAt;
 }

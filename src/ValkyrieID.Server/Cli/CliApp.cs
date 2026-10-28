@@ -72,7 +72,11 @@ internal static class CliApp
 
         Clients:
           client create <client-id> --scope <scope>... [--name <display name>]
-                        [--access-token-lifetime <seconds>] [--secret-expires-days <days>]
+                        [--grant authorization_code|client_credentials|refresh_token]... [--public] [--no-pkce]
+                        [--redirect-uri <uri>]... [--post-logout-redirect-uri <uri>]... [--cors-origin <origin>]...
+                        [--access-token-lifetime <seconds>] [--id-token-lifetime <seconds>]
+                        [--refresh-token-lifetime <seconds>] [--refresh-token-absolute-lifetime <seconds>]
+                        [--secret-expires-days <days>]
           client list
           client add-secret <client-id> [--description <text>] [--expires-days <days>]
           client remove-secret <client-id> <secret-id>
@@ -84,6 +88,8 @@ internal static class CliApp
           resource create <name> --scope <scope>... [--name <display name>]
           resource list
           resource add-scope <name> <scope> [--description <text>]
+          resource add-secret <name> [--description <text>] [--expires-days <days>]
+          resource remove-secret <name> <secret-id>
           resource enable <name>
           resource disable <name>
           resource delete <name>

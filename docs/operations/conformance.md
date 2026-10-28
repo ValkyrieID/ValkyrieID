@@ -62,7 +62,8 @@ Some tests are skipped or produce warnings by design, because ValkyrieID adverti
 
 - request objects (`request`, `request_uri`): `request_parameter_supported` and `request_uri_parameter_supported` are `false`;
 - the `claims` request parameter: `claims_parameter_supported` is `false`;
-- the `address` and `phone` scopes, which aren't in `scopes_supported` and are ignored when requested;
-- refresh tokens and `offline_access`, which arrive in a later release.
+- the `address` and `phone` scopes, which aren't in `scopes_supported` and are ignored when requested.
+
+The test clients are allowed `offline_access` and the `refresh_token` grant, so the refresh token tests run.
 
 Any other failure is a bug. Report it with the test log exported from the suite.

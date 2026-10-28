@@ -6,13 +6,13 @@ namespace ValkyrieID.Server.Protocol;
 
 /// <summary>
 /// CORS for endpoints that browser-based clients call directly. Discovery and JWKS are public metadata and allow
-/// any origin. The token and userinfo endpoints allow only origins registered on an enabled client. No
+/// any origin. The token, userinfo, and revocation endpoints allow only origins registered on an enabled client. No
 /// credentials (cookies) are allowed cross-origin.
 /// </summary>
 internal static class ProtocolCors
 {
     private static readonly string[] PublicPaths = [DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.JwksPath];
-    private static readonly string[] ClientPaths = [TokenEndpoint.Path, UserInfoEndpoint.Path];
+    private static readonly string[] ClientPaths = [TokenEndpoint.Path, UserInfoEndpoint.Path, RevocationEndpoint.Path];
 
     public static IApplicationBuilder UseProtocolCors(this IApplicationBuilder app) => app.Use(async (context, next) =>
     {

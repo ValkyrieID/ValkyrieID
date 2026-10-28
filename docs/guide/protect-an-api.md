@@ -40,3 +40,17 @@ curl -u billing:$SECRET https://id.example.com/connect/token \
 Send the `access_token` to the API as `Authorization: Bearer <token>`. Reuse it until shortly before `expires_in` runs out, rather than requesting a new token per call.
 
 See [Endpoints](/reference/endpoints) for the full token endpoint reference.
+
+## Optional: introspect tokens
+
+APIs that prefer asking the server over validating JWTs themselves can use the [introspection endpoint](/reference/endpoints#introspection-endpoint). Give the API resource a secret:
+
+```sh
+valkyrieid resource add-secret orders-api
+```
+
+```sh
+curl -u orders-api:$RESOURCE_SECRET https://id.example.com/connect/introspect -d token=$ACCESS_TOKEN
+```
+
+The API only sees tokens whose audience includes it. Introspection doesn't make access tokens revocable: they stay active until they expire.

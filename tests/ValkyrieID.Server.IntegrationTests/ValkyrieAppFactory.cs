@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -24,6 +26,9 @@ public sealed class ValkyrieAppFactory(
     /// <summary>Additional configuration; a <see langword="null"/> value removes a default setting.</summary>
     public Dictionary<string, string?> Settings { get; init; } = [];
 
+    /// <summary>The client address the server sees, as if the request came from that peer.</summary>
+    public IPAddress? RemoteIpAddress { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -45,6 +50,25 @@ public sealed class ValkyrieAppFactory(
         {
             builder.ConfigureTestServices(services => services.AddSingleton(timeProvider));
         }
+
+        if (RemoteIpAddress is { } remoteIpAddress)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton<IStartupFilter>(new RemoteIpStartupFilter(remoteIpAddress)));
+        }
+    }
+
+    /// <summary>Sets the connection's remote address before the app's own middleware runs.</summary>
+    private sealed class RemoteIpStartupFilter(IPAddress address) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                context.Connection.RemoteIpAddress = address;
+                return nextMiddleware(context);
+            });
+            next(app);
+        };
     }
 
     public async Task<(int ExitCode, string Output, string Error)> RunCliAsync(params string[] args) =>

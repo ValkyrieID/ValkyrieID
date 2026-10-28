@@ -14,6 +14,7 @@ builder.Services.AddValkyrieMasterKey(builder.Configuration);
 builder.Services.AddValkyrieDatabase(builder.Configuration);
 builder.Services.AddValkyrieDataProtection();
 builder.Services.AddValkyrieProtocol(builder.Configuration);
+builder.Services.AddValkyrieReverseProxy(builder.Configuration);
 builder.Services.AddValkyrieAccounts(builder.Configuration);
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -32,6 +33,7 @@ if (isCli)
 
 await app.Services.EnsureSigningKeysAsync(app.Lifetime.ApplicationStopping);
 
+app.UseValkyrieReverseProxy();
 app.UseSecurityHeaders();
 if (!app.Environment.IsDevelopment())
 {

@@ -15,6 +15,7 @@ internal sealed class OAuthError(string error, string? description, int statusCo
     public const string UnauthorizedClient = "unauthorized_client";
     public const string UnsupportedGrantType = "unsupported_grant_type";
     public const string InvalidScope = "invalid_scope";
+    public const string UnsupportedTokenType = "unsupported_token_type";
 
     public string Error { get; } = error;
 

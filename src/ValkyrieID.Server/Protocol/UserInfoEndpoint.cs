@@ -1,11 +1,7 @@
 using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using ValkyrieID.Core.Protocol;
 using ValkyrieID.Data;
-using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Protocol;
@@ -14,16 +10,9 @@ namespace ValkyrieID.Server.Protocol;
 /// The UserInfo endpoint (OIDC Core A5.3). Accepts access tokens issued with the <c>openid</c> scope; the
 /// audience isn't checked, because the token's audience is the API resources or the client.
 /// </summary>
-internal sealed class UserInfoEndpoint(
-    ValkyrieDbContext db,
-    SigningKeyStore keyStore,
-    TimeProvider timeProvider,
-    IOptions<IssuerOptions> issuerOptions,
-    IOptions<TokenOptions> tokenOptions)
+internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidator validator)
 {
     public const string Path = "/connect/userinfo";
-
-    private static readonly JsonWebTokenHandler Handler = new();
 
     public async Task<IResult> HandleAsync(HttpContext context)
     {
@@ -40,19 +29,7 @@ internal sealed class UserInfoEndpoint(
             return new BearerChallenge(StatusCodes.Status401Unauthorized, null, null);
         }
 
-        var keys = await keyStore.GetAsync(cancellationToken);
-        var result = await Handler.ValidateTokenAsync(token, new TokenValidationParameters
-        {
-            ValidIssuer = issuerOptions.Value.Issuer,
-            ValidateAudience = false,
-            // RFC 9068 A4: access tokens are recognized by their typ header, so ID tokens are rejected here.
-            ValidTypes = ["at+jwt"],
-            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
-            IssuerSigningKeys = [.. keys.Keys.Select(k => k.SecurityKey)],
-            // Lifetime is checked below against the server's TimeProvider.
-            ValidateLifetime = false,
-        });
-        if (!result.IsValid || result.SecurityToken is not JsonWebToken jwt || !IsCurrent(jwt))
+        if (await validator.ValidateAsync(token, cancellationToken) is not { } jwt)
         {
             return InvalidToken();
         }
@@ -77,15 +54,6 @@ internal sealed class UserInfoEndpoint(
         claims["sub"] = user.Id.ToString();
         ProtocolHeaders.NoStore(context.Response);
         return Results.Json(claims);
-    }
-
-    private bool IsCurrent(JsonWebToken jwt)
-    {
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var skew = tokenOptions.Value.ClockSkew;
-        return jwt.ValidTo != DateTime.MinValue
-            && now < jwt.ValidTo + skew
-            && (jwt.ValidFrom == DateTime.MinValue || now >= jwt.ValidFrom - skew);
     }
 
     /// <summary>

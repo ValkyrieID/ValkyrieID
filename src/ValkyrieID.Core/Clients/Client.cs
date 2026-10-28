@@ -30,7 +30,7 @@ public sealed class Client
     /// <summary>Registered post-logout redirect URIs (used by RP-initiated logout).</summary>
     public List<string> PostLogoutRedirectUris { get; set; } = [];
 
-    /// <summary>Browser origins allowed to call the token and userinfo endpoints (CORS).</summary>
+    /// <summary>Browser origins allowed to call the token, userinfo, and revocation endpoints (CORS).</summary>
     public List<string> AllowedCorsOrigins { get; set; } = [];
 
     /// <summary>Whether authorization requests must use PKCE. Always enforced for public clients.</summary>
@@ -41,6 +41,12 @@ public sealed class Client
 
     /// <summary>Overrides the global ID token lifetime for this client.</summary>
     public TimeSpan? IdTokenLifetime { get; set; }
+
+    /// <summary>Overrides the global sliding refresh token lifetime for this client.</summary>
+    public TimeSpan? RefreshTokenSlidingLifetime { get; set; }
+
+    /// <summary>Overrides the global absolute refresh token lifetime for this client.</summary>
+    public TimeSpan? RefreshTokenAbsoluteLifetime { get; set; }
 
     public bool PkceRequired => RequirePkce || Type == ClientType.Public;
 

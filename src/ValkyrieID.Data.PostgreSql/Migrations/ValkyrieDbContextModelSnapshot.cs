@@ -161,6 +161,12 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.Property<TimeSpan?>("RefreshTokenAbsoluteLifetime")
+                        .HasColumnType("interval");
+
+                    b.Property<TimeSpan?>("RefreshTokenSlidingLifetime")
+                        .HasColumnType("interval");
+
                     b.Property<bool>("RequirePkce")
                         .HasColumnType("boolean");
 
@@ -288,6 +294,76 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .IsUnique();
 
                     b.ToTable("ApiScopes", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AuthTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("AuthenticationMethods")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("FamilyExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid?>("ReplacedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("Scopes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("FamilyExpiresAt");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("ValkyrieID.Core.Tokens.SigningKey", b =>
@@ -568,6 +644,22 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.HasOne("ValkyrieID.Core.Resources.ApiResource", null)
                         .WithMany("Scopes")
                         .HasForeignKey("ApiResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Clients.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

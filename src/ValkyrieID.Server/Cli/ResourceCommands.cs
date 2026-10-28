@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ValkyrieID.Core.Protocol;
 using ValkyrieID.Core.Resources;
+using ValkyrieID.Core.Security;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 
@@ -17,6 +18,8 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
         "create" => CreateAsync(args, cancellationToken),
         "list" => ListAsync(args, cancellationToken),
         "add-scope" => AddScopeAsync(args, cancellationToken),
+        "add-secret" => AddSecretAsync(args, cancellationToken),
+        "remove-secret" => RemoveSecretAsync(args, cancellationToken),
         "enable" => SetEnabledAsync(args, true, cancellationToken),
         "disable" => SetEnabledAsync(args, false, cancellationToken),
         "delete" => DeleteAsync(args, cancellationToken),
@@ -67,13 +70,73 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
     private async Task ListAsync(CliArguments args, CancellationToken cancellationToken)
     {
         args.EnsureConsumed(2);
-        var resources = await _db.ApiResources.AsNoTracking().Include(r => r.Scopes).AsSplitQuery()
+        var resources = await _db.ApiResources.AsNoTracking().Include(r => r.Scopes).Include(r => r.Secrets).AsSplitQuery()
             .OrderBy(r => r.Name).ToListAsync(cancellationToken);
+        var now = _time.GetUtcNow();
         foreach (var resource in resources)
         {
             await output.WriteLineAsync(
                 $"{resource.Name}  {(resource.Enabled ? "enabled" : "disabled")}  scopes: {string.Join(' ', resource.Scopes.Select(s => s.Name).Order(StringComparer.Ordinal))}");
+            foreach (var secret in resource.Secrets.OrderBy(s => s.CreatedAt))
+            {
+                await output.WriteLineAsync(
+                    $"  secret {secret.Id}  {(secret.IsActive(now) ? "active" : "expired")}  expires: {secret.ExpiresAt?.ToString("u") ?? "never"}  {secret.Description}");
+            }
         }
+    }
+
+    /// <summary>A resource secret lets the API call the introspection endpoint (RFC 7662).</summary>
+    private async Task AddSecretAsync(CliArguments args, CancellationToken cancellationToken)
+    {
+        var name = args.Argument(2, "name");
+        var description = args.Optional("description");
+        var expiresDays = args.OptionalInt("expires-days");
+        args.EnsureConsumed(3);
+
+        if (expiresDays is <= 0)
+        {
+            throw new CliException("--expires-days must be positive.");
+        }
+
+        var resource = await FindAsync(name, cancellationToken);
+        var now = _time.GetUtcNow();
+        var plaintext = SecretHasher.Generate();
+        var secret = new ApiResourceSecret
+        {
+            ApiResourceId = resource.Id,
+            Hash = SecretHasher.Hash(plaintext),
+            Description = description,
+            CreatedAt = now,
+            ExpiresAt = expiresDays is { } days ? now.AddDays(days) : null,
+        };
+        resource.Secrets.Add(secret);
+        _audit.Add("api_resource.secret_added", actor: AuditRecorder.CliActor,
+            details: new Dictionary<string, object?> { ["name"] = name, ["secret_id"] = secret.Id, ["expires_at"] = secret.ExpiresAt });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        await output.WriteLineAsync($"secret_id: {secret.Id}");
+        await output.WriteLineAsync($"resource_secret: {plaintext}");
+        await output.WriteLineAsync("Store the secret now; it can't be shown again.");
+    }
+
+    private async Task RemoveSecretAsync(CliArguments args, CancellationToken cancellationToken)
+    {
+        var name = args.Argument(2, "name");
+        var secretIdText = args.Argument(3, "secret-id");
+        args.EnsureConsumed(4);
+
+        var resource = await FindAsync(name, cancellationToken);
+        var secret = Guid.TryParse(secretIdText, out var secretId) ? resource.Secrets.SingleOrDefault(s => s.Id == secretId) : null;
+        if (secret is null)
+        {
+            throw new CliException($"API resource '{name}' has no secret '{secretIdText}'.");
+        }
+
+        resource.Secrets.Remove(secret);
+        _audit.Add("api_resource.secret_removed", actor: AuditRecorder.CliActor,
+            details: new Dictionary<string, object?> { ["name"] = name, ["secret_id"] = secret.Id });
+        await _db.SaveChangesAsync(cancellationToken);
+        await output.WriteLineAsync($"Removed secret {secret.Id}.");
     }
 
     private async Task AddScopeAsync(CliArguments args, CancellationToken cancellationToken)
@@ -137,6 +200,6 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
     }
 
     private async Task<ApiResource> FindAsync(string name, CancellationToken cancellationToken) =>
-        await _db.ApiResources.Include(r => r.Scopes).AsSplitQuery().SingleOrDefaultAsync(r => r.Name == name, cancellationToken)
+        await _db.ApiResources.Include(r => r.Scopes).Include(r => r.Secrets).AsSplitQuery().SingleOrDefaultAsync(r => r.Name == name, cancellationToken)
         ?? throw new CliException($"API resource '{name}' does not exist.");
 }

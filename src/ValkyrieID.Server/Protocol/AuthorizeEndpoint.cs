@@ -261,8 +261,15 @@ internal sealed class AuthorizeEndpoint(
             return ScopeResolution.Fail("The scope parameter is malformed.");
         }
 
-        // OIDC Core A11: offline_access is ignored until refresh tokens are supported.
-        requested.Remove(IdentityScopes.OfflineAccess);
+        // OIDC Core A11: offline_access requests a refresh token. ValkyrieID has no consent screen; an administrator
+        // allowing the client the offline_access scope and the refresh_token grant is the consent the spec requires.
+        // Otherwise, and outside OpenID Connect requests, the value is ignored.
+        if (!requested.Contains(IdentityScopes.OpenId)
+            || !client.AllowedScopes.Contains(IdentityScopes.OfflineAccess)
+            || !client.AllowedGrantTypes.Contains(GrantTypes.RefreshToken))
+        {
+            requested.Remove(IdentityScopes.OfflineAccess);
+        }
 
         // Identity scopes only mean something in an OpenID Connect request.
         var isOpenId = requested.Contains(IdentityScopes.OpenId);

@@ -4,6 +4,7 @@ using ValkyrieID.Core.Protocol;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Cli;
 
@@ -38,6 +39,8 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         var name = args.Optional("name");
         var lifetime = args.OptionalInt("access-token-lifetime");
         var idTokenLifetime = args.OptionalInt("id-token-lifetime");
+        var refreshSliding = args.OptionalInt("refresh-token-lifetime");
+        var refreshAbsolute = args.OptionalInt("refresh-token-absolute-lifetime");
         var expiresDays = args.OptionalInt("secret-expires-days");
         var grants = args.Many("grant").Distinct(StringComparer.Ordinal).ToList();
         var redirectUris = args.Many("redirect-uri").Distinct(StringComparer.Ordinal).ToList();
@@ -68,6 +71,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         }
 
         ValidateGrants(grants, redirectUris, isPublic, noPkce, expiresDays);
+        ValidateRefreshTokenLifetimes(grants, refreshSliding, refreshAbsolute);
         EnsureValid(redirectUris, RedirectUris.IsValid, "redirect URI");
         EnsureValid(postLogoutRedirectUris, RedirectUris.IsValid, "post-logout redirect URI");
         EnsureValid(corsOrigins, RedirectUris.IsValidOrigin, "CORS origin");
@@ -92,6 +96,8 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             RequirePkce = !noPkce,
             AccessTokenLifetime = lifetime is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
             IdTokenLifetime = idTokenLifetime is { } idSeconds ? TimeSpan.FromSeconds(idSeconds) : null,
+            RefreshTokenSlidingLifetime = refreshSliding is { } slidingSeconds ? TimeSpan.FromSeconds(slidingSeconds) : null,
+            RefreshTokenAbsoluteLifetime = refreshAbsolute is { } absoluteSeconds ? TimeSpan.FromSeconds(absoluteSeconds) : null,
             CreatedAt = now,
         };
         (ClientSecret Secret, string Plaintext)? secret = isPublic ? null : NewSecret(client, null, expiresDays, now);
@@ -117,13 +123,19 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
 
     private static void ValidateGrants(List<string> grants, List<string> redirectUris, bool isPublic, bool noPkce, int? expiresDays)
     {
-        var unsupported = grants.FirstOrDefault(g => g is not (GrantTypes.AuthorizationCode or GrantTypes.ClientCredentials));
+        var unsupported = grants.FirstOrDefault(g => g is not (GrantTypes.AuthorizationCode or GrantTypes.ClientCredentials or GrantTypes.RefreshToken));
         if (unsupported is not null)
         {
-            throw new CliException($"Unsupported grant type '{unsupported}'. Use authorization_code or client_credentials.");
+            throw new CliException($"Unsupported grant type '{unsupported}'. Use authorization_code, client_credentials, or refresh_token.");
         }
 
         var usesCode = grants.Contains(GrantTypes.AuthorizationCode);
+
+        // Refresh tokens are only issued from an authorization code (with the offline_access scope).
+        if (grants.Contains(GrantTypes.RefreshToken) && !usesCode)
+        {
+            throw new CliException("The refresh_token grant needs the authorization_code grant.");
+        }
         if (usesCode && redirectUris.Count == 0)
         {
             throw new CliException("The authorization_code grant needs at least one --redirect-uri.");
@@ -146,6 +158,24 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             {
                 throw new CliException("Public clients have no secret and always use PKCE.");
             }
+        }
+    }
+
+    private static void ValidateRefreshTokenLifetimes(List<string> grants, int? sliding, int? absolute)
+    {
+        if ((sliding is not null || absolute is not null) && !grants.Contains(GrantTypes.RefreshToken))
+        {
+            throw new CliException("Refresh token lifetimes only apply to clients with the refresh_token grant.");
+        }
+
+        if (sliding is <= 0 || absolute is <= 0)
+        {
+            throw new CliException("Refresh token lifetimes must be positive.");
+        }
+
+        if (sliding is { } s && absolute is { } a && a < s)
+        {
+            throw new CliException("--refresh-token-absolute-lifetime must be at least --refresh-token-lifetime.");
         }
     }
 
@@ -299,6 +329,12 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         var client = await FindAsync(clientId, cancellationToken);
         client.Enabled = enabled;
         _audit.Add(enabled ? "client.enabled" : "client.disabled", actor: AuditRecorder.CliActor, clientId: clientId);
+        if (!enabled)
+        {
+            // PROJECT.md §3: disabled clients can't obtain tokens; their refresh tokens are revoked.
+            await services.GetRequiredService<RefreshTokenStore>().RevokeForClientAsync(clientId, cancellationToken);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Client '{clientId}' {(enabled ? "enabled" : "disabled")}.");
     }

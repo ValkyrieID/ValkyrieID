@@ -38,7 +38,7 @@ public abstract class AuthorizationTests
         Assert.Equal($"{ValkyrieAppFactory.DefaultIssuer}/connect/userinfo", document.GetProperty("userinfo_endpoint").GetString());
         Assert.Equal(["code"], Strings(document.GetProperty("response_types_supported")));
         Assert.Equal(["query", "form_post"], Strings(document.GetProperty("response_modes_supported")));
-        Assert.Equal(["authorization_code", "client_credentials"], Strings(document.GetProperty("grant_types_supported")));
+        Assert.Equal(["authorization_code", "client_credentials", "refresh_token"], Strings(document.GetProperty("grant_types_supported")));
         Assert.Equal(["S256"], Strings(document.GetProperty("code_challenge_methods_supported")));
         Assert.Contains("none", Strings(document.GetProperty("token_endpoint_auth_methods_supported")));
         Assert.Contains("openid", Strings(document.GetProperty("scopes_supported")));

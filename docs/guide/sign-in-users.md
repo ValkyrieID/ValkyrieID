@@ -37,6 +37,23 @@ builder.Services.AddAuthentication(options =>
 
 The ID token already contains the profile and email claims, so calling userinfo is optional.
 
+### Keep users signed in with refresh tokens
+
+To call APIs after the access token expires, allow the client refresh tokens and request `offline_access`:
+
+```sh
+valkyrieid client create webapp --grant authorization_code --grant refresh_token \
+  --redirect-uri https://app.example.com/signin-oidc \
+  --scope openid --scope profile --scope email --scope offline_access
+```
+
+```csharp
+options.Scope.Add("offline_access");
+options.SaveTokens = true;
+```
+
+Each refresh returns a new refresh token; always store the newest one. Sending an old one again revokes all of them and the user has to sign in again. See [Refresh tokens](/reference/endpoints#refresh-token-grant).
+
 ## Single-page app
 
 Register a public client. Public clients have no secret and always use PKCE:
@@ -48,7 +65,7 @@ valkyrieid client create spa --public --grant authorization_code \
   --scope openid --scope profile --scope orders.read
 ```
 
-`--cors-origin` lets the browser call the token and userinfo endpoints. With [oidc-client-ts](https://github.com/authts/oidc-client-ts):
+`--cors-origin` lets the browser call the token, userinfo, and revocation endpoints. With [oidc-client-ts](https://github.com/authts/oidc-client-ts):
 
 ```ts
 const userManager = new UserManager({

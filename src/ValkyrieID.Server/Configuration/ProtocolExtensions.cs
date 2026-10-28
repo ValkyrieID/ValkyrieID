@@ -24,9 +24,14 @@ internal static class ProtocolExtensions
         services.AddScoped<ClientAuthenticator>();
         services.AddScoped<IdTokenIssuer>();
         services.AddSingleton<IAuthorizationCodeStore, InMemoryAuthorizationCodeStore>();
+        services.AddScoped<RefreshTokenStore>();
+        services.AddHostedService<RefreshTokenCleanupService>();
+        services.AddScoped<AccessTokenValidator>();
         services.AddScoped<TokenEndpoint>();
         services.AddScoped<AuthorizeEndpoint>();
         services.AddScoped<UserInfoEndpoint>();
+        services.AddScoped<RevocationEndpoint>();
+        services.AddScoped<IntrospectionEndpoint>();
 
         return services;
     }
@@ -47,6 +52,10 @@ internal static class ProtocolExtensions
         endpoints.MapMethods(AuthorizeEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, AuthorizeEndpoint endpoint) => endpoint.HandleAsync(context))
             .RequireRateLimiting(RateLimitPolicies.Authorize);
         endpoints.MapMethods(UserInfoEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, UserInfoEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Token);
+        endpoints.MapPost(RevocationEndpoint.Path, (HttpContext context, RevocationEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Token);
+        endpoints.MapPost(IntrospectionEndpoint.Path, (HttpContext context, IntrospectionEndpoint endpoint) => endpoint.HandleAsync(context))
             .RequireRateLimiting(RateLimitPolicies.Token);
         return endpoints;
     }

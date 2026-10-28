@@ -11,7 +11,7 @@ namespace ValkyrieID.Server.Tokens;
 internal sealed record IdTokenRequest(
     string ClientId,
     string Subject,
-    string SessionId,
+    string? SessionId,
     DateTimeOffset AuthTime,
     IReadOnlyList<string> AuthenticationMethods,
     string? Nonce,
@@ -40,11 +40,15 @@ internal sealed class IdTokenIssuer(
             // OIDC Core A2: aud contains the client_id; with a single audience azp is not needed.
             [JwtRegisteredClaimNames.Aud] = request.ClientId,
             [JwtRegisteredClaimNames.AuthTime] = request.AuthTime.ToUnixTimeSeconds(),
-            // OIDC Back-Channel Logout 1.0 A2.1: the session identifier.
-            ["sid"] = request.SessionId,
             // OIDC Core A3.1.3.6: at_hash for responses that include an access token from the token endpoint.
             [JwtRegisteredClaimNames.AtHash] = LeftHalfHash(request.AccessToken),
         };
+        if (request.SessionId is not null)
+        {
+            // OIDC Back-Channel Logout 1.0 A2.1: the session identifier.
+            claims["sid"] = request.SessionId;
+        }
+
         if (request.Nonce is not null)
         {
             claims[JwtRegisteredClaimNames.Nonce] = request.Nonce;

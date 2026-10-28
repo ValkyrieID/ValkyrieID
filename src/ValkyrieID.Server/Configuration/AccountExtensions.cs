@@ -69,6 +69,8 @@ internal static class AccountExtensions
         services.AddAntiforgery(options =>
         {
             options.Cookie.Name = "__Host-valkyrie.af";
+            // The __Host- prefix requires Path=/, also when the server runs under a path base.
+            options.Cookie.Path = "/";
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         });
         services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
