@@ -57,6 +57,30 @@ public static class RedirectUris
         return false;
     }
 
+    /// <summary>
+    /// Whether <paramref name="value"/> may be registered as a back-channel logout URI (OIDC Back-Channel Logout 1.0
+    /// A2.2): an absolute URI without a fragment. It must use https; http is only allowed on a loopback host and only
+    /// for confidential clients ("it MAY use the http scheme, provided that the Client Type is confidential").
+    /// </summary>
+    public static bool IsValidBackChannelLogoutUri(string value, ClientType clientType)
+    {
+        if (value.Length is 0 or > 2000
+            || value.Contains('#', StringComparison.Ordinal)
+            || value.Any(c => c is <= '\x20' or >= '\x7F')
+            || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            || uri.UserInfo.Length > 0)
+        {
+            return false;
+        }
+
+        return uri.Scheme switch
+        {
+            "https" => uri.Host.Length > 0,
+            "http" => clientType == ClientType.Confidential && IsLoopbackHost(uri),
+            _ => false,
+        };
+    }
+
     /// <summary>A browser origin (RFC 6454): <c>scheme://host[:port]</c> in canonical form, without a path.</summary>
     public static bool IsValidOrigin(string value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri)

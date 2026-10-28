@@ -20,6 +20,7 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.HasIndex(e => e.FamilyId);
         builder.HasIndex(e => e.UserId);
         builder.HasIndex(e => e.ClientId);
+        builder.HasIndex(e => e.SessionId);
         builder.HasIndex(e => e.FamilyExpiresAt);
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Client>().WithMany().HasForeignKey(e => e.ClientId).HasPrincipalKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);

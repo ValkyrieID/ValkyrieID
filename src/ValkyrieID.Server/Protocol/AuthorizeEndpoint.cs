@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using ValkyrieID.Core.Clients;
 using ValkyrieID.Core.Protocol;
+using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Authentication;
@@ -150,6 +151,12 @@ internal sealed class AuthorizeEndpoint(
             request.CodeChallenge,
             now + TokenOptions.AuthorizationCodeLifetime);
         var code = codes.Create(grant);
+
+        // OIDC Back-Channel Logout 1.0 A2.3: remember which clients the session signed in to, to notify them at logout.
+        if (!await db.UserSessionClients.AnyAsync(sc => sc.SessionId == grant.SessionId && sc.ClientId == client.ClientId, cancellationToken))
+        {
+            db.UserSessionClients.Add(new UserSessionClient { SessionId = grant.SessionId, ClientId = client.ClientId, CreatedAt = now });
+        }
 
         audit.Add(
             "authorize.code_issued",
@@ -395,17 +402,6 @@ internal sealed class AuthorizationReply(string redirectUri, string? state, stri
         var location = redirectUri.Contains('?', StringComparison.Ordinal)
             ? redirectUri + "&" + query.Value![1..]
             : redirectUri + query.Value;
-        return new NoStoreRedirect(location);
-    }
-
-    private sealed class NoStoreRedirect(string location) : IResult
-    {
-        public Task ExecuteAsync(HttpContext httpContext)
-        {
-            ProtocolHeaders.NoStore(httpContext.Response);
-            httpContext.Response.StatusCode = StatusCodes.Status302Found;
-            httpContext.Response.Headers.Location = location;
-            return Task.CompletedTask;
-        }
+        return ProtocolPages.Redirect(location);
     }
 }

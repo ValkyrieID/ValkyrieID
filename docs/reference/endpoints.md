@@ -11,8 +11,9 @@ All URLs are relative to the configured [issuer](/reference/configuration#issuer
 | `/connect/userinfo` | `GET`, `POST` | OpenID Connect Core 1.0 §5.3 |
 | `/connect/revocation` | `POST` | RFC 7009 |
 | `/connect/introspect` | `POST` | RFC 7662 |
+| `/connect/endsession` | `GET`, `POST` | OpenID Connect RP-Initiated Logout 1.0 |
 
-The end session endpoint arrives in a later release. Discovery only advertises what is implemented.
+Discovery only advertises what is implemented. Front-channel logout and OpenID Connect Session Management (`check_session_iframe`) are not supported; clients are notified of logouts by [back-channel logout](#back-channel-logout).
 
 ## Pages
 
@@ -22,7 +23,7 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 |---|---|
 | `/setup` | First-run setup wizard. Only available while no user exists; returns `404` afterwards. See [First run](/guide/first-run). |
 | `/account/login` | Sign in with a username or email address and password. Accepts a local `returnUrl`; other URLs are ignored. `prompt=login` shows the form even when a session exists; `login_hint` pre-fills the username. |
-| `/account/logout` | Asks for confirmation, then ends the session. |
+| `/account/logout` | Asks for confirmation, then ends the session. Also shows sign-out requests from applications; see [End session endpoint](#end-session-endpoint). |
 | `/account` | Shows who is signed in. |
 
 Every response carries these headers:
@@ -54,6 +55,8 @@ Returns the issuer and endpoint URLs, plus:
 | `prompt_values_supported` | `none`, `login`, `consent`, `select_account` |
 | `authorization_response_iss_parameter_supported` | `true` |
 | `request_parameter_supported`, `request_uri_parameter_supported`, `claims_parameter_supported` | `false` |
+| `end_session_endpoint` | `/connect/endsession` |
+| `backchannel_logout_supported`, `backchannel_logout_session_supported` | `true` |
 
 ## JWKS
 
@@ -216,9 +219,10 @@ Refresh tokens are revoked when:
 | An authorization code is redeemed twice | Refresh tokens issued from that code are revoked (RFC 6749 §4.1.2). |
 | The client calls the [revocation endpoint](#revocation-endpoint) | The token's family is revoked. |
 | The user's password is reset, or the user is disabled | All of the user's refresh tokens are revoked. |
+| A session is revoked (`session revoke`) | Refresh tokens issued from that session are revoked. |
 | The client is disabled | All of the client's refresh tokens are revoked. Deleting the client deletes them. |
 
-Signing out does **not** revoke refresh tokens: `offline_access` means access while the user is not signed in (OpenID Connect Core §11, Back-Channel Logout §2.7). Refreshing still requires the user and the client to be enabled and the scopes to still be allowed for the client.
+Signing out does **not** revoke refresh tokens: `offline_access` means access while the user is not signed in (OpenID Connect Core §11, Back-Channel Logout §2.7). Revoking a session is an explicit administrator action and does. Refreshing still requires the user and the client to be enabled and the scopes to still be allowed for the client.
 
 ### ID tokens
 
@@ -229,7 +233,7 @@ ID tokens are JWTs signed with RS256:
 | `iss`, `sub`, `aud` | The issuer, the user's immutable id, the client id |
 | `iat`, `exp` | Issue time and expiry (default 5 minutes) |
 | `auth_time`, `amr` | When and how the user signed in (`pwd`) |
-| `sid` | The session id |
+| `sid` | The session id. Logout tokens carry the same value. |
 | `nonce` | From the authorization request, if sent |
 | `at_hash` | Hash of the access token (OpenID Connect Core A3.1.3.6) |
 
@@ -333,6 +337,71 @@ Anything else, including unknown, expired, revoked, and rotated tokens, returns 
 - **Access tokens** are checked statelessly: signature, issuer, `typ`, and expiry (with the configured clock skew). An access token stays active until it expires.
 
 Failed caller authentication returns `401 invalid_client` and is written to the audit log as `introspection.authentication_failed`.
+
+## End session endpoint
+
+Signs the user out at the request of an application (OpenID Connect RP-Initiated Logout 1.0). Send the browser to `/connect/endsession` with query parameters. A form `POST` is also accepted; it is answered with `303 See Other` to the same request as a `GET`, because the `SameSite=Lax` session cookie isn't sent with cross-site `POST` requests.
+
+| Parameter | Required | Description |
+|---|---|---|
+| `id_token_hint` | recommended | An ID token this server issued to the client. Expired tokens are accepted. |
+| `client_id` | if `post_logout_redirect_uri` is sent without `id_token_hint` | Must be in the hint's `aud` when both are sent. |
+| `post_logout_redirect_uri` | no | Must **exactly** match a post-logout redirect URI registered for the client (no loopback port exception). |
+| `state` | no | Returned unchanged with the redirect. |
+| `logout_hint`, `ui_locales` | no | Accepted and ignored. |
+
+What happens:
+
+| Situation | Result |
+|---|---|
+| `id_token_hint` belongs to the user's current session | The user is signed out right away. |
+| No hint, or the hint is for another session or user | `/account/logout` asks the user to confirm. If they decline, they stay signed in. |
+| The user isn't signed in | Nothing to sign out; this is not an error. |
+
+Before redirecting, ValkyrieID sends [back-channel logout](#back-channel-logout) notifications to the session's clients and waits for their responses, up to `BackChannelLogout:RequestTimeout` (5 seconds). Then the browser goes to `post_logout_redirect_uri` with `state`, keeping any query the URI already has:
+
+```
+HTTP/1.1 302 Found
+Cache-Control: no-store
+Location: https://app.example.com/signed-out?state=af0ifjsldkj
+```
+
+The browser is never sent to an unvalidated URI. If the hint is invalid (wrong signature or issuer, not an ID token), `client_id` doesn't match the hint or is unknown or disabled, or the URI isn't registered for the client, the request is treated as untrusted: the user is asked to confirm, sees a notice that the request was invalid, and stays at ValkyrieID after signing out.
+
+Register post-logout redirect URIs with `--post-logout-redirect-uri` (see [CLI](/reference/cli#clients)).
+
+## Back-channel logout
+
+When a session ends, ValkyrieID notifies every client that signed in with it and registered a back-channel logout URI (OpenID Connect Back-Channel Logout 1.0). Register the URI with `--backchannel-logout-uri`. It must be an absolute `https` URI without a fragment; `http` is only allowed on a loopback host, for confidential clients.
+
+Clients are notified when:
+
+- the user signs out, through the end session endpoint or `/account/logout`;
+- a new sign-in replaces the session (`prompt=login`);
+- the session is revoked (`session revoke`), or the user is disabled or their password is reset.
+
+ValkyrieID sends a form `POST` with a `logout_token` parameter. The logout token is a JWT signed like ID tokens:
+
+| Claim | Value |
+|---|---|
+| header `typ` | `logout+jwt` |
+| `iss`, `aud` | The issuer, the client id |
+| `iat`, `exp` | Issue time; expiry 2 minutes later |
+| `jti` | Unique id |
+| `sub`, `sid` | The user and the ended session; both are always included |
+| `events` | `{"http://schemas.openid.net/event/backchannel-logout": {}}` |
+
+There is no `nonce`. A logout token is created for every attempt, so retries carry a new `jti` and a fresh `exp`.
+
+| Client response | Result |
+|---|---|
+| `200` or `204` | Delivered |
+| Network error, timeout, `408`, `429`, `5xx` | Retried after 10 s, 30 s, 2 min, 10 min, and 1 h, then abandoned |
+| Anything else, including `400` and redirects | Abandoned; redirects are not followed |
+
+Pending notifications are stored in the database, so they survive restarts and any instance can deliver them. Each outcome is written to the audit log as `backchannel.delivered` or `backchannel.failed`; logout tokens are never stored or logged. Retries and timeouts are [configurable](/reference/configuration#back-channel-logout).
+
+Clients should handle a notification for a session that has already ended as a success (Back-Channel Logout §2.7). In rare cases, such as a response lost on the network, a client gets the same logout twice.
 
 ## CORS
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Logout;
 using ValkyrieID.Server.Protocol;
 using ValkyrieID.Server.Tokens;
 
@@ -15,6 +16,8 @@ internal static class ProtocolExtensions
         services.AddSingleton<IValidateOptions<TokenOptions>, TokenOptionsValidator>();
         services.AddOptions<SigningKeyOptions>().Bind(configuration.GetSection(SigningKeyOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<SigningKeyOptions>, SigningKeyOptionsValidator>();
+        services.AddOptions<BackChannelLogoutOptions>().Bind(configuration.GetSection(BackChannelLogoutOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<BackChannelLogoutOptions>, BackChannelLogoutOptionsValidator>();
 
         services.AddScoped<AuditRecorder>();
         services.AddSingleton<SigningKeyStore>();
@@ -32,6 +35,19 @@ internal static class ProtocolExtensions
         services.AddScoped<UserInfoEndpoint>();
         services.AddScoped<RevocationEndpoint>();
         services.AddScoped<IntrospectionEndpoint>();
+        services.AddScoped<EndSessionEndpoint>();
+        services.AddScoped<IdTokenHintValidator>();
+        services.AddScoped<LogoutTokenIssuer>();
+
+        services.AddSingleton<LogoutRequestProtector>();
+        services.AddSingleton<BackChannelLogoutSignal>();
+        services.AddSingleton<BackChannelLogoutDispatcher>();
+        services.AddScoped<BackChannelLogoutQueue>();
+        services.AddHostedService<BackChannelLogoutWorker>();
+        // Back-channel logout URIs are registered by administrators. Redirects aren't followed (OIDC Back-Channel
+        // Logout 1.0 A2.8: the response is 200 or 204), and no cookies are sent. Timeouts are set per request.
+        services.AddHttpClient(BackChannelLogoutDispatcher.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false });
 
         return services;
     }
@@ -57,6 +73,8 @@ internal static class ProtocolExtensions
             .RequireRateLimiting(RateLimitPolicies.Token);
         endpoints.MapPost(IntrospectionEndpoint.Path, (HttpContext context, IntrospectionEndpoint endpoint) => endpoint.HandleAsync(context))
             .RequireRateLimiting(RateLimitPolicies.Token);
+        endpoints.MapMethods(EndSessionEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, EndSessionEndpoint endpoint) => endpoint.HandleAsync(context))
+            .RequireRateLimiting(RateLimitPolicies.Authorize);
         return endpoints;
     }
 }

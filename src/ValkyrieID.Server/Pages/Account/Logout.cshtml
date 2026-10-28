@@ -3,17 +3,30 @@
 @{
     ViewData["Title"] = "Sign out";
 }
+@if (Model.InvalidRequest)
+{
+    <div class="alert" role="alert"><p>The application's sign-out request was invalid, so you won't be returned to it.</p></div>
+}
 @if (User.Identity?.IsAuthenticated == true)
 {
     <h1>Sign out</h1>
+    @if (Model.ClientName is not null)
+    {
+        <p><strong>@Model.ClientName</strong> asks you to sign out.</p>
+    }
     <p>Do you want to sign out?</p>
     <form method="post">
         <button type="submit">Sign out</button>
     </form>
+    <p><a href="~/account">Stay signed in</a></p>
 }
 else
 {
     <h1>Signed out</h1>
     <p>You are signed out.</p>
+    @if (Model.ReturnLocation is not null)
+    {
+        <p><a href="@Model.ReturnLocation">Return to @(Model.ClientName ?? "the application")</a></p>
+    }
     <p><a href="~/account/login">Sign in again</a></p>
 }

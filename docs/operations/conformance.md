@@ -1,6 +1,6 @@
 # Conformance testing
 
-ValkyrieID targets the OpenID Foundation [conformance suite](https://openid.net/certification/about-conformance-suite/) plans **Basic OP** and **Config OP**. This page describes how to run them against a ValkyrieID instance.
+ValkyrieID targets the OpenID Foundation [conformance suite](https://openid.net/certification/about-conformance-suite/) plans **Basic OP**, **Config OP**, **RP-Initiated Logout**, and **Back-Channel Logout**. This page describes how to run them against a ValkyrieID instance.
 
 ## What you need
 
@@ -9,7 +9,7 @@ ValkyrieID targets the OpenID Foundation [conformance suite](https://openid.net/
   - With a **local suite**, the instance must be reachable from the suite's Docker containers.
 - The same configuration as the server (`Database__*`, `MasterKey__Current`, `Issuer__Url`) in the shell where you run the setup script, so it writes to the instance's database.
 
-Use a dedicated database. The setup creates a test user and two clients.
+Use a dedicated database. The setup creates a test user and four clients.
 
 ## 1. Register the test user and clients
 
@@ -27,9 +27,10 @@ The script:
 
 - creates the user `conformance` with a random password, and prints it;
 - creates the confidential clients `conformance-1` and `conformance-2` with the redirect URI `<suite>/test/a/<alias>/callback` and the scopes `openid profile email roles groups`;
-- writes the plan configurations to `conformance/out/basic-op.json` and `conformance/out/config-op.json`.
+- creates the confidential clients `conformance-logout-1` and `conformance-logout-2` for the logout plans, which also have the post-logout redirect URI `<suite>/test/a/<alias>/post_logout_redirect` and the back-channel logout URI `<suite>/test/a/<alias>/backchannel_logout`;
+- writes the plan configurations to `conformance/out/`: `basic-op.json`, `config-op.json`, `rp-initiated-logout.json`, and `backchannel-logout.json`.
 
-The clients are created with `--no-pkce` because the Basic OP plan doesn't send PKCE parameters. `conformance/out/` contains client secrets and is ignored by git. Delete it, and the clients (`client delete conformance-1`), when you're done.
+The clients are created with `--no-pkce` because the plans don't send PKCE parameters. `conformance/out/` contains client secrets and is ignored by git. Delete it, and the clients (`client delete conformance-1`), when you're done.
 
 ## 2. Run the plans
 
@@ -42,6 +43,10 @@ The clients are created with `--no-pkce` because the Basic OP plan doesn't send 
 3. Paste `conformance/out/basic-op.json` into the configuration JSON and create the plan.
 4. Run each test. When the suite opens the login page, sign in as `conformance`.
 5. Create a second plan, **OpenID Connect Core: Config Certification Profile Authorization server test**, with `conformance/out/config-op.json`.
+6. Create a plan **OpenID Connect Core: RP-Initiated Logout Certification Profile Authorization server test** with the same options as Basic OP and `conformance/out/rp-initiated-logout.json`.
+7. Create a plan **OpenID Connect Core: Back-Channel RP-Initiated Logout Certification Profile Authorization server test** with `conformance/out/backchannel-logout.json`. The suite must be reachable from ValkyrieID, because ValkyrieID posts logout tokens to the suite's back-channel logout URI.
+
+When a logout test shows the ValkyrieID sign-out confirmation page, confirm it; tests without a valid `id_token_hint` expect this.
 
 ## Running the suite locally
 
@@ -62,7 +67,8 @@ Some tests are skipped or produce warnings by design, because ValkyrieID adverti
 
 - request objects (`request`, `request_uri`): `request_parameter_supported` and `request_uri_parameter_supported` are `false`;
 - the `claims` request parameter: `claims_parameter_supported` is `false`;
-- the `address` and `phone` scopes, which aren't in `scopes_supported` and are ignored when requested.
+- the `address` and `phone` scopes, which aren't in `scopes_supported` and are ignored when requested;
+- front-channel logout and session management (`check_session_iframe`), which aren't supported.
 
 The test clients are allowed `offline_access` and the `refresh_token` grant, so the refresh token tests run.
 

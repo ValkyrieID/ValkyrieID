@@ -21,7 +21,7 @@ Every change is written to the audit log with the actor `cli`.
 |---|---|
 | `user create <username> [--email <email>] [--name <display name>]` | Create a user. Prompts for the password. |
 | `user list` | List users with their state (`enabled`, `locked`, `disabled`), email, and roles. |
-| `user enable <user>` / `user disable <user>` | Disabled users can't sign in; disabling also ends their sessions. |
+| `user enable <user>` / `user disable <user>` | Disabled users can't sign in; disabling also revokes their sessions. |
 
 Usernames are 1-64 letters, digits, `.`, `_` or `-`. They can't contain `@`, so a sign-in name with `@` is always treated as an email address. Usernames and email addresses are unique, ignoring case.
 
@@ -35,13 +35,25 @@ printf '%s\n' "$NEW_PASSWORD" | ./valkyrieid user create alice --email alice@exa
 
 Passwords must satisfy the [password policy](/reference/configuration#passwords).
 
+## Sessions
+
+| Command | Description |
+|---|---|
+| `session list --user <user>` | List the user's active sessions: session id (`sid`), sign-in time, last activity, expiry, IP address, user agent, and the clients that signed in with it. |
+| `session revoke <session-id>` | Revoke one session. |
+| `session revoke --user <user>` | Revoke all of the user's active sessions. |
+
+Revoking a session signs the user out immediately, revokes the refresh tokens issued from it, and notifies its clients by [back-channel logout](/reference/endpoints#back-channel-logout). Disabling a user or resetting their password revokes their sessions the same way.
+
+A running server delivers the notifications within `BackChannelLogout:PollInterval` (1 minute by default), because the CLI can't wake it directly.
+
 ## Admin recovery
 
 Break-glass commands for when nobody can sign in as an admin.
 
 | Command | Description |
 |---|---|
-| `admin reset-password <user>` | Set a new password. Also unlocks the account and ends its sessions. |
+| `admin reset-password <user>` | Set a new password. Also unlocks the account and revokes its sessions. |
 | `admin unlock <user>` | Clear a lockout. |
 | `admin grant-admin <user>` | Give the user the built-in `admin` role. |
 | `admin revoke-admin <user>` | Remove the `admin` role. |
@@ -70,12 +82,13 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | Command | Description |
 |---|---|
 | `client create <client-id> --scope <scope>... [options]` | Create a client. Confidential clients get their first secret printed. |
-| `client list` | List clients with their grants, scopes, redirect URIs, CORS origins, and secrets (ids and expiry only). |
+| `client list` | List clients with their grants, scopes, redirect URIs, back-channel logout URI, CORS origins, and secrets (ids and expiry only). |
 | `client add-secret <client-id> [--description <text>] [--expires-days <days>]` | Add another secret and print it. Not available for public clients. |
 | `client remove-secret <client-id> <secret-id>` | Remove a secret. |
 | `client add-redirect-uri <client-id> <uri>` / `client remove-redirect-uri <client-id> <uri>` | Manage redirect URIs. A client using `authorization_code` keeps at least one. |
 | `client add-post-logout-redirect-uri <client-id> <uri>` / `client remove-post-logout-redirect-uri <client-id> <uri>` | Manage post-logout redirect URIs. |
 | `client add-cors-origin <client-id> <origin>` / `client remove-cors-origin <client-id> <origin>` | Manage browser origins allowed to call the token, userinfo, and revocation endpoints. |
+| `client set-backchannel-logout-uri <client-id> <uri>` / `client clear-backchannel-logout-uri <client-id>` | Set or remove the [back-channel logout](/reference/endpoints#back-channel-logout) URI. |
 | `client enable <client-id>` / `client disable <client-id>` | Disabled clients can't authenticate or start sign-ins. Disabling also revokes the client's refresh tokens. |
 | `client delete <client-id>` | Delete a client with its secrets and refresh tokens. |
 
@@ -86,7 +99,8 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `--scope <scope>` | Allowed scope, repeatable. API scopes, or identity scopes (`openid`, `profile`, `email`, `roles`, `groups`, `offline_access`) for sign-in. |
 | `--grant <grant>` | `client_credentials` (default), `authorization_code`, or `refresh_token`, repeatable. `refresh_token` needs `authorization_code`, and refresh tokens are only issued if the client is also allowed `--scope offline_access`. |
 | `--redirect-uri <uri>` | Redirect URI, repeatable. Required for `authorization_code`. |
-| `--post-logout-redirect-uri <uri>` | Post-logout redirect URI, repeatable. |
+| `--post-logout-redirect-uri <uri>` | Post-logout redirect URI, repeatable. Used by the [end session endpoint](/reference/endpoints#end-session-endpoint), which matches it exactly. |
+| `--backchannel-logout-uri <uri>` | Where [logout tokens](/reference/endpoints#back-channel-logout) are posted when a session ends. Needs `authorization_code`. Absolute `https` without a fragment; `http` only on a loopback host for confidential clients. |
 | `--cors-origin <origin>` | Allowed browser origin, repeatable, e.g. `https://app.example.com`. |
 | `--public` | Create a public client (SPA, mobile, CLI): no secret, PKCE always required, no `client_credentials`. |
 | `--no-pkce` | Let a confidential client use `authorization_code` without PKCE. PKCE is required by default. |
@@ -107,7 +121,7 @@ valkyrieid client create spa --public --grant authorization_code \
   --scope openid --scope profile --scope orders.read
 ```
 
-Redirect URIs are matched exactly, character for character. They must be absolute without a fragment and use `https`, `http` on a loopback host, or a private-use scheme in reverse domain notation (`com.example.app:/callback`, RFC 8252). For `http://127.0.0.1` and `http://[::1]` any port is accepted at sign-in, so native and CLI apps can use an ephemeral port. CORS origins are `scheme://host[:port]` without a path or trailing slash.
+Redirect URIs are matched exactly, character for character. They must be absolute without a fragment and use `https`, `http` on a loopback host, or a private-use scheme in reverse domain notation (`com.example.app:/callback`, RFC 8252). For `http://127.0.0.1` and `http://[::1]` any port is accepted at sign-in, so native and CLI apps can use an ephemeral port; this exception doesn't apply to post-logout redirect URIs. CORS origins are `scheme://host[:port]` without a path or trailing slash.
 
 Secrets are 256-bit random values generated by the server. They are printed **once** and stored only as a SHA-256 hash.
 

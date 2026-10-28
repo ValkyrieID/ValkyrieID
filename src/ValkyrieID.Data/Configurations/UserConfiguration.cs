@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ValkyrieID.Core.Clients;
 using ValkyrieID.Core.Users;
 
 namespace ValkyrieID.Data.Configurations;
@@ -84,5 +85,36 @@ internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSe
         builder.Property(e => e.UserAgent).HasMaxLength(500);
         builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(e => e.UserId);
+    }
+}
+
+internal sealed class UserSessionClientConfiguration : IEntityTypeConfiguration<UserSessionClient>
+{
+    public void Configure(EntityTypeBuilder<UserSessionClient> builder)
+    {
+        builder.ToTable("UserSessionClients");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.SessionId).HasMaxLength(64);
+        builder.Property(e => e.ClientId).HasMaxLength(200);
+        builder.HasOne<UserSession>().WithMany().HasForeignKey(e => e.SessionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<Client>().WithMany().HasForeignKey(e => e.ClientId).HasPrincipalKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(e => new { e.SessionId, e.ClientId });
+    }
+}
+
+internal sealed class BackChannelLogoutDeliveryConfiguration : IEntityTypeConfiguration<BackChannelLogoutDelivery>
+{
+    public void Configure(EntityTypeBuilder<BackChannelLogoutDelivery> builder)
+    {
+        builder.ToTable("BackChannelLogoutDeliveries");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.ClientId).HasMaxLength(200);
+        builder.Property(e => e.SessionId).HasMaxLength(64);
+        // A concurrency token, so an instance whose lease expired and was taken over can't overwrite the new owner.
+        builder.Property(e => e.LeaseOwner).HasMaxLength(64).IsConcurrencyToken();
+        builder.HasIndex(e => e.NextAttemptAt);
+        builder.HasOne<Client>().WithMany().HasForeignKey(e => e.ClientId).HasPrincipalKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);
     }
 }

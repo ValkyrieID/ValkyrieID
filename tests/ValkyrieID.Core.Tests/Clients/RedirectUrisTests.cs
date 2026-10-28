@@ -22,6 +22,21 @@ public sealed class RedirectUrisTests
     public void IsValid(string value, bool expected) => Assert.Equal(expected, RedirectUris.IsValid(value));
 
     [Theory]
+    [InlineData("https://app.example.com/backchannel", ClientType.Confidential, true)]
+    [InlineData("https://app.example.com/backchannel?tenant=a", ClientType.Public, true)]
+    [InlineData("http://127.0.0.1:9000/backchannel", ClientType.Confidential, true)]
+    [InlineData("http://localhost/backchannel", ClientType.Confidential, true)]
+    [InlineData("http://127.0.0.1:9000/backchannel", ClientType.Public, false)]
+    [InlineData("http://app.example.com/backchannel", ClientType.Confidential, false)]
+    [InlineData("https://app.example.com/backchannel#fragment", ClientType.Confidential, false)]
+    [InlineData("https://user@app.example.com/backchannel", ClientType.Confidential, false)]
+    [InlineData("com.example.app:/backchannel", ClientType.Confidential, false)]
+    [InlineData("/backchannel", ClientType.Confidential, false)]
+    [InlineData("", ClientType.Confidential, false)]
+    public void IsValidBackChannelLogoutUri(string value, ClientType type, bool expected) =>
+        Assert.Equal(expected, RedirectUris.IsValidBackChannelLogoutUri(value, type));
+
+    [Theory]
     [InlineData("https://app.example.com/cb", "https://app.example.com/cb", true)]
     [InlineData("https://app.example.com/cb", "https://app.example.com/cb/", false)]
     [InlineData("https://app.example.com/cb", "https://APP.example.com/cb", false)]

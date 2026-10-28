@@ -14,6 +14,7 @@ internal sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.Property(e => e.ClientId).HasMaxLength(200);
         builder.HasIndex(e => e.ClientId).IsUnique();
         builder.Property(e => e.DisplayName).HasMaxLength(200);
+        builder.Property(e => e.BackChannelLogoutUri).HasMaxLength(2000);
         builder.HasMany(e => e.Secrets).WithOne().HasForeignKey(e => e.ClientId).OnDelete(DeleteBehavior.Cascade);
     }
 }

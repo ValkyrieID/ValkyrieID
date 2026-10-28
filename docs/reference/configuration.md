@@ -133,6 +133,18 @@ The session cookie is `__Host-valkyrie.session` (`Secure`, `HttpOnly`, `SameSite
 
 Because the cookie is `Secure`, sign-in only works over HTTPS (or `http://localhost` in browsers that treat it as secure).
 
+Administrators list and revoke sessions with the [`session` commands](/reference/cli#sessions).
+
+## Back-channel logout
+
+| Key | Default | Description |
+|---|---|---|
+| `BackChannelLogout:RequestTimeout` | `00:00:05` | Timeout of each request to a client (1 to 60 seconds). A sign-out waits at most this long for the clients before redirecting the browser. |
+| `BackChannelLogout:RetryDelays` | `00:00:10`, `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, `408`, `429`, or `5xx`. After the last one the notification is abandoned. Set as an array, e.g. `BackChannelLogout__RetryDelays__0=00:00:15`; at most 20 entries. |
+| `BackChannelLogout:PollInterval` | `00:01:00` | How often each instance checks for pending notifications queued by another process, such as the CLI or another instance. Notifications queued by the instance itself are sent right away. |
+
+See [Back-channel logout](/reference/endpoints#back-channel-logout).
+
 ## Rate limits
 
 | Key | Default | Description |

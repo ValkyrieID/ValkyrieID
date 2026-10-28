@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Cli;
+using ValkyrieID.Server.Logout;
 
 namespace ValkyrieID.Server.IntegrationTests;
 
@@ -28,6 +30,12 @@ public sealed class ValkyrieAppFactory(
 
     /// <summary>The client address the server sees, as if the request came from that peer.</summary>
     public IPAddress? RemoteIpAddress { get; init; }
+
+    /// <summary>Receives the server's back-channel logout requests instead of the network.</summary>
+    public HttpMessageHandler? BackChannelHandler { get; init; }
+
+    /// <summary>Stops the background delivery worker, so tests drive deliveries themselves.</summary>
+    public bool DisableBackChannelWorker { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -54,6 +62,23 @@ public sealed class ValkyrieAppFactory(
         if (RemoteIpAddress is { } remoteIpAddress)
         {
             builder.ConfigureTestServices(services => services.AddSingleton<IStartupFilter>(new RemoteIpStartupFilter(remoteIpAddress)));
+        }
+
+        if (BackChannelHandler is { } handler)
+        {
+            builder.ConfigureTestServices(services => services.AddHttpClient(BackChannelLogoutDispatcher.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => handler));
+        }
+
+        if (DisableBackChannelWorker)
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(BackChannelLogoutWorker)).ToList())
+                {
+                    services.Remove(descriptor);
+                }
+            });
         }
     }
 

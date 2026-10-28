@@ -40,6 +40,7 @@ internal static class AccountExtensions
         services.AddScoped<UserAdministration>();
         services.AddScoped<LoginService>();
         services.AddScoped<SessionManager>();
+        services.AddScoped<SessionService>();
         services.AddScoped<SessionCookieEvents>();
         services.AddSingleton<LoginAttemptLimiter>();
         services.AddScoped<MasterKeyReencryptor>();

@@ -54,6 +54,27 @@ options.SaveTokens = true;
 
 Each refresh returns a new refresh token; always store the newest one. Sending an old one again revokes all of them and the user has to sign in again. See [Refresh tokens](/reference/endpoints#refresh-token-grant).
 
+### Sign out
+
+Register where users land after signing out, and optionally a back-channel logout URI:
+
+```sh
+valkyrieid client add-post-logout-redirect-uri webapp https://app.example.com/signout-callback-oidc
+valkyrieid client set-backchannel-logout-uri webapp https://app.example.com/backchannel-logout
+```
+
+Sign out of both the app and ValkyrieID:
+
+```csharp
+app.MapPost("/logout", () => Results.SignOut(
+    new AuthenticationProperties { RedirectUri = "/" },
+    [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]));
+```
+
+The handler sends the user to the [end session endpoint](/reference/endpoints#end-session-endpoint). With `options.SaveTokens = true` it includes the ID token as `id_token_hint`, so ValkyrieID signs the user out without asking.
+
+ASP.NET Core has no built-in back-channel logout receiver. The endpoint at the back-channel logout URI must validate the `logout_token` (signature, `iss`, `aud`, `exp`, the `events` claim, no `nonce`) and end the app's sessions for its `sid`, for example by keeping cookie sessions in a server-side `ITicketStore`. It should respond `200` even if the session is already gone. See [Back-channel logout](/reference/endpoints#back-channel-logout).
+
 ## Single-page app
 
 Register a public client. Public clients have no secret and always use PKCE:

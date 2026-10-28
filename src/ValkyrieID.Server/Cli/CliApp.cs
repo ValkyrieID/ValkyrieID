@@ -6,7 +6,7 @@ namespace ValkyrieID.Server.Cli;
 /// </summary>
 internal static class CliApp
 {
-    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "admin", "help" };
+    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "session", "admin", "help" };
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
 
@@ -36,6 +36,9 @@ internal static class CliApp
                 case "user":
                     await new UserCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
                     break;
+                case "session":
+                    await new SessionCommands(scope.ServiceProvider, output).RunAsync(parsed, cancellationToken);
+                    break;
                 case "admin":
                     return await new AdminCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
                 default:
@@ -61,6 +64,10 @@ internal static class CliApp
           user enable <user>
           user disable <user>
 
+        Sessions (revoking also revokes the session's refresh tokens and notifies clients by back-channel logout):
+          session list --user <user>
+          session revoke <session-id>
+          session revoke --user <user>
         Admin recovery:
           admin reset-password <user>
           admin unlock <user>
@@ -74,6 +81,7 @@ internal static class CliApp
           client create <client-id> --scope <scope>... [--name <display name>]
                         [--grant authorization_code|client_credentials|refresh_token]... [--public] [--no-pkce]
                         [--redirect-uri <uri>]... [--post-logout-redirect-uri <uri>]... [--cors-origin <origin>]...
+                        [--backchannel-logout-uri <uri>]
                         [--access-token-lifetime <seconds>] [--id-token-lifetime <seconds>]
                         [--refresh-token-lifetime <seconds>] [--refresh-token-absolute-lifetime <seconds>]
                         [--secret-expires-days <days>]
@@ -83,6 +91,11 @@ internal static class CliApp
           client enable <client-id>
           client disable <client-id>
           client delete <client-id>
+          client add-redirect-uri|remove-redirect-uri <client-id> <uri>
+          client add-post-logout-redirect-uri|remove-post-logout-redirect-uri <client-id> <uri>
+          client add-cors-origin|remove-cors-origin <client-id> <origin>
+          client set-backchannel-logout-uri <client-id> <uri>
+          client clear-backchannel-logout-uri <client-id>
 
         API resources:
           resource create <name> --scope <scope>... [--name <display name>]

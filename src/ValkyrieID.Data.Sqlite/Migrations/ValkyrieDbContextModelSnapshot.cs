@@ -127,6 +127,10 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("BackChannelLogoutUri")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -353,6 +357,8 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.HasIndex("Hash")
                         .IsUnique();
 
+                    b.HasIndex("SessionId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens", (string)null);
@@ -388,6 +394,50 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.HasIndex("ActivatesAt");
 
                     b.ToTable("SigningKeys", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.BackChannelLogoutDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("LeaseExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LeaseOwner")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("NextAttemptAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("NextAttemptAt");
+
+                    b.ToTable("BackChannelLogoutDeliveries", (string)null);
                 });
 
             modelBuilder.Entity("ValkyrieID.Core.Users.Group", b =>
@@ -583,6 +633,33 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.ToTable("UserSessions", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.UserSessionClient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("SessionId", "ClientId");
+
+                    b.ToTable("UserSessionClients", (string)null);
+                });
+
             modelBuilder.Entity("UserGroups", b =>
                 {
                     b.HasOne("ValkyrieID.Core.Users.Group", null)
@@ -656,6 +733,16 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.BackChannelLogoutDelivery", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Clients.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Users.UserClaim", b =>
                 {
                     b.HasOne("ValkyrieID.Core.Users.User", null)
@@ -670,6 +757,22 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.HasOne("ValkyrieID.Core.Users.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.UserSessionClient", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Clients.Client", null)
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ValkyrieID.Core.Users.UserSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

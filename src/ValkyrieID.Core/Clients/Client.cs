@@ -30,6 +30,12 @@ public sealed class Client
     /// <summary>Registered post-logout redirect URIs (used by RP-initiated logout).</summary>
     public List<string> PostLogoutRedirectUris { get; set; } = [];
 
+    /// <summary>
+    /// Where logout tokens are posted (OIDC Back-Channel Logout 1.0 A2.2); see
+    /// <see cref="RedirectUris.IsValidBackChannelLogoutUri"/>. Without it the client isn't notified of logouts.
+    /// </summary>
+    public string? BackChannelLogoutUri { get; set; }
+
     /// <summary>Browser origins allowed to call the token, userinfo, and revocation endpoints (CORS).</summary>
     public List<string> AllowedCorsOrigins { get; set; } = [];
 

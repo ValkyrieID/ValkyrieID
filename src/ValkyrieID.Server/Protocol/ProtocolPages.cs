@@ -41,6 +41,20 @@ internal static class ProtocolPages
         return new HtmlPage(StatusCodes.Status200OK, "Continue", nonce, html.ToString());
     }
 
+    /// <summary>A redirect that must not be cached, since it carries protocol parameters.</summary>
+    public static IResult Redirect(string location, int statusCode = StatusCodes.Status302Found) => new NoStoreRedirect(location, statusCode);
+
+    private sealed class NoStoreRedirect(string location, int statusCode) : IResult
+    {
+        public Task ExecuteAsync(HttpContext httpContext)
+        {
+            ProtocolHeaders.NoStore(httpContext.Response);
+            httpContext.Response.StatusCode = statusCode;
+            httpContext.Response.Headers.Location = location;
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class HtmlPage(int statusCode, string title, string? scriptNonce, string body) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)

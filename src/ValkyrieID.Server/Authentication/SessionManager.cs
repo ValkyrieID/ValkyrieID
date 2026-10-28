@@ -10,6 +10,7 @@ using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Logout;
 
 namespace ValkyrieID.Server.Authentication;
 
@@ -29,6 +30,8 @@ internal static class SessionClaims
 /// <summary>Creates and ends SSO sessions: a <see cref="UserSession"/> row plus the session cookie that references it.</summary>
 internal sealed class SessionManager(
     ValkyrieDbContext db,
+    SessionService sessions,
+    BackChannelLogoutDispatcher backChannel,
     AuditRecorder audit,
     TimeProvider timeProvider,
     IOptions<SsoSessionOptions> options)
@@ -37,13 +40,15 @@ internal sealed class SessionManager(
     {
         var now = timeProvider.GetUtcNow();
 
-        // A new login (e.g. forced by prompt=login) replaces the current session instead of leaving it active.
+        // A new login (e.g. forced by prompt=login) replaces the current session instead of leaving it active. The
+        // replaced session has ended, so its clients are notified.
+        var replaced = false;
         if (context.User.FindFirstValue(SessionClaims.SessionId) is { } previousId)
         {
             var previous = await db.UserSessions.SingleOrDefaultAsync(s => s.Id == previousId, cancellationToken);
             if (previous is { RevokedAt: null })
             {
-                previous.RevokedAt = now;
+                replaced = (await sessions.EndAsync(previous, claimDeliveries: false, cancellationToken)).Count > 0;
             }
         }
 
@@ -59,6 +64,10 @@ internal sealed class SessionManager(
         };
         db.UserSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);
+        if (replaced)
+        {
+            sessions.WakeDeliveryWorker();
+        }
 
         List<Claim> claims =
         [
@@ -81,6 +90,11 @@ internal sealed class SessionManager(
         });
     }
 
+    /// <summary>
+    /// Ends the current session and removes the cookie. The session's clients are notified by back-channel logout
+    /// first: OIDC RP-Initiated Logout 1.0 A3 performs the post-logout redirect "after the OP has finished notifying
+    /// the RPs". This waits at most <see cref="BackChannelLogoutOptions.RequestTimeout"/>; failures are retried later.
+    /// </summary>
     public async Task SignOutAsync(HttpContext context, CancellationToken cancellationToken)
     {
         var sessionId = context.User.FindFirstValue(SessionClaims.SessionId);
@@ -90,9 +104,11 @@ internal sealed class SessionManager(
             var session = await db.UserSessions.SingleOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
             if (session is { RevokedAt: null })
             {
-                session.RevokedAt = timeProvider.GetUtcNow();
-                audit.Add("user.logout", actor: subject, ipAddress: context.Connection.RemoteIpAddress?.ToString(), subjectId: session.UserId);
+                var deliveries = await sessions.EndAsync(session, claimDeliveries: true, cancellationToken);
+                audit.Add("user.logout", actor: subject, ipAddress: context.Connection.RemoteIpAddress?.ToString(), subjectId: session.UserId,
+                    details: new Dictionary<string, object?> { ["sid"] = session.Id });
                 await db.SaveChangesAsync(cancellationToken);
+                await backChannel.DeliverClaimedAsync([.. deliveries.Select(d => d.Id)]);
             }
         }
 

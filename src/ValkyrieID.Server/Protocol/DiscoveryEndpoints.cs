@@ -31,7 +31,10 @@ internal sealed record DiscoveryDocument(
     [property: JsonPropertyName("revocation_endpoint")] string RevocationEndpoint,
     [property: JsonPropertyName("revocation_endpoint_auth_methods_supported")] IReadOnlyList<string> RevocationEndpointAuthMethodsSupported,
     [property: JsonPropertyName("introspection_endpoint")] string IntrospectionEndpoint,
-    [property: JsonPropertyName("introspection_endpoint_auth_methods_supported")] IReadOnlyList<string> IntrospectionEndpointAuthMethodsSupported);
+    [property: JsonPropertyName("introspection_endpoint_auth_methods_supported")] IReadOnlyList<string> IntrospectionEndpointAuthMethodsSupported,
+    [property: JsonPropertyName("end_session_endpoint")] string EndSessionEndpoint,
+    [property: JsonPropertyName("backchannel_logout_supported")] bool BackChannelLogoutSupported,
+    [property: JsonPropertyName("backchannel_logout_session_supported")] bool BackChannelLogoutSessionSupported);
 
 internal sealed record JsonWebKey(
     [property: JsonPropertyName("kty")] string KeyType,
@@ -86,7 +89,11 @@ internal static class DiscoveryEndpoints
             issuer.Endpoint(RevocationEndpoint.Path),
             [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost, ClientAuthenticator.None],
             issuer.Endpoint(IntrospectionEndpoint.Path),
-            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost]));
+            [ClientAuthenticator.ClientSecretBasic, ClientAuthenticator.ClientSecretPost],
+            // OIDC RP-Initiated Logout 1.0 A2.1 and Back-Channel Logout 1.0 A2.1. Logout tokens always carry sid.
+            issuer.Endpoint(EndSessionEndpoint.Path),
+            true,
+            true));
     }
 
     /// <summary>RFC 7517 §5: every published key, including keys not yet active and recently retired keys.</summary>

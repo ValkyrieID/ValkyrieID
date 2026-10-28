@@ -74,6 +74,10 @@ internal sealed class RefreshTokenStore(ValkyrieDbContext db, TimeProvider timeP
     public Task<int> RevokeForClientAsync(string clientId, CancellationToken cancellationToken) =>
         RevokeAsync(db.RefreshTokens.Where(t => t.ClientId == clientId), cancellationToken);
 
+    /// <summary>Revokes the refresh tokens issued from a session (PROJECT.md §6: revoking a session revokes them).</summary>
+    public Task<int> RevokeForSessionAsync(string sessionId, CancellationToken cancellationToken) =>
+        RevokeAsync(db.RefreshTokens.Where(t => t.SessionId == sessionId), cancellationToken);
+
     /// <summary>Deletes families whose absolute lifetime has ended; they can no longer be used or reported.</summary>
     public Task<int> PurgeExpiredAsync(CancellationToken cancellationToken)
     {

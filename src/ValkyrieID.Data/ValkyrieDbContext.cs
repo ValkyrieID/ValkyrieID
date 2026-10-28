@@ -34,6 +34,10 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
+    public DbSet<UserSessionClient> UserSessionClients => Set<UserSessionClient>();
+
+    public DbSet<BackChannelLogoutDelivery> BackChannelLogoutDeliveries => Set<BackChannelLogoutDelivery>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

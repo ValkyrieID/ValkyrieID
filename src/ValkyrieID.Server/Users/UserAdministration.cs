@@ -5,6 +5,7 @@ using ValkyrieID.Core.Security;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Users;
@@ -31,6 +32,7 @@ internal sealed class UserAdministration(
     PasswordHasher hasher,
     PasswordValidator passwordValidator,
     RefreshTokenStore refreshTokens,
+    SessionService sessions,
     AuditRecorder audit,
     TimeProvider timeProvider)
 {
@@ -97,9 +99,10 @@ internal sealed class UserAdministration(
         user.AccessFailedCount = 0;
         user.LockoutEnd = null;
         Touch(user, now);
-        await RevokeSessionsAsync(user, now, cancellationToken);
+        await RevokeSessionsAsync(user, actor, "password_reset", cancellationToken);
         AddAudit("user.password_reset", user, actor);
         await db.SaveChangesAsync(cancellationToken);
+        sessions.WakeDeliveryWorker();
     }
 
     public async Task SetEnabledAsync(User user, bool enabled, AuditActor actor, CancellationToken cancellationToken)
@@ -114,11 +117,12 @@ internal sealed class UserAdministration(
         Touch(user, now);
         if (!enabled)
         {
-            await RevokeSessionsAsync(user, now, cancellationToken);
+            await RevokeSessionsAsync(user, actor, "user_disabled", cancellationToken);
         }
 
         AddAudit(enabled ? "user.enabled" : "user.disabled", user, actor);
         await db.SaveChangesAsync(cancellationToken);
+        sessions.WakeDeliveryWorker();
     }
 
     public async Task UnlockAsync(User user, AuditActor actor, CancellationToken cancellationToken)
@@ -248,16 +252,12 @@ internal sealed class UserAdministration(
     }
 
     /// <summary>
-    /// Ends the user's sessions and revokes their refresh tokens (PROJECT.md: refresh tokens are revoked on password
-    /// change and user disable).
+    /// Revokes the user's sessions, with back-channel logout, and all their refresh tokens (PROJECT.md: refresh
+    /// tokens are revoked on password change and user disable).
     /// </summary>
-    private async Task RevokeSessionsAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task RevokeSessionsAsync(User user, AuditActor actor, string reason, CancellationToken cancellationToken)
     {
-        foreach (var session in await db.UserSessions.Where(s => s.UserId == user.Id && s.RevokedAt == null).ToListAsync(cancellationToken))
-        {
-            session.RevokedAt = now;
-        }
-
+        await sessions.RevokeForUserAsync(user.Id, actor, reason, cancellationToken);
         await refreshTokens.RevokeForUserAsync(user.Id, cancellationToken);
     }
 

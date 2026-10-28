@@ -29,6 +29,8 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         "remove-post-logout-redirect-uri" => EditListAsync(args, "post_logout_redirect_uri", c => c.PostLogoutRedirectUris, RedirectUris.IsValid, add: false, cancellationToken),
         "add-cors-origin" => EditListAsync(args, "cors_origin", c => c.AllowedCorsOrigins, RedirectUris.IsValidOrigin, add: true, cancellationToken),
         "remove-cors-origin" => EditListAsync(args, "cors_origin", c => c.AllowedCorsOrigins, RedirectUris.IsValidOrigin, add: false, cancellationToken),
+        "set-backchannel-logout-uri" => SetBackChannelLogoutUriAsync(args, set: true, cancellationToken),
+        "clear-backchannel-logout-uri" => SetBackChannelLogoutUriAsync(args, set: false, cancellationToken),
         var other => throw new CliException($"Unknown client command '{other}'."),
     };
 
@@ -46,6 +48,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         var redirectUris = args.Many("redirect-uri").Distinct(StringComparer.Ordinal).ToList();
         var postLogoutRedirectUris = args.Many("post-logout-redirect-uri").Distinct(StringComparer.Ordinal).ToList();
         var corsOrigins = args.Many("cors-origin").Distinct(StringComparer.Ordinal).ToList();
+        var backChannelLogoutUri = args.Optional("backchannel-logout-uri");
         var isPublic = args.Flag("public");
         var noPkce = args.Flag("no-pkce");
         args.EnsureConsumed(3);
@@ -75,6 +78,11 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         EnsureValid(redirectUris, RedirectUris.IsValid, "redirect URI");
         EnsureValid(postLogoutRedirectUris, RedirectUris.IsValid, "post-logout redirect URI");
         EnsureValid(corsOrigins, RedirectUris.IsValidOrigin, "CORS origin");
+        var type = isPublic ? ClientType.Public : ClientType.Confidential;
+        if (backChannelLogoutUri is not null)
+        {
+            EnsureValidBackChannelLogoutUri(backChannelLogoutUri, type, grants);
+        }
         if (scopes.Any(s => !ProtocolSyntax.IsValidScopeToken(s)))
         {
             throw new CliException("Scopes must be non-empty and contain no spaces or quotes.");
@@ -87,11 +95,12 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         {
             ClientId = clientId,
             DisplayName = name,
-            Type = isPublic ? ClientType.Public : ClientType.Confidential,
+            Type = type,
             AllowedGrantTypes = grants,
             AllowedScopes = scopes,
             RedirectUris = redirectUris,
             PostLogoutRedirectUris = postLogoutRedirectUris,
+            BackChannelLogoutUri = backChannelLogoutUri,
             AllowedCorsOrigins = corsOrigins,
             RequirePkce = !noPkce,
             AccessTokenLifetime = lifetime is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
@@ -108,6 +117,8 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             ["scopes"] = scopes,
             ["grant_types"] = client.AllowedGrantTypes,
             ["redirect_uris"] = redirectUris,
+            ["post_logout_redirect_uris"] = postLogoutRedirectUris,
+            ["backchannel_logout_uri"] = backChannelLogoutUri,
             ["cors_origins"] = corsOrigins,
             ["require_pkce"] = client.PkceRequired,
             ["secret_id"] = secret?.Secret.Id,
@@ -190,6 +201,40 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         }
     }
 
+    private static void EnsureValidBackChannelLogoutUri(string uri, ClientType type, IReadOnlyList<string> grants)
+    {
+        // Only clients that sign users in have sessions to end.
+        if (!grants.Contains(GrantTypes.AuthorizationCode))
+        {
+            throw new CliException("A back-channel logout URI needs the authorization_code grant.");
+        }
+
+        if (!RedirectUris.IsValidBackChannelLogoutUri(uri, type))
+        {
+            throw new CliException(
+                $"Invalid back-channel logout URI '{uri}'. Use an absolute https URI without a fragment; http is only allowed on a loopback host for confidential clients.");
+        }
+    }
+
+    private async Task SetBackChannelLogoutUriAsync(CliArguments args, bool set, CancellationToken cancellationToken)
+    {
+        var clientId = args.Argument(2, "client-id");
+        var uri = set ? args.Argument(3, "uri") : null;
+        args.EnsureConsumed(set ? 4 : 3);
+
+        var client = await FindAsync(clientId, cancellationToken);
+        if (uri is not null)
+        {
+            EnsureValidBackChannelLogoutUri(uri, client.Type, client.AllowedGrantTypes);
+        }
+
+        client.BackChannelLogoutUri = uri;
+        _audit.Add(set ? "client.backchannel_logout_uri_set" : "client.backchannel_logout_uri_cleared", actor: AuditRecorder.CliActor, clientId: clientId,
+            details: new Dictionary<string, object?> { ["backchannel_logout_uri"] = uri });
+        await _db.SaveChangesAsync(cancellationToken);
+        await output.WriteLineAsync(set ? $"Set back-channel logout URI '{uri}'." : "Cleared the back-channel logout URI.");
+    }
+
     private async Task EditListAsync(
         CliArguments args,
         string kind,
@@ -265,6 +310,11 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             foreach (var uri in client.PostLogoutRedirectUris)
             {
                 await output.WriteLineAsync($"  post_logout_redirect_uri {uri}");
+            }
+
+            if (client.BackChannelLogoutUri is { } backChannelLogoutUri)
+            {
+                await output.WriteLineAsync($"  backchannel_logout_uri {backChannelLogoutUri}");
             }
 
             foreach (var origin in client.AllowedCorsOrigins)
