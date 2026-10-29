@@ -37,7 +37,9 @@ public abstract partial class ClientCompatibilityTests
         Assert.Equal(0, (await factory.RunCliAsync("resource", "create", "orders-api", "--scope", "orders.read")).ExitCode);
         var (exitCode, output, error) = await factory.RunCliAsync(
             "client", "create", "rp", "--grant", "authorization_code", "--redirect-uri", RelyingParty + "/signin-oidc",
-            "--scope", "openid", "--scope", "profile", "--scope", "email", "--scope", "orders.read");
+            "--scope", "openid", "--scope", "profile", "--scope", "email", "--scope", "orders.read",
+            // The ASP.NET Core handler only supports client_secret_post.
+            "--allow-secret-post");
         Assert.True(exitCode == 0, error);
         var secret = output.Split('\n').Select(l => l.Trim()).Single(l => l.StartsWith("client_secret: ", StringComparison.Ordinal))["client_secret: ".Length..];
 

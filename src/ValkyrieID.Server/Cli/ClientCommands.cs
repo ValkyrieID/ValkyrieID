@@ -31,6 +31,8 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         "remove-cors-origin" => EditListAsync(args, "cors_origin", c => c.AllowedCorsOrigins, RedirectUris.IsValidOrigin, add: false, cancellationToken),
         "set-backchannel-logout-uri" => SetBackChannelLogoutUriAsync(args, set: true, cancellationToken),
         "clear-backchannel-logout-uri" => SetBackChannelLogoutUriAsync(args, set: false, cancellationToken),
+        "enable-secret-post" => SetSecretPostAsync(args, true, cancellationToken),
+        "disable-secret-post" => SetSecretPostAsync(args, false, cancellationToken),
         var other => throw new CliException($"Unknown client command '{other}'."),
     };
 
@@ -51,6 +53,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         var backChannelLogoutUri = args.Optional("backchannel-logout-uri");
         var isPublic = args.Flag("public");
         var noPkce = args.Flag("no-pkce");
+        var allowSecretPost = args.Flag("allow-secret-post");
         args.EnsureConsumed(3);
 
         if (!ProtocolSyntax.IsValidClientId(clientId))
@@ -74,6 +77,10 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         }
 
         ValidateGrants(grants, redirectUris, isPublic, noPkce, expiresDays);
+        if (isPublic && allowSecretPost)
+        {
+            throw new CliException("Public clients have no secret, so --allow-secret-post doesn't apply.");
+        }
         ValidateRefreshTokenLifetimes(grants, refreshSliding, refreshAbsolute);
         EnsureValid(redirectUris, RedirectUris.IsValid, "redirect URI");
         EnsureValid(postLogoutRedirectUris, RedirectUris.IsValid, "post-logout redirect URI");
@@ -103,6 +110,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             BackChannelLogoutUri = backChannelLogoutUri,
             AllowedCorsOrigins = corsOrigins,
             RequirePkce = !noPkce,
+            AllowClientSecretPost = allowSecretPost,
             AccessTokenLifetime = lifetime is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
             IdTokenLifetime = idTokenLifetime is { } idSeconds ? TimeSpan.FromSeconds(idSeconds) : null,
             RefreshTokenSlidingLifetime = refreshSliding is { } slidingSeconds ? TimeSpan.FromSeconds(slidingSeconds) : null,
@@ -121,6 +129,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             ["backchannel_logout_uri"] = backChannelLogoutUri,
             ["cors_origins"] = corsOrigins,
             ["require_pkce"] = client.PkceRequired,
+            ["allow_client_secret_post"] = client.AllowClientSecretPost,
             ["secret_id"] = secret?.Secret.Id,
         });
         await _db.SaveChangesAsync(cancellationToken);
@@ -301,7 +310,7 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
         foreach (var client in clients)
         {
             await output.WriteLineAsync(
-                $"{client.ClientId}  {(client.Enabled ? "enabled" : "disabled")}  {client.Type}  grants: {string.Join(' ', client.AllowedGrantTypes)}  scopes: {string.Join(' ', client.AllowedScopes)}");
+                $"{client.ClientId}  {(client.Enabled ? "enabled" : "disabled")}  {client.Type}  grants: {string.Join(' ', client.AllowedGrantTypes)}  scopes: {string.Join(' ', client.AllowedScopes)}{(client.AllowClientSecretPost ? "  client_secret_post" : "")}");
             foreach (var uri in client.RedirectUris)
             {
                 await output.WriteLineAsync($"  redirect_uri {uri}");
@@ -369,6 +378,23 @@ internal sealed class ClientCommands(IServiceProvider services, TextWriter outpu
             details: new Dictionary<string, object?> { ["secret_id"] = secret.Id });
         await _db.SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Removed secret {secret.Id}.");
+    }
+
+    private async Task SetSecretPostAsync(CliArguments args, bool allow, CancellationToken cancellationToken)
+    {
+        var clientId = args.Argument(2, "client-id");
+        args.EnsureConsumed(3);
+
+        var client = await FindAsync(clientId, cancellationToken);
+        if (client.Type == ClientType.Public)
+        {
+            throw new CliException($"Client '{clientId}' is a public client and has no secret.");
+        }
+
+        client.AllowClientSecretPost = allow;
+        _audit.Add(allow ? "client.secret_post_enabled" : "client.secret_post_disabled", actor: AuditRecorder.CliActor, clientId: clientId);
+        await _db.SaveChangesAsync(cancellationToken);
+        await output.WriteLineAsync($"client_secret_post {(allow ? "enabled" : "disabled")} for '{clientId}'.");
     }
 
     private async Task SetEnabledAsync(CliArguments args, bool enabled, CancellationToken cancellationToken)

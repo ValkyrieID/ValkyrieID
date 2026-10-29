@@ -541,12 +541,14 @@ public abstract class RefreshTokenTests
 
         AssertInactive(await ReadJsonAsync(await client.SendAsync(IntrospectionRequest(accessToken, Basic("billing-api", billing)), CancellationToken)));
 
-        // Client secret post works too.
-        var post = new HttpRequestMessage(HttpMethod.Post, "/connect/introspect")
+        // Client secret post is refused until enabled for the resource.
+        HttpRequestMessage PostRequest() => new(HttpMethod.Post, "/connect/introspect")
         {
             Content = Form(("token", accessToken), ("client_id", "orders-api"), ("client_secret", orders)),
         };
-        Assert.True((await ReadJsonAsync(await client.SendAsync(post, CancellationToken))).GetProperty("active").GetBoolean());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(PostRequest(), CancellationToken)).StatusCode);
+        await RunCliOkAsync(factory, "resource", "enable-secret-post", "orders-api");
+        Assert.True((await ReadJsonAsync(await client.SendAsync(PostRequest(), CancellationToken))).GetProperty("active").GetBoolean());
 
         // Within the clock skew, then expired.
         clock.Advance(TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(29));

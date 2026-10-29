@@ -115,6 +115,9 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.Property<TimeSpan?>("AccessTokenLifetime")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("INTEGER");
+
                     b.PrimitiveCollection<string>("AllowedCorsOrigins")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -211,6 +214,9 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("CreatedAt")
                         .HasColumnType("INTEGER");

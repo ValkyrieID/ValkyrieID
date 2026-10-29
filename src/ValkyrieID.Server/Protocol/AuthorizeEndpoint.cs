@@ -241,6 +241,14 @@ internal sealed class AuthorizeEndpoint(
             return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "prompt=none can't be combined with other values.");
         }
 
+        // OIDC Core A3.1.2.1: with prompt=consent the OP "SHOULD prompt the End-User for consent ... If it cannot
+        // obtain consent, it MUST return an error, typically consent_required". There is no consent screen, so the
+        // value isn't advertised in discovery and is always refused.
+        if (prompt.Contains("consent"))
+        {
+            return AuthorizationRequest.Fail(AuthorizeErrors.ConsentRequired, "Consent screens are not supported.");
+        }
+
         long? maxAge = null;
         if (Get(parameters, "max_age") is { } maxAgeValue)
         {
@@ -368,6 +376,7 @@ internal static class AuthorizeErrors
     public const string UnsupportedResponseType = "unsupported_response_type";
     public const string InvalidScope = "invalid_scope";
     public const string LoginRequired = "login_required";
+    public const string ConsentRequired = "consent_required";
     public const string RequestNotSupported = "request_not_supported";
     public const string RequestUriNotSupported = "request_uri_not_supported";
     public const string RegistrationNotSupported = "registration_not_supported";

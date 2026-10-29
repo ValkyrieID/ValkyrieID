@@ -84,7 +84,7 @@ internal static class CliApp
                         [--backchannel-logout-uri <uri>]
                         [--access-token-lifetime <seconds>] [--id-token-lifetime <seconds>]
                         [--refresh-token-lifetime <seconds>] [--refresh-token-absolute-lifetime <seconds>]
-                        [--secret-expires-days <days>]
+                        [--secret-expires-days <days>] [--allow-secret-post]
           client list
           client add-secret <client-id> [--description <text>] [--expires-days <days>]
           client remove-secret <client-id> <secret-id>
@@ -96,6 +96,7 @@ internal static class CliApp
           client add-cors-origin|remove-cors-origin <client-id> <origin>
           client set-backchannel-logout-uri <client-id> <uri>
           client clear-backchannel-logout-uri <client-id>
+          client enable-secret-post|disable-secret-post <client-id>
 
         API resources:
           resource create <name> --scope <scope>... [--name <display name>]
@@ -106,6 +107,7 @@ internal static class CliApp
           resource enable <name>
           resource disable <name>
           resource delete <name>
+          resource enable-secret-post|disable-secret-post <name>
 
         Configuration is read from appsettings.json and environment variables, as for the server.
         """;

@@ -86,6 +86,13 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             return await RejectAsync(context, clientId, reason, cancellationToken);
         }
 
+        // RFC 6749 §2.3.1: credentials in the request body are NOT RECOMMENDED and SHOULD be limited to clients that
+        // can't use HTTP Basic, so client_secret_post must be enabled per client.
+        if (context.Request.Headers.Authorization.Count == 0 && client is { AllowClientSecretPost: false })
+        {
+            return await RejectAsync(context, clientId, "client_secret_post_not_allowed", cancellationToken);
+        }
+
         return new ClientAuthenticationResult(client, null);
     }
 

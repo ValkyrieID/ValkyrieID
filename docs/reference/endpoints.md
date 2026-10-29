@@ -52,7 +52,7 @@ Returns the issuer and endpoint URLs, plus:
 | `introspection_endpoint_auth_methods_supported` | `client_secret_basic`, `client_secret_post` |
 | `code_challenge_methods_supported` | `S256` |
 | `id_token_signing_alg_values_supported` | `RS256` |
-| `prompt_values_supported` | `none`, `login`, `consent`, `select_account` |
+| `prompt_values_supported` | `none`, `login`, `select_account` |
 | `authorization_response_iss_parameter_supported` | `true` |
 | `request_parameter_supported`, `request_uri_parameter_supported`, `claims_parameter_supported` | `false` |
 | `end_session_endpoint` | `/connect/endsession` |
@@ -76,7 +76,7 @@ Starts a sign-in with the authorization code flow. Parameters come from the quer
 | `state` | recommended | Returned unchanged. |
 | `nonce` | recommended | Copied into the ID token. |
 | `response_mode` | no | `query` (default) or `form_post`. |
-| `prompt` | no | `none`: never show the login page, return `login_required` instead. `login` or `select_account`: always ask the user to sign in again. `consent`: accepted; there are no consent screens. `none` can't be combined with other values. |
+| `prompt` | no | `none`: never show the login page, return `login_required` instead. `login` or `select_account`: always ask the user to sign in again. `consent`: refused with `consent_required`, because there are no consent screens. `none` can't be combined with other values. |
 | `max_age` | no | Seconds since the last sign-in after which the user must sign in again. |
 | `login_hint` | no | Pre-fills the username on the login page. |
 | `display`, `ui_locales`, `claims_locales`, `acr_values`, `id_token_hint` | no | Accepted and ignored. |
@@ -103,6 +103,7 @@ If `client_id` or `redirect_uri` is missing, unknown, disabled, or doesn't match
 | `unauthorized_client` | The client may not use `authorization_code` |
 | `invalid_scope` | `scope` is missing or malformed; a scope isn't allowed for the client; an identity scope without `openid`; or, in plain OAuth requests, an unknown scope |
 | `login_required` | `prompt=none` and the user must sign in |
+| `consent_required` | `prompt=consent`; ValkyrieID has no consent screens |
 | `request_not_supported`, `request_uri_not_supported`, `registration_not_supported` | Request objects and registration aren't supported |
 
 ## Token endpoint
@@ -114,7 +115,7 @@ Requests must be `POST` with `application/x-www-form-urlencoded` parameters. Par
 Confidential clients authenticate with one of:
 
 - **`client_secret_basic`**: HTTP Basic, with the client id and secret each form-urlencoded first (RFC 6749 §2.3.1).
-- **`client_secret_post`**: `client_id` and `client_secret` form parameters.
+- **`client_secret_post`**: `client_id` and `client_secret` form parameters. Off by default, because RFC 6749 §2.3.1 doesn't recommend it; enable it per client with `--allow-secret-post` or `client enable-secret-post`. Otherwise the request fails with `invalid_client`.
 
 Using both in the same request is rejected.
 
@@ -152,7 +153,7 @@ The access token is a JWT following RFC 9068:
 | `scope` | The granted scopes |
 | `iat`, `nbf`, `exp`, `jti` | Issue time, not-before, expiry, unique id |
 
-Access tokens can't be revoked before they expire; keep their lifetime short.
+Access tokens can't be revoked before they expire; keep their lifetime short. Use `--access-token-lifetime` for a shorter window per client.
 
 ### `authorization_code` grant
 
@@ -295,11 +296,13 @@ curl -u web:$SECRET https://id.example.com/connect/revocation \
 | 400 `invalid_request` | Wrong content type, repeated parameters, or no `token` |
 | 401 `invalid_client` | Client authentication failed |
 
+Revoking a refresh token doesn't invalidate access tokens already issued from it; they stay valid until they expire (30 minutes by default). This is a deliberate deviation from RFC 7009 §2.1, because access tokens are self-contained JWTs that resource servers validate without contacting ValkyrieID. If a client needs a shorter window, give it a shorter lifetime with `--access-token-lifetime` (see [CLI](/reference/cli#clients)).
+
 `token_type_hint` is only a hint; both token types are checked.
 
 ## Introspection endpoint
 
-Reports whether a token is active (RFC 7662). Send a form-encoded `POST` with `token` and optionally `token_type_hint`. The caller authenticates with `client_secret_basic` or `client_secret_post` as either:
+Reports whether a token is active (RFC 7662). Send a form-encoded `POST` with `token` and optionally `token_type_hint`. The caller authenticates with `client_secret_basic`, or with `client_secret_post` if that's enabled for it (`client enable-secret-post` or `resource enable-secret-post`), as either:
 
 - a **confidential client**, or
 - an **API resource**, with a secret created by `resource add-secret` (see [CLI](/reference/cli#api-resources)).
@@ -354,8 +357,7 @@ What happens:
 
 | Situation | Result |
 |---|---|
-| `id_token_hint` belongs to the user's current session | The user is signed out right away. |
-| No hint, or the hint is for another session or user | `/account/logout` asks the user to confirm. If they decline, they stay signed in. |
+| The user is signed in | `/account/logout` asks the user to confirm, also when `id_token_hint` belongs to the current session (RP-Initiated Logout §2). If they decline, they stay signed in. |
 | The user isn't signed in | Nothing to sign out; this is not an error. |
 
 Before redirecting, ValkyrieID sends [back-channel logout](#back-channel-logout) notifications to the session's clients and waits for their responses, up to `BackChannelLogout:RequestTimeout` (5 seconds). Then the browser goes to `post_logout_redirect_uri` with `state`, keeping any query the URI already has:

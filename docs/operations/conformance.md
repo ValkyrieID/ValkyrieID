@@ -30,7 +30,7 @@ The script:
 - creates the confidential clients `conformance-logout-1` and `conformance-logout-2` for the logout plans, which also have the post-logout redirect URI `<suite>/test/a/<alias>/post_logout_redirect` and the back-channel logout URI `<suite>/test/a/<alias>/backchannel_logout`;
 - writes the plan configurations to `conformance/out/`: `basic-op.json`, `config-op.json`, `rp-initiated-logout.json`, and `backchannel-logout.json`.
 
-The clients are created with `--no-pkce` because the plans don't send PKCE parameters. `conformance/out/` contains client secrets and is ignored by git. Delete it, and the clients (`client delete conformance-1`), when you're done.
+The clients are created with `--no-pkce` because the plans don't send PKCE parameters, and with `--allow-secret-post` so the plans can be repeated with `client_secret_post`. `conformance/out/` contains client secrets and is ignored by git. Delete it, and the clients (`client delete conformance-1`), when you're done.
 
 ## 2. Run the plans
 
@@ -46,7 +46,7 @@ The clients are created with `--no-pkce` because the plans don't send PKCE param
 6. Create a plan **OpenID Connect Core: RP-Initiated Logout Certification Profile Authorization server test** with the same options as Basic OP and `conformance/out/rp-initiated-logout.json`.
 7. Create a plan **OpenID Connect Core: Back-Channel RP-Initiated Logout Certification Profile Authorization server test** with `conformance/out/backchannel-logout.json`. The suite must be reachable from ValkyrieID, because ValkyrieID posts logout tokens to the suite's back-channel logout URI.
 
-When a logout test shows the ValkyrieID sign-out confirmation page, confirm it; tests without a valid `id_token_hint` expect this.
+When a logout test shows the ValkyrieID sign-out confirmation page, confirm it. ValkyrieID always asks a signed-in user before signing them out, even with a valid `id_token_hint`.
 
 ## Running the suite locally
 

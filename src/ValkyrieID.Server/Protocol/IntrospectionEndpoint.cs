@@ -153,7 +153,8 @@ internal sealed class IntrospectionEndpoint(
         string? secret;
         var bodyId = form.TryGetValue("client_id", out var bodyIdValue) ? bodyIdValue.ToString() : null;
         var bodySecret = form.TryGetValue("client_secret", out var bodySecretValue) ? bodySecretValue.ToString() : null;
-        if (context.Request.Headers.Authorization.Count > 0)
+        var usesBasic = context.Request.Headers.Authorization.Count > 0;
+        if (usesBasic)
         {
             if (bodySecret is not null
                 || !ClientAuthenticator.TryParseBasic(context.Request.Headers.Authorization.ToString(), out id, out secret)
@@ -184,17 +185,18 @@ internal sealed class IntrospectionEndpoint(
             secret,
             resource?.Secrets.Where(s => s.IsActive(now)).Select(s => s.Hash) ?? []);
 
-        if (clientMatch)
+        // RFC 6749 §2.3.1: secrets in the request body are only accepted from callers allowed to use them.
+        if (clientMatch && (usesBasic || client is { AllowClientSecretPost: true }))
         {
             return new IntrospectionCaller(id, null);
         }
 
-        if (resourceMatch)
+        if (resourceMatch && (usesBasic || resource is { AllowClientSecretPost: true }))
         {
             return new IntrospectionCaller(null, id);
         }
 
-        return await RejectAsync(context, id, "invalid_credentials", cancellationToken);
+        return await RejectAsync(context, id, clientMatch || resourceMatch ? "client_secret_post_not_allowed" : "invalid_credentials", cancellationToken);
     }
 
     private async Task<IntrospectionCaller?> RejectAsync(HttpContext context, string? id, string reason, CancellationToken cancellationToken)

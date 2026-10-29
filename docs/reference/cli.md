@@ -76,6 +76,7 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `resource remove-secret <name> <secret-id>` | Remove a secret. |
 | `resource enable <name>` / `resource disable <name>` | Tokens can't be issued for scopes of a disabled resource, and it can't call introspection. |
 | `resource delete <name>` | Delete a resource with its scopes and secrets. |
+| `resource enable-secret-post <name>` / `resource disable-secret-post <name>` | Allow or refuse sending the resource secret as form parameters when calling the introspection endpoint. Off by default. |
 
 ## Clients
 
@@ -90,6 +91,7 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `client add-cors-origin <client-id> <origin>` / `client remove-cors-origin <client-id> <origin>` | Manage browser origins allowed to call the token, userinfo, and revocation endpoints. |
 | `client set-backchannel-logout-uri <client-id> <uri>` / `client clear-backchannel-logout-uri <client-id>` | Set or remove the [back-channel logout](/reference/endpoints#back-channel-logout) URI. |
 | `client enable <client-id>` / `client disable <client-id>` | Disabled clients can't authenticate or start sign-ins. Disabling also revokes the client's refresh tokens. |
+| `client enable-secret-post <client-id>` / `client disable-secret-post <client-id>` | Allow or refuse `client_secret_post` for a confidential client. |
 | `client delete <client-id>` | Delete a client with its secrets and refresh tokens. |
 
 `client create` options:
@@ -103,7 +105,8 @@ An API resource is an API that accepts access tokens. Its name is the token audi
 | `--backchannel-logout-uri <uri>` | Where [logout tokens](/reference/endpoints#back-channel-logout) are posted when a session ends. Needs `authorization_code`. Absolute `https` without a fragment; `http` only on a loopback host for confidential clients. |
 | `--cors-origin <origin>` | Allowed browser origin, repeatable, e.g. `https://app.example.com`. |
 | `--public` | Create a public client (SPA, mobile, CLI): no secret, PKCE always required, no `client_credentials`. |
-| `--no-pkce` | Let a confidential client use `authorization_code` without PKCE. PKCE is required by default. |
+| `--no-pkce` | Let a confidential client use `authorization_code` without PKCE. PKCE is required by default, and is recommended for confidential clients too (RFC 9700 §2.1.1). |
+| `--allow-secret-post` | Let a confidential client send its secret as form parameters (`client_secret_post`). Off by default: RFC 6749 §2.3.1 recommends HTTP Basic (`client_secret_basic`). |
 | `--name <display name>` | Display name. |
 | `--access-token-lifetime <seconds>` / `--id-token-lifetime <seconds>` | Override the global token lifetimes. |
 | `--refresh-token-lifetime <seconds>` / `--refresh-token-absolute-lifetime <seconds>` | Override the global sliding and absolute refresh token lifetimes. Only with the `refresh_token` grant. |

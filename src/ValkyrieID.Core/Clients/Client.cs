@@ -42,6 +42,12 @@ public sealed class Client
     /// <summary>Whether authorization requests must use PKCE. Always enforced for public clients.</summary>
     public bool RequirePkce { get; set; } = true;
 
+    /// <summary>
+    /// Whether the client may send its secret in the request body (<c>client_secret_post</c>). RFC 6749 §2.3.1: this
+    /// is NOT RECOMMENDED and SHOULD be limited to clients that can't use HTTP Basic, so it's off unless enabled.
+    /// </summary>
+    public bool AllowClientSecretPost { get; set; }
+
     /// <summary>Overrides the global access token lifetime for this client.</summary>
     public TimeSpan? AccessTokenLifetime { get; set; }
 

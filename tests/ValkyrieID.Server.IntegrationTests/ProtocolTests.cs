@@ -129,16 +129,44 @@ public abstract class ProtocolTests
     }
 
     [Fact]
-    public async Task Client_credentials_with_client_secret_post_succeeds()
+    public async Task Client_credentials_with_client_secret_post_succeeds_when_enabled()
     {
         await using var factory = CreateFactory();
         await CreateResourceAsync(factory, "orders-api", "orders.read");
-        var secret = await CreateClientAsync(factory, "billing", "orders.read");
+        var secret = await CreateClientAsync(factory, "billing", ["orders.read"], "--allow-secret-post");
 
         var response = await factory.CreateClient().SendAsync(
             TokenRequest(Form(("grant_type", "client_credentials"), ("client_id", "billing"), ("client_secret", secret))), CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Client_secret_post_is_refused_unless_enabled()
+    {
+        await using var factory = CreateFactory();
+        await CreateResourceAsync(factory, "orders-api", "orders.read");
+        var secret = await CreateClientAsync(factory, "billing", "orders.read");
+        var client = factory.CreateClient();
+        HttpRequestMessage PostRequest() =>
+            TokenRequest(Form(("grant_type", "client_credentials"), ("client_id", "billing"), ("client_secret", secret)));
+
+        // RFC 6749 §2.3.1: client_secret_post is NOT RECOMMENDED, so it's off by default.
+        var refused = await client.SendAsync(PostRequest(), CancellationToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        Assert.Equal("invalid_client", (await ReadJsonAsync(refused)).GetProperty("error").GetString());
+
+        Assert.Equal(0, (await factory.RunCliAsync("client", "enable-secret-post", "billing")).ExitCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(PostRequest(), CancellationToken)).StatusCode);
+
+        Assert.Equal(0, (await factory.RunCliAsync("client", "disable-secret-post", "billing")).ExitCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(PostRequest(), CancellationToken)).StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
+        Assert.Equal(2, await db.AuditLog.CountAsync(e => e.EventType == "client.authentication_failed" && e.Details!.Contains("client_secret_post_not_allowed"), CancellationToken));
+        Assert.True(await db.AuditLog.AnyAsync(e => e.EventType == "client.secret_post_enabled", CancellationToken));
+        Assert.True(await db.AuditLog.AnyAsync(e => e.EventType == "client.secret_post_disabled", CancellationToken));
     }
 
     [Fact]

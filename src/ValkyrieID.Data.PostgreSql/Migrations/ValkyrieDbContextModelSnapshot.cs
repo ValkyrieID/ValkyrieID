@@ -123,6 +123,9 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.Property<TimeSpan?>("AccessTokenLifetime")
                         .HasColumnType("interval");
 
+                    b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("boolean");
+
                     b.PrimitiveCollection<List<string>>("AllowedCorsOrigins")
                         .IsRequired()
                         .HasColumnType("text[]");
@@ -219,6 +222,9 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

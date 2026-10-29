@@ -79,7 +79,7 @@ internal static class DiscoveryEndpoints
             ["public"],
             ["RS256"],
             ClaimsSupported,
-            ["none", "login", "consent", "select_account"],
+            ["none", "login", "select_account"],
             // Request objects and the claims parameter are not supported. request_uri_parameter_supported
             // defaults to true (OIDC Discovery A3), so it is stated explicitly.
             false,

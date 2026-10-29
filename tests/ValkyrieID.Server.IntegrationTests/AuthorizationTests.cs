@@ -373,6 +373,24 @@ public abstract class AuthorizationTests
     }
 
     [Theory]
+    [InlineData("consent")]
+    [InlineData("login consent")]
+    public async Task Prompt_consent_is_refused_because_there_is_no_consent_screen(string prompt)
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        await CreatePublicClientAsync(factory, "spa");
+        var browser = factory.CreateBrowser();
+        await Forms.LoginAsync(browser, "alice", Password);
+        var (_, challenge) = NewPkce();
+
+        var location = await AuthorizeAsync(browser, Params("spa", "openid", challenge) with { Prompt = prompt });
+
+        // OIDC Core §3.1.2.1: if the OP can't obtain consent it MUST return an error, typically consent_required.
+        AssertRedirectError(location, "consent_required");
+    }
+
+    [Theory]
     [InlineData("login", null)]
     [InlineData("select_account", null)]
     [InlineData(null, "0")]

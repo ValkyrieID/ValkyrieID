@@ -23,6 +23,8 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
         "enable" => SetEnabledAsync(args, true, cancellationToken),
         "disable" => SetEnabledAsync(args, false, cancellationToken),
         "delete" => DeleteAsync(args, cancellationToken),
+        "enable-secret-post" => SetSecretPostAsync(args, true, cancellationToken),
+        "disable-secret-post" => SetSecretPostAsync(args, false, cancellationToken),
         var other => throw new CliException($"Unknown resource command '{other}'."),
     };
 
@@ -76,7 +78,7 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
         foreach (var resource in resources)
         {
             await output.WriteLineAsync(
-                $"{resource.Name}  {(resource.Enabled ? "enabled" : "disabled")}  scopes: {string.Join(' ', resource.Scopes.Select(s => s.Name).Order(StringComparer.Ordinal))}");
+                $"{resource.Name}  {(resource.Enabled ? "enabled" : "disabled")}  scopes: {string.Join(' ', resource.Scopes.Select(s => s.Name).Order(StringComparer.Ordinal))}{(resource.AllowClientSecretPost ? "  client_secret_post" : "")}");
             foreach (var secret in resource.Secrets.OrderBy(s => s.CreatedAt))
             {
                 await output.WriteLineAsync(
@@ -153,6 +155,19 @@ internal sealed class ResourceCommands(IServiceProvider services, TextWriter out
             details: new Dictionary<string, object?> { ["name"] = name, ["scope"] = scope });
         await _db.SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Scope '{scope}' added to '{name}'.");
+    }
+
+    private async Task SetSecretPostAsync(CliArguments args, bool allow, CancellationToken cancellationToken)
+    {
+        var name = args.Argument(2, "name");
+        args.EnsureConsumed(3);
+
+        var resource = await FindAsync(name, cancellationToken);
+        resource.AllowClientSecretPost = allow;
+        _audit.Add(allow ? "api_resource.secret_post_enabled" : "api_resource.secret_post_disabled", actor: AuditRecorder.CliActor,
+            details: new Dictionary<string, object?> { ["name"] = name });
+        await _db.SaveChangesAsync(cancellationToken);
+        await output.WriteLineAsync($"client_secret_post {(allow ? "enabled" : "disabled")} for '{name}'.");
     }
 
     private async Task SetEnabledAsync(CliArguments args, bool enabled, CancellationToken cancellationToken)

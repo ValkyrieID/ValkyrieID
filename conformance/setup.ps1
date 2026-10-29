@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Creating the test user failed.' }
 
 function New-ConformanceClient([string]$clientId, [string[]]$extra = @()) {
     $output = dotnet run --project $project --no-launch-profile -- client create $clientId --grant authorization_code --grant refresh_token --redirect-uri $callback `
-        --scope openid --scope profile --scope email --scope roles --scope groups --scope offline_access --no-pkce @extra
+        --scope openid --scope profile --scope email --scope roles --scope groups --scope offline_access --no-pkce --allow-secret-post @extra
     if ($LASTEXITCODE -ne 0) { throw "Creating client $clientId failed." }
     ($output | Where-Object { $_ -like 'client_secret: *' }) -replace '^client_secret: ', ''
 }

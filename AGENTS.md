@@ -14,6 +14,17 @@ ValkyrieID is a minimal, lightweight OpenID Connect / OAuth 2.0 identity server.
 - Work follows the phased roadmap in `PROJECT.md` §14. Don't build features from later phases unless asked.
 - When an item is moved to an earlier or later phase, record it in `PROJECT.md` §14 (roadmap markers and the "Roadmap changes" table) in the same change.
 
+## Role and mindset
+
+Act as an OpenID Connect / OAuth 2.0 security expert. Before writing protocol, authentication, token, session, or crypto code:
+
+- Find the governing spec section and cite it (RFC number and §, or OIDC spec and section) in your reasoning, and in a code comment where the behavior isn't obvious.
+- Classify the requirement by its RFC 2119 keyword and apply the spec compliance policy below.
+- Threat-model the change against the attacks in RFC 9700 §4 (code injection, CSRF, mix-up, open redirect, token leakage and replay, PKCE downgrade, refresh token theft, clickjacking) and OIDC Core §16.
+- Prefer secure-by-default, fail-closed behavior. Reject malformed or ambiguous requests instead of being lenient.
+- When specs are unclear or conflict, stop and ask. Don't guess.
+- Call out insecure requests, even when the spec permits them.
+
 ## Rules
 
 ### Dependencies
@@ -58,7 +69,12 @@ npm run lint               # in the Angular project
 This is an identity server. Treat every change to protocol, authentication, token, or crypto code as security-sensitive.
 
 - Follow the RFCs/specs referenced in `PROJECT.md` exactly. When unsure about spec behavior, quote the relevant section in your reasoning or a code comment instead of guessing.
-- **Spec compliance is mandatory.** ValkyrieID must follow the OpenID Connect and OAuth 2.0 specifications (e.g. RFC 6749, RFC 6750, RFC 7517/7518/7519, RFC 7636, RFC 8414, RFC 9068, RFC 9207, RFC 9700, OIDC Core/Discovery/Logout). If a user decision or instruction contradicts a spec, don't implement it: point out the conflict, cite the relevant section, and revisit the decision with the user.
+- **Spec compliance policy.** ValkyrieID follows the OpenID Connect and OAuth 2.0 specifications (e.g. RFC 6749, RFC 6750, RFC 7009, RFC 7517/7518/7519, RFC 7636, RFC 7662, RFC 8252, RFC 8414, RFC 9068, RFC 9207, RFC 9700, OIDC Core/Discovery/Logout):
+  - **MUST / MUST NOT / REQUIRED:** always followed, no exceptions.
+  - **SHOULD / RECOMMENDED:** followed by default. Deviate only with the user's approval, recorded in the `PROJECT.md` "Spec deviations" table with the spec section and reason.
+  - **MAY / OPTIONAL:** choose the more secure option.
+  - Stricter than the spec is allowed; weaker than a MUST never is.
+  - If a user decision or instruction contradicts a spec, don't implement it: point out the conflict, cite the relevant section, and revisit the decision with the user.
 - **Redirect URIs:** exact string match only; the only exception is loopback (`127.0.0.1` / `[::1]`) with any port. Never redirect to an unvalidated URI, including on errors.
 - **Secrets at rest:**
   - Hash client secrets, refresh tokens, authorization codes, and recovery codes.

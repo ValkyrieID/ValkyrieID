@@ -27,7 +27,7 @@ create_client() {
   local client_id="$1"
   shift
   "${CLI[@]}" client create "$client_id" --grant authorization_code --grant refresh_token --redirect-uri "$CALLBACK" \
-    --scope openid --scope profile --scope email --scope roles --scope groups --scope offline_access --no-pkce "$@" \
+    --scope openid --scope profile --scope email --scope roles --scope groups --scope offline_access --no-pkce --allow-secret-post "$@" \
     | sed -n 's/^client_secret: //p'
 }
 

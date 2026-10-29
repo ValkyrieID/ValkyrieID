@@ -9,8 +9,11 @@ Register a confidential client:
 ```sh
 valkyrieid client create webapp --grant authorization_code \
   --redirect-uri https://app.example.com/signin-oidc \
-  --scope openid --scope profile --scope email
+  --scope openid --scope profile --scope email \
+  --allow-secret-post
 ```
+
+The ASP.NET Core handler sends the client secret in the request body (`client_secret_post`) and can't use HTTP Basic, so the client needs `--allow-secret-post`. ValkyrieID refuses `client_secret_post` for other clients, because RFC 6749 §2.3.1 recommends HTTP Basic.
 
 Configure the app with the printed secret:
 
@@ -44,7 +47,8 @@ To call APIs after the access token expires, allow the client refresh tokens and
 ```sh
 valkyrieid client create webapp --grant authorization_code --grant refresh_token \
   --redirect-uri https://app.example.com/signin-oidc \
-  --scope openid --scope profile --scope email --scope offline_access
+  --scope openid --scope profile --scope email --scope offline_access \
+  --allow-secret-post
 ```
 
 ```csharp
@@ -71,7 +75,7 @@ app.MapPost("/logout", () => Results.SignOut(
     [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]));
 ```
 
-The handler sends the user to the [end session endpoint](/reference/endpoints#end-session-endpoint). With `options.SaveTokens = true` it includes the ID token as `id_token_hint`, so ValkyrieID signs the user out without asking.
+The handler sends the user to the [end session endpoint](/reference/endpoints#end-session-endpoint). With `options.SaveTokens = true` it includes the ID token as `id_token_hint`, which lets ValkyrieID send the user back to your app afterwards. ValkyrieID always asks the user to confirm the sign-out.
 
 ASP.NET Core has no built-in back-channel logout receiver. The endpoint at the back-channel logout URI must validate the `logout_token` (signature, `iss`, `aud`, `exp`, the `events` claim, no `nonce`) and end the app's sessions for its `sid`, for example by keeping cookie sessions in a server-side `ITicketStore`. It should respond `200` even if the session is already gone. See [Back-channel logout](/reference/endpoints#back-channel-logout).
 

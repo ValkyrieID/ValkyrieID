@@ -11,6 +11,12 @@ public sealed class ApiResource
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// Whether the resource may send its secret in the request body when calling the introspection endpoint. Off
+    /// unless enabled, like <c>client_secret_post</c> for clients (RFC 6749 §2.3.1).
+    /// </summary>
+    public bool AllowClientSecretPost { get; set; }
+
     public required DateTimeOffset CreatedAt { get; init; }
 
     public List<ApiScope> Scopes { get; init; } = [];

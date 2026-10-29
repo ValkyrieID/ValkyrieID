@@ -52,7 +52,7 @@ public abstract class LogoutTests
     // RP-initiated logout
 
     [Fact]
-    public async Task A_hint_for_the_current_session_signs_out_notifies_clients_then_redirects()
+    public async Task A_hint_for_the_current_session_still_asks_then_notifies_clients_and_redirects()
     {
         var receiver = new BackChannelReceiver();
         await using var factory = CreateFactory(receiver: receiver);
@@ -66,12 +66,17 @@ public abstract class LogoutTests
         await SignInToClientAsync(browser, "other", other);
         await SignInToClientAsync(browser, "silent", silent);
 
-        var response = await browser.GetAsync(EndSessionUrl(("id_token_hint", idToken), ("post_logout_redirect_uri", PostLogoutUri), ("state", "s t&1")), CancellationToken);
+        var page = AssertLogoutPage(await browser.GetAsync(EndSessionUrl(("id_token_hint", idToken), ("post_logout_redirect_uri", PostLogoutUri), ("state", "s t&1")), CancellationToken));
+
+        // RP-Initiated Logout §2: the OP SHOULD ask the user, even with a valid hint for the current session.
+        Assert.True(await SessionActiveAsync(factory));
+        Assert.Empty(receiver.Requests);
+        var response = await Forms.PostAsync(browser, page, []);
 
         // RP-Initiated Logout §3: the redirect happens after the clients were notified.
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal($"{PostLogoutUri}?state=s%20t%261", response.Headers.Location!.OriginalString);
-        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
         var requests = receiver.Requests.OrderBy(r => r.Uri.AbsoluteUri, StringComparer.Ordinal).ToList();
         Assert.Equal([BackChannelUri, OtherBackChannelUri], requests.Select(r => r.Uri.AbsoluteUri));
         Assert.All(requests, r =>
@@ -153,7 +158,8 @@ public abstract class LogoutTests
         var hint = await SignInToClientAsync(browser, "web", secret);
 
         clock.Advance(TimeSpan.FromHours(1));
-        var response = await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken);
+        var page = AssertLogoutPage(await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken));
+        var response = await Forms.PostAsync(browser, page, []);
 
         Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
         Assert.False(await SessionActiveAsync(factory));
@@ -297,7 +303,8 @@ public abstract class LogoutTests
         var (browser, secret) = await SignedInWithBackChannelClientAsync(factory);
         var hint = await SignInToClientAsync(browser, "web", secret);
 
-        var response = await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken);
+        var page = AssertLogoutPage(await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken));
+        var response = await Forms.PostAsync(browser, page, []);
 
         // The browser isn't held up by a failing client.
         Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
@@ -391,9 +398,10 @@ public abstract class LogoutTests
         await using var factory = CreateFactory(settings: new() { ["BackChannelLogout:RequestTimeout"] = "00:00:01" }, receiver: receiver, disableWorker: true);
         var (browser, secret) = await SignedInWithBackChannelClientAsync(factory);
         var hint = await SignInToClientAsync(browser, "web", secret);
+        var page = AssertLogoutPage(await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken));
         var started = DateTimeOffset.UtcNow;
 
-        var response = await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken);
+        var response = await Forms.PostAsync(browser, page, []);
 
         Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
         Assert.True(DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(10));
