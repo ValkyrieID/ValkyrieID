@@ -20,6 +20,9 @@ public sealed class Client
     /// <summary>Disabled clients can't authenticate or obtain tokens.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Created and maintained by the server (the admin UI client); read-only for administrators.</summary>
+    public bool BuiltIn { get; set; }
+
     public List<string> AllowedGrantTypes { get; set; } = [];
 
     public List<string> AllowedScopes { get; set; } = [];

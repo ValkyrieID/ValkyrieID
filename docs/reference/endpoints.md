@@ -15,6 +15,8 @@ All URLs are relative to the configured [issuer](/reference/configuration#issuer
 
 Discovery only advertises what is implemented. Front-channel logout and OpenID Connect Session Management (`check_session_iframe`) are not supported; clients are notified of logouts by [back-channel logout](#back-channel-logout).
 
+The management API under `/api/admin` is described in the [Admin API reference](/reference/admin-api).
+
 ## Pages
 
 Server-rendered pages for people, not clients. They work without JavaScript, and forms are protected with anti-forgery tokens.
@@ -421,4 +423,4 @@ Browser apps can call these endpoints directly:
 - Discovery and JWKS allow any origin.
 - The token, userinfo, and revocation endpoints allow the origins registered on enabled clients (`--cors-origin`). Credentials (cookies) are never allowed cross-origin.
 
-The authorization endpoint is a browser navigation, not a CORS request. The introspection endpoint is for servers and doesn't allow CORS.
+The authorization endpoint is a browser navigation, not a CORS request. The introspection endpoint is for servers and doesn't allow CORS. Neither does the [Admin API](/reference/admin-api), which the admin UI calls from the same origin.

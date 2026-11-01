@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
+using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Users;
 
@@ -81,7 +82,7 @@ internal sealed class UserCommands(IServiceProvider services, TextReader input, 
         {
             return await action();
         }
-        catch (UserAdministrationException ex)
+        catch (AdministrationException ex)
         {
             throw new CliException(ex.Message);
         }

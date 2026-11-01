@@ -66,6 +66,34 @@ internal sealed partial class SigningKeyRotator(
         }
     }
 
+    /// <summary>
+    /// Creates a new key on request, e.g. on a schedule of the operator's own. Like a scheduled rotation, it is
+    /// published in JWKS at once and only signs tokens after <see cref="SigningKeyOptions.PublishLead"/>, so relying
+    /// parties that cache JWKS know it before they see it (PROJECT.md §5). Refused while a newer key is pending.
+    /// </summary>
+    public async Task<SigningKey?> RotateNowAsync(string actor, string? ipAddress, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        if (await db.SigningKeys.AnyAsync(k => k.ActivatesAt > now, cancellationToken))
+        {
+            return null;
+        }
+
+        var key = SigningKeyStore.Create(protector, keyOptions.Value.RsaKeySize, now, now + keyOptions.Value.PublishLead);
+        db.SigningKeys.Add(key);
+        audit.Add("signing_key.created", actor: actor, ipAddress: ipAddress, details: new Dictionary<string, object?>
+        {
+            ["kid"] = key.Id,
+            ["alg"] = key.Algorithm,
+            ["activates_at"] = key.ActivatesAt,
+            ["reason"] = "manual",
+        });
+        await db.SaveChangesAsync(cancellationToken);
+        store.Invalidate();
+        LogKeyCreated(logger, key.Id, key.ActivatesAt);
+        return key;
+    }
+
     private SigningKey AddKey(DateTimeOffset now, DateTimeOffset activatesAt)
     {
         var key = SigningKeyStore.Create(protector, keyOptions.Value.RsaKeySize, now, activatesAt);

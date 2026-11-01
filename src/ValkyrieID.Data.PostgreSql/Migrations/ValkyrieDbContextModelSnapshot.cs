@@ -142,6 +142,9 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<bool>("BuiltIn")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -224,6 +227,9 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("BuiltIn")
                         .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("CreatedAt")

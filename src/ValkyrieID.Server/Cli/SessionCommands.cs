@@ -10,7 +10,6 @@ internal sealed class SessionCommands(IServiceProvider services, TextWriter outp
 {
     private readonly ValkyrieDbContext _db = services.GetRequiredService<ValkyrieDbContext>();
     private readonly SessionService _sessions = services.GetRequiredService<SessionService>();
-    private readonly TimeProvider _time = services.GetRequiredService<TimeProvider>();
 
     public Task RunAsync(CliArguments args, CancellationToken cancellationToken) => args.Argument(1, "subcommand") switch
     {
@@ -25,23 +24,9 @@ internal sealed class SessionCommands(IServiceProvider services, TextWriter outp
         args.EnsureConsumed(2);
 
         var user = await FindUserAsync(identifier, cancellationToken);
-        var now = _time.GetUtcNow();
-        var sessions = (await _db.UserSessions.AsNoTracking()
-                .Where(s => s.UserId == user.Id && s.RevokedAt == null)
-                .ToListAsync(cancellationToken))
-            .Where(s => s.IsActive(now))
-            .OrderByDescending(s => s.LastActivityAt)
-            .ToList();
-        var ids = sessions.Select(s => s.Id).ToList();
-        var clients = (await _db.UserSessionClients.AsNoTracking()
-                .Where(sc => ids.Contains(sc.SessionId))
-                .Select(sc => new { sc.SessionId, sc.ClientId })
-                .ToListAsync(cancellationToken))
-            .ToLookup(sc => sc.SessionId, sc => sc.ClientId);
-
-        foreach (var session in sessions)
+        var sessions = await _sessions.ListActiveAsync(user.Id, cancellationToken);
+        foreach (var (session, sessionClients) in sessions)
         {
-            var sessionClients = clients[session.Id].Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
             await output.WriteLineAsync(
                 $"{session.Id}  signed in: {session.AuthenticatedAt:u}  last activity: {session.LastActivityAt:u}  expires: {session.ExpiresAt:u}  ip: {session.IpAddress ?? "-"}");
             await output.WriteLineAsync($"  clients: {(sessionClients.Count == 0 ? "-" : string.Join(' ', sessionClients))}");

@@ -561,7 +561,7 @@ public abstract class AuthorizationTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
-            var client = await db.Clients.SingleAsync(CancellationToken);
+            var client = await db.Clients.SingleAsync(c => !c.BuiltIn, CancellationToken);
             client.AllowedGrantTypes = [];
             await db.SaveChangesAsync(CancellationToken);
         }

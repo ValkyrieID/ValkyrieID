@@ -44,9 +44,12 @@ public sealed class ValkyrieAppFactory(
     /// <summary>Stops the background email worker, so tests send queued emails themselves.</summary>
     public bool DisableEmailWorker { get; init; }
 
+    /// <summary>The host environment; <c>Testing</c> unless a test needs Development-only behavior.</summary>
+    public string EnvironmentName { get; init; } = "Testing";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("Database:Provider", provider.ToString());
         builder.UseSetting("Database:ConnectionString", connectionString);
         builder.UseSetting("MasterKey:Current", MasterKey);

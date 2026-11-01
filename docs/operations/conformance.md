@@ -73,3 +73,7 @@ Some tests are skipped or produce warnings by design, because ValkyrieID adverti
 The test clients are allowed `offline_access` and the `refresh_token` grant, so the refresh token tests run.
 
 Any other failure is a bug. Report it with the test log exported from the suite.
+
+## Certification status
+
+ValkyrieID isn't officially [OpenID Certified](https://openid.net/certification/), because certification requires a paid OpenID Foundation membership. Instead, every release must pass all four plans with no failures, and the results are published here. Published results describe ValkyrieID as passing the OpenID conformance suite, not as "OpenID Certified".

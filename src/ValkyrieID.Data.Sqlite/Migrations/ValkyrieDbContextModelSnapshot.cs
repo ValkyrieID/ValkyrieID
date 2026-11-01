@@ -134,6 +134,9 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("BuiltIn")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -216,6 +219,9 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("AllowClientSecretPost")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("BuiltIn")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("CreatedAt")

@@ -72,4 +72,23 @@ internal sealed class SessionService(
 
     /// <summary>Delivers newly queued notifications without waiting for the worker's next poll.</summary>
     public void WakeDeliveryWorker() => signal.Notify();
+
+    /// <summary>The user's active sessions, most recently used first, with the clients that received a code in each.</summary>
+    public async Task<IReadOnlyList<(UserSession Session, IReadOnlyList<string> Clients)>> ListActiveAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var sessions = (await db.UserSessions.AsNoTracking()
+                .Where(s => s.UserId == userId && s.RevokedAt == null)
+                .ToListAsync(cancellationToken))
+            .Where(s => s.IsActive(now))
+            .OrderByDescending(s => s.LastActivityAt)
+            .ToList();
+        var ids = sessions.Select(s => s.Id).ToList();
+        var clients = (await db.UserSessionClients.AsNoTracking()
+                .Where(sc => ids.Contains(sc.SessionId))
+                .Select(sc => new { sc.SessionId, sc.ClientId })
+                .ToListAsync(cancellationToken))
+            .ToLookup(sc => sc.SessionId, sc => sc.ClientId);
+        return [.. sessions.Select(s => (s, (IReadOnlyList<string>)[.. clients[s.Id].Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]))];
+    }
 }

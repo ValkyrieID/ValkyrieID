@@ -226,7 +226,7 @@ public abstract class RefreshTokenTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
-            var client = await db.Clients.SingleAsync(CancellationToken);
+            var client = await db.Clients.SingleAsync(c => !c.BuiltIn, CancellationToken);
             client.AllowedGrantTypes = ["authorization_code"];
             await db.SaveChangesAsync(CancellationToken);
         }

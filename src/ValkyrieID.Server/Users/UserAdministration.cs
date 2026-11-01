@@ -1,9 +1,11 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using ValkyrieID.Core.Protocol;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
+using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Email;
@@ -11,23 +13,28 @@ using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Users;
 
-/// <summary>A change that was rejected; <see cref="Errors"/> are safe to show to the person making it.</summary>
-internal sealed class UserAdministrationException(IReadOnlyList<string> errors) : Exception(string.Join(" ", errors))
-{
-    public UserAdministrationException(string error)
-        : this([error])
-    {
-    }
+internal sealed record NewUser(
+    string UserName,
+    string? Email,
+    string? DisplayName,
+    string Password,
+    bool Admin = false,
+    string? GivenName = null,
+    string? FamilyName = null);
 
-    public IReadOnlyList<string> Errors { get; } = errors;
-}
-
-internal sealed record NewUser(string UserName, string? Email, string? DisplayName, string Password, bool Admin = false);
+/// <summary>A user's profile as set by an administrator.</summary>
+internal sealed record UserUpdate(
+    string UserName,
+    string? Email,
+    bool EmailVerified,
+    string? DisplayName,
+    string? GivenName,
+    string? FamilyName);
 
 /// <summary>Who makes a change, for the audit log.</summary>
 internal sealed record AuditActor(string Name, string? IpAddress = null);
 
-/// <summary>User management shared by the setup wizard, the CLI, and (later) the Admin API.</summary>
+/// <summary>User management shared by the setup wizard, the CLI, and the Admin API.</summary>
 internal sealed class UserAdministration(
     ValkyrieDbContext db,
     PasswordHasher hasher,
@@ -38,6 +45,12 @@ internal sealed class UserAdministration(
     AuditRecorder audit,
     TimeProvider timeProvider)
 {
+    public const int MaxDisplayNameLength = 200;
+    public const int MaxNameLength = 100;
+    public const int MaxClaimTypeLength = 100;
+    public const int MaxClaimValueLength = 1000;
+    public const int MaxClaimsPerUser = 100;
+
     public Task<User?> FindAsync(string identifier, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(identifier) || identifier.Length > UserNames.MaxEmailLength)
@@ -169,27 +182,260 @@ internal sealed class UserAdministration(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task SetAdminAsync(User user, bool admin, AuditActor actor, CancellationToken cancellationToken)
+    public Task SetAdminAsync(User user, bool admin, AuditActor actor, CancellationToken cancellationToken) =>
+        SetRoleAsync(user, Role.AdminRoleId, admin, actor, cancellationToken);
+
+    /// <summary>Loads a user with roles, groups, and claims.</summary>
+    public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        db.Users.Include(u => u.Roles).Include(u => u.Groups).Include(u => u.Claims).AsSplitQuery()
+            .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+    /// <summary>
+    /// Updates the username, email address, and names. A changed email address is unverified, pending email links
+    /// (e.g. password resets sent to the old address) stop working, and the old address is told about the change.
+    /// </summary>
+    public async Task UpdateAsync(User user, UserUpdate update, AuditActor actor, CancellationToken cancellationToken)
     {
-        var hasRole = user.Roles.Any(r => r.Id == Role.AdminRoleId);
-        if (hasRole == admin)
+        List<string> errors = [];
+        var userName = update.UserName.Trim();
+        var email = Clean(update.Email);
+        var displayName = Clean(update.DisplayName);
+        var givenName = Clean(update.GivenName);
+        var familyName = Clean(update.FamilyName);
+
+        var userNameChanged = userName != user.UserName;
+        if (userNameChanged)
+        {
+            if (!UserNames.IsValidUserName(userName))
+            {
+                errors.Add($"The username must be 1-{UserNames.MaxUserNameLength} letters, digits, '.', '_' or '-'.");
+            }
+            else if (await db.Users.AnyAsync(u => u.NormalizedUserName == UserNames.Normalize(userName) && u.Id != user.Id, cancellationToken))
+            {
+                errors.Add("The username is already taken.");
+            }
+        }
+
+        var emailChanged = email != user.Email;
+        if (emailChanged && email is not null)
+        {
+            if (!UserNames.IsValidEmail(email))
+            {
+                errors.Add("The email address is invalid.");
+            }
+            else if (await db.Users.AnyAsync(u => u.NormalizedEmail == UserNames.Normalize(email) && u.Id != user.Id, cancellationToken))
+            {
+                errors.Add("The email address is already in use.");
+            }
+        }
+
+        var addressChanged = (email is null ? null : UserNames.Normalize(email)) != user.NormalizedEmail;
+        if (addressChanged && update.EmailVerified)
+        {
+            errors.Add("A new email address can't be marked as verified in the same change; update it first, then mark it verified.");
+        }
+
+        if (email is null && update.EmailVerified)
+        {
+            errors.Add("There is no email address to mark as verified.");
+        }
+
+        ValidateNames(displayName, givenName, familyName, errors);
+        if (errors.Count > 0)
+        {
+            throw new AdministrationException(errors);
+        }
+
+        List<string> changed = [];
+        if (userNameChanged)
+        {
+            changed.Add("user_name");
+        }
+
+        if (emailChanged)
+        {
+            changed.Add("email");
+        }
+
+        if (update.EmailVerified != user.EmailVerified)
+        {
+            changed.Add("email_verified");
+        }
+
+        if (displayName != user.DisplayName)
+        {
+            changed.Add("display_name");
+        }
+
+        if (givenName != user.GivenName)
+        {
+            changed.Add("given_name");
+        }
+
+        if (familyName != user.FamilyName)
+        {
+            changed.Add("family_name");
+        }
+
+        if (changed.Count == 0)
         {
             return;
         }
 
-        if (admin)
+        var oldEmail = user.Email;
+        user.UserName = userName;
+        user.NormalizedUserName = UserNames.Normalize(userName);
+        user.Email = email;
+        user.NormalizedEmail = email is null ? null : UserNames.Normalize(email);
+        user.EmailVerified = update.EmailVerified;
+        user.DisplayName = displayName;
+        user.GivenName = givenName;
+        user.FamilyName = familyName;
+        user.UpdatedAt = timeProvider.GetUtcNow();
+        if (addressChanged)
         {
-            user.Roles.Add(await db.Roles.SingleAsync(r => r.Id == Role.AdminRoleId, cancellationToken));
+            await db.EmailTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);
+            if (oldEmail is not null && email is not null)
+            {
+                emails.EmailChanged(user, oldEmail);
+            }
+        }
+
+        AddAudit("user.updated", user, actor, new Dictionary<string, object?> { ["fields"] = string.Join(' ', changed) });
+        await db.SaveChangesAsync(cancellationToken);
+        emails.Wake();
+    }
+
+    /// <summary>
+    /// Deletes a user. Their sessions are revoked first, so clients are notified by back-channel logout; refresh
+    /// tokens, sessions, and other data of the user are deleted with them.
+    /// </summary>
+    public async Task DeleteAsync(User user, AuditActor actor, CancellationToken cancellationToken)
+    {
+        if (user.Roles.Any(r => r.Id == Role.AdminRoleId))
+        {
+            await EnsureOtherAdminExistsAsync(user, "deleted", cancellationToken);
+        }
+
+        await RevokeSessionsAsync(user, actor, "user_deleted", cancellationToken);
+        db.Users.Remove(user);
+        AddAudit("user.deleted", user, actor, new Dictionary<string, object?> { ["user_name"] = user.UserName });
+        await db.SaveChangesAsync(cancellationToken);
+        sessions.WakeDeliveryWorker();
+    }
+
+    /// <summary>Adds or removes a role. Role changes take effect immediately: existing sessions must re-authenticate.</summary>
+    public async Task SetRoleAsync(User user, Guid roleId, bool assigned, AuditActor actor, CancellationToken cancellationToken)
+    {
+        var hasRole = user.Roles.Any(r => r.Id == roleId);
+        if (hasRole == assigned)
+        {
+            return;
+        }
+
+        Role role;
+        if (assigned)
+        {
+            role = await db.Roles.SingleOrDefaultAsync(r => r.Id == roleId, cancellationToken)
+                ?? throw AdministrationException.NotFound("The role does not exist.");
+            user.Roles.Add(role);
         }
         else
         {
-            await EnsureNotLastAdminAsync(user, cancellationToken);
-            user.Roles.RemoveAll(r => r.Id == Role.AdminRoleId);
+            role = user.Roles.Single(r => r.Id == roleId);
+            if (roleId == Role.AdminRoleId)
+            {
+                await EnsureNotLastAdminAsync(user, cancellationToken);
+            }
+
+            user.Roles.Remove(role);
         }
 
-        // Role changes take effect immediately: existing sessions must re-authenticate.
         Touch(user, timeProvider.GetUtcNow());
-        AddAudit(admin ? "user.role_added" : "user.role_removed", user, actor, new Dictionary<string, object?> { ["role"] = Role.Admin });
+        AddAudit(assigned ? "user.role_added" : "user.role_removed", user, actor, new Dictionary<string, object?> { ["role"] = role.Name });
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task SetGroupAsync(User user, Guid groupId, bool member, AuditActor actor, CancellationToken cancellationToken)
+    {
+        var isMember = user.Groups.Any(g => g.Id == groupId);
+        if (isMember == member)
+        {
+            return;
+        }
+
+        Group group;
+        if (member)
+        {
+            group = await db.Groups.SingleOrDefaultAsync(g => g.Id == groupId, cancellationToken)
+                ?? throw AdministrationException.NotFound("The group does not exist.");
+            user.Groups.Add(group);
+        }
+        else
+        {
+            group = user.Groups.Single(g => g.Id == groupId);
+            user.Groups.Remove(group);
+        }
+
+        user.UpdatedAt = timeProvider.GetUtcNow();
+        AddAudit(member ? "user.group_added" : "user.group_removed", user, actor, new Dictionary<string, object?> { ["group"] = group.Name });
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds a custom claim, emitted with the <c>profile</c> scope. Protocol and standard claims are reserved, so a
+    /// custom claim can never override them (e.g. <c>sub</c>, <c>aud</c>, or <c>roles</c>).
+    /// </summary>
+    public async Task<UserClaim> AddClaimAsync(User user, string type, string value, AuditActor actor, CancellationToken cancellationToken)
+    {
+        List<string> errors = [];
+        type = type.Trim();
+        if (type.Length is 0 or > MaxClaimTypeLength || !ProtocolSyntax.IsValidScopeToken(type))
+        {
+            errors.Add($"The claim type must be 1-{MaxClaimTypeLength} printable ASCII characters without spaces, '\"' or '\\'.");
+        }
+        else if (UserClaims.Reserved.Contains(type))
+        {
+            errors.Add($"'{type}' is a reserved claim and can't be set as a custom claim.");
+        }
+
+        if (value.Length is 0 or > MaxClaimValueLength || value.Any(char.IsControl))
+        {
+            errors.Add($"The claim value must be 1-{MaxClaimValueLength} characters without control characters.");
+        }
+
+        if (user.Claims.Count >= MaxClaimsPerUser)
+        {
+            errors.Add($"A user can have at most {MaxClaimsPerUser} custom claims.");
+        }
+
+        if (user.Claims.Any(c => c.Type == type && c.Value == value))
+        {
+            throw AdministrationException.Conflict("The user already has this claim.");
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new AdministrationException(errors);
+        }
+
+        var claim = new UserClaim { UserId = user.Id, Type = type, Value = value };
+        user.Claims.Add(claim);
+        db.Add(claim);
+        user.UpdatedAt = timeProvider.GetUtcNow();
+        AddAudit("user.claim_added", user, actor, new Dictionary<string, object?> { ["claim_type"] = type });
+        await db.SaveChangesAsync(cancellationToken);
+        return claim;
+    }
+
+    public async Task RemoveClaimAsync(User user, Guid claimId, AuditActor actor, CancellationToken cancellationToken)
+    {
+        var claim = user.Claims.SingleOrDefault(c => c.Id == claimId)
+            ?? throw AdministrationException.NotFound("The user has no such claim.");
+        user.Claims.Remove(claim);
+        db.Remove(claim);
+        user.UpdatedAt = timeProvider.GetUtcNow();
+        AddAudit("user.claim_removed", user, actor, new Dictionary<string, object?> { ["claim_type"] = claim.Type });
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -201,20 +447,50 @@ internal sealed class UserAdministration(
             return;
         }
 
+        await EnsureOtherAdminExistsAsync(user, "disabled or lose the admin role", cancellationToken);
+    }
+
+    private async Task EnsureOtherAdminExistsAsync(User user, string action, CancellationToken cancellationToken)
+    {
+        if (!user.Enabled)
+        {
+            return;
+        }
+
         var otherAdmins = await db.Users.CountAsync(
             u => u.Id != user.Id && u.Enabled && u.Roles.Any(r => r.Id == Role.AdminRoleId),
             cancellationToken);
         if (otherAdmins == 0)
         {
-            throw new UserAdministrationException("This is the last enabled admin; it can't be disabled or lose the admin role.");
+            throw AdministrationException.Conflict($"This is the last enabled admin; it can't be {action}.");
         }
     }
+
+    private static void ValidateNames(string? displayName, string? givenName, string? familyName, List<string> errors)
+    {
+        if (displayName?.Length > MaxDisplayNameLength)
+        {
+            errors.Add($"The display name must be at most {MaxDisplayNameLength} characters.");
+        }
+
+        if (givenName?.Length > MaxNameLength)
+        {
+            errors.Add($"The given name must be at most {MaxNameLength} characters.");
+        }
+
+        if (familyName?.Length > MaxNameLength)
+        {
+            errors.Add($"The family name must be at most {MaxNameLength} characters.");
+        }
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task<User> BuildAsync(NewUser request, CancellationToken cancellationToken)
     {
         List<string> errors = [];
         var userName = request.UserName.Trim();
-        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        var email = Clean(request.Email);
 
         if (!UserNames.IsValidUserName(userName))
         {
@@ -237,15 +513,12 @@ internal sealed class UserAdministration(
             }
         }
 
-        if (request.DisplayName?.Length > 200)
-        {
-            errors.Add("The display name must be at most 200 characters.");
-        }
+        ValidateNames(Clean(request.DisplayName), Clean(request.GivenName), Clean(request.FamilyName), errors);
 
         errors.AddRange(await passwordValidator.ValidateAsync(request.Password, userName, email, cancellationToken));
         if (errors.Count > 0)
         {
-            throw new UserAdministrationException(errors);
+            throw new AdministrationException(errors);
         }
 
         var now = timeProvider.GetUtcNow();
@@ -255,7 +528,9 @@ internal sealed class UserAdministration(
             NormalizedUserName = UserNames.Normalize(userName),
             Email = email,
             NormalizedEmail = email is null ? null : UserNames.Normalize(email),
-            DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? null : request.DisplayName.Trim(),
+            DisplayName = Clean(request.DisplayName),
+            GivenName = Clean(request.GivenName),
+            FamilyName = Clean(request.FamilyName),
             PasswordHash = hasher.Hash(request.Password),
             PasswordChangedAt = now,
             CreatedAt = now,
@@ -275,7 +550,7 @@ internal sealed class UserAdministration(
         var errors = await passwordValidator.ValidateAsync(password, userName, email, cancellationToken);
         if (errors.Count > 0)
         {
-            throw new UserAdministrationException(errors);
+            throw new AdministrationException(errors);
         }
     }
 

@@ -12,6 +12,8 @@ ValkyrieID signs tokens with RSA keys (`RS256`) that it generates and rotates it
 
 Rotation runs every `SigningKeys:CheckInterval` (default 5 minutes). Key creation and deletion are written to the audit log.
 
+An admin can also start a rotation at any time with the [Admin API](/reference/admin-api#signing-keys) (`POST /api/admin/signing-keys/rotate`). The new key goes through the same steps: it is published at once and signs tokens after `PublishLead`. Rotation is refused while a newer key is already pending.
+
 ## Resource servers
 
 Resource servers must fetch keys from the JWKS endpoint and select the key by the token's `kid`. Don't pin a single key. Make sure your JWKS cache refreshes more often than `SigningKeys:PublishLead`; ASP.NET Core `AddJwtBearer` does this by default.

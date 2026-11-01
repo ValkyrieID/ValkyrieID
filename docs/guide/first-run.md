@@ -29,3 +29,7 @@ See the [CLI reference](/reference/cli#users).
 Users sign in at `/account/login` with their username or email address. After too many failed attempts the account is [locked](/reference/configuration#lockout) for a while. Failed sign-ins always show the same message, so the page doesn't reveal which accounts exist.
 
 If an admin is locked out or has forgotten their password, use the [admin recovery commands](/reference/cli#admin-recovery).
+
+## Administration
+
+At startup the server creates the built-in `valkyrieid-admin-ui` client and `valkyrieid-admin` API resource, which the admin UI uses to call the [Admin API](/reference/admin-api). Admins (users with the `admin` role) can then manage users, clients, and API resources over the Admin API, as well as with the [CLI](/reference/cli).

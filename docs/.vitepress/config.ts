@@ -29,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Configuration', link: '/reference/configuration' },
           { text: 'Endpoints', link: '/reference/endpoints' },
+          { text: 'Admin API', link: '/reference/admin-api' },
           { text: 'CLI', link: '/reference/cli' },
           { text: 'Health endpoints', link: '/reference/health' },
         ],

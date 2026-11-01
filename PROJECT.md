@@ -25,6 +25,7 @@ A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 
 - Dynamic client registration
 - Front-channel logout
 - OpenID Connect Session Management 1.0 (`check_session_iframe`)
+- Official OpenID Certification (requires a paid OpenID Foundation membership). ValkyrieID runs and publishes the free conformance suite results instead (§13); may be revisited later.
 
 ## 3. Storage
 
@@ -212,7 +213,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Last-admin guard:** the last enabled user with the `admin` role cannot be deleted, disabled, or have the role removed.
 - **CLI reset:** the server binary/container supports maintenance commands (e.g. `valkyrieid admin reset-password <user>`, `reset-2fa <user>`, `unlock <user>`, `grant-admin <user>`) that run against the configured database without starting the web server. Every use is written to the audit log.
   - `admin reencrypt` re-encrypts secrets with the current master key so previous keys can be removed (§10).
-- **CLI management:** the same binary also manages users, clients, and API resources (`valkyrieid user …`, `valkyrieid client …`, `valkyrieid resource …`). Until the Admin API exists (phase 8) this is the only way to create them.
+- **CLI management:** the same binary also manages users, clients, and API resources (`valkyrieid user …`, `valkyrieid client …`, `valkyrieid resource …`). Before the Admin API (phase 8) this was the only way to create them; both now share the same administration services.
 - Passwords are never accepted as CLI arguments; they are read from a hidden prompt or standard input.
 
 ### 8.5 Accessibility
@@ -223,6 +224,14 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 - JSON API under `/api/admin`, protected by access tokens with the admin scope and role.
 - Used by the admin UI; also usable for automation.
+- **Authorization** (checked on every request, before routing):
+  - the access token is only accepted in the `Authorization: Bearer` header (never the query string or a cookie)
+  - it must be a valid access token from this issuer (RFC 9068) whose audience includes the built-in API resource `valkyrieid-admin`, with the scope `valkyrieid.admin`
+  - its `sub` must be an existing, enabled, not locked-out user with the `admin` role, looked up in the database on every request, so losing the role or being disabled takes effect immediately even though access tokens can't be revoked
+  - tokens without a user (`client_credentials`) are never accepted; automation signs in as an admin user or uses the CLI
+- **Built-in entities:** the server seeds the `valkyrieid-admin` resource and the `valkyrieid-admin-ui` public PKCE client (authorization code only, no refresh tokens, 10-minute access tokens, redirect URIs derived from the issuer). They are read-only, and their names are reserved.
+- No CORS (the admin UI is same-origin). Responses are `no-store`. Errors are RFC 9457 problem details; lists use `limit`/`offset`, the audit log a keyset cursor. Concurrent edits: last write wins.
+- Every change is audited with the actor `admin:<sub>`. Clients, resources, and users are managed through the same services as the CLI.
 
 ## 10. Configuration
 
@@ -257,6 +266,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
     - Angular tests
   - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers).
   - **On release tags / manual trigger only:** Docker image build and publish, OpenID conformance suite, OWASP ZAP scan.
+  - **Nightly:** OpenID conformance suite (all plans), to catch regressions between releases.
   - **Cost controls:**
     - Linux runners only (Windows/macOS minutes cost 2×/10× on private repos).
     - NuGet and npm caching.
@@ -332,6 +342,8 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Config OP
   - RP-Initiated Logout
   - Back-Channel Logout
+
+  A release requires every plan to pass with no failures; each warning is either fixed or documented with its reason. Results are published in the docs as "passes the OpenID conformance suite", never as "OpenID Certified" (see §2).
 - **OAuch** (oauch.io): OAuth 2.0 security best-practice testing (RFC 9700). Covers PKCE downgrade, redirect URI manipulation, code replay, and refresh token rotation.
 - **Client compatibility tests** against real client libraries and apps:
   - ASP.NET Core `AddOpenIdConnect` / `AddJwtBearer`
@@ -397,20 +409,33 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
    - **7c: SMTP**
      - email verification and password reset (a reset revokes all sessions)
      - email change requires verifying the new address; changing the email from the account page *(deferred: from 7b)*
-8. **Admin REST API + Angular admin UI:**
-   - full management of users, clients, resources, settings, branding, keys, and sessions
-     - seed the admin UI client *(deferred: from phase 3)*
-   - audit log viewer
-   - audit log retention *(planned: from §11, unscheduled)*
-   - DB-backed runtime settings with env precedence
-     - SMTP settings in the DB, with the SMTP password encrypted by the master key
-   - setting to prompt for or require email verification after sign-in *(planned: from �6, unscheduled)*
+8. **Admin REST API + Angular admin UI** (delivered in three steps):
+   - **8a: Admin REST API**
+     - full management of users (including roles, groups, and custom claims), clients, API resources and scopes, signing keys, and sessions; audit log read endpoint
+       - group and custom-claim management *(deferred: from phase 3)*
+     - seed the admin UI client and the Admin API resource *(deferred: from phase 3)*
+     - client and resource administration shared by the CLI and the API (like user administration)
+     - OpenAPI document (served in Development, published in the docs)
+   - **8b: Angular admin UI**
+     - latest Angular (signals, OnPush, zoneless, WCAG 2.2 AA), served by the ASP.NET Core app at `/admin`
+     - signs in through ValkyrieID itself with the seeded public PKCE client
+     - audit log viewer
+   - **8c: runtime settings**
+     - DB-backed runtime settings with env precedence (shown as locked in the admin UI): lifetimes, branding, password policy, lockout, 2FA enforcement
+       - SMTP settings in the DB, with the SMTP password encrypted by the master key
+     - setting to prompt for or require email verification after sign-in *(planned: from §6, unscheduled)*
+     - setting to require 2FA for Admin API access (the admin's session must have used a second factor)
+     - audit log retention *(planned: from §11, unscheduled)*
+     - settings and branding in the Admin API and the admin UI
 9. **Multi-instance:**
    - Redis for authorization codes, rate limits, and cache
    - multi-instance integration tests
 10. **Hardening and release:**
     - security headers review, OAuch, OWASP ZAP
     - run the OpenID conformance plans: Basic OP, Config OP *(deferred: from phase 4)*, RP-Initiated Logout, Back-Channel Logout *(deferred: from phase 6)*
+      - all plans must pass with no failures; warnings fixed or documented
+      - CI job that runs the suite and ValkyrieID in Docker and runs every plan on release tags and nightly
+      - publish the results (plans, suite version, release tested, exported logs) in the docs
     - footprint targets, accessibility pass
     - documentation, first tagged release to `ghcr.io`
 
@@ -437,7 +462,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Audit log retention | (§11, unscheduled) | 8 | Belongs with the audit log viewer. |
 | Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |
 | Changing the email address on the account page | 7b | 7c | An email change needs verification of the new address, which needs SMTP (7c). 7b edits names only. |
-| Prompting for or requiring email verification after sign-in | (�6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
+| Prompting for or requiring email verification after sign-in | (§6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
 
 ### Spec deviations
 

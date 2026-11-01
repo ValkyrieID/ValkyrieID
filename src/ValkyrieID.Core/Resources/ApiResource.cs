@@ -11,6 +11,9 @@ public sealed class ApiResource
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Created and maintained by the server (the Admin API); read-only for administrators.</summary>
+    public bool BuiltIn { get; set; }
+
     /// <summary>
     /// Whether the resource may send its secret in the request body when calling the introspection endpoint. Off
     /// unless enabled, like <c>client_secret_post</c> for clients (RFC 6749 §2.3.1).

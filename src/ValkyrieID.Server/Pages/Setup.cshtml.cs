@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Users;
@@ -61,7 +62,7 @@ internal sealed class SetupModel(UserAdministration users, SessionManager sessio
             await sessions.SignInAsync(HttpContext, user, ["pwd"], cancellationToken);
             return LocalRedirect("/account");
         }
-        catch (UserAdministrationException ex)
+        catch (AdministrationException ex)
         {
             Errors = ex.Errors;
             return Page();
