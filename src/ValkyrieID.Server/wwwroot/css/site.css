@@ -137,6 +137,63 @@ a:focus-visible,
   margin: 0;
 }
 
+h2 {
+  font-size: 1.125rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.secondary {
+  margin: 1rem 0 0;
+  text-align: center;
+}
+
+.links {
+  padding-left: 1.25rem;
+}
+
+.steps {
+  padding-left: 1.25rem;
+}
+
+.steps li {
+  margin-bottom: 0.75rem;
+}
+
+.qr {
+  display: block;
+  margin: 0.75rem auto;
+  width: 12.5rem;
+  height: 12.5rem;
+  image-rendering: pixelated;
+}
+
+.secret {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  word-spacing: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+a.button {
+  display: block;
+  padding: 0.625rem 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: var(--vid-primary-text);
+  background: var(--vid-primary);
+  border-radius: 0.25rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

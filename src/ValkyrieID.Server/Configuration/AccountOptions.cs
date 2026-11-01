@@ -88,6 +88,17 @@ public sealed class RateLimitOptions
 
     /// <summary>Authorization endpoint requests per client IP address.</summary>
     public RateLimitRule Authorize { get; set; } = new() { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) };
+
+    /// <summary>2FA code submissions (TOTP and recovery codes, at login and enrollment) per client IP address.</summary>
+    public RateLimitRule TwoFactor { get; set; } = new() { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) };
+}
+
+public sealed class TwoFactorOptions
+{
+    public const string SectionName = "TwoFactor";
+
+    /// <summary>Every user must use 2FA; users without it enroll at their next sign-in.</summary>
+    public bool Required { get; set; }
 }
 
 public sealed partial class BrandingOptions
@@ -217,7 +228,7 @@ internal sealed class AccountOptionsValidator :
     public ValidateOptionsResult Validate(string? name, RateLimitOptions options)
     {
         List<string> failures = [];
-        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize) })
+        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize), ("TwoFactor", options.TwoFactor) })
         {
             if (rule.PermitLimit < 1 || rule.Window <= TimeSpan.Zero)
             {

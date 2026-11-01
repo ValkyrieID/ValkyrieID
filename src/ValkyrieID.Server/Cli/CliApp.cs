@@ -63,6 +63,8 @@ internal static class CliApp
           user list
           user enable <user>
           user disable <user>
+          user require-2fa <user>
+          user unrequire-2fa <user>
 
         Sessions (revoking also revokes the session's refresh tokens and notifies clients by back-channel logout):
           session list --user <user>
@@ -71,6 +73,7 @@ internal static class CliApp
         Admin recovery:
           admin reset-password <user>
           admin unlock <user>
+          admin reset-2fa <user>
           admin grant-admin <user>
           admin revoke-admin <user>
           admin reencrypt [--check]

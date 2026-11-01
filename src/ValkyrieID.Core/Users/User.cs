@@ -39,6 +39,18 @@ public sealed class User
 
     public DateTimeOffset? LockoutEnd { get; set; }
 
+    /// <summary>Sign-in requires a TOTP or recovery code.</summary>
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>An admin requires 2FA for this user, regardless of the global setting.</summary>
+    public bool TwoFactorRequired { get; set; }
+
+    /// <summary>The TOTP secret, encrypted with the master key; set when 2FA is enabled.</summary>
+    public byte[]? TotpSecret { get; set; }
+
+    /// <summary>The time step of the last accepted TOTP code; that code and earlier ones are rejected.</summary>
+    public long? TotpLastUsedStep { get; set; }
+
     public required DateTimeOffset CreatedAt { get; init; }
 
     public DateTimeOffset UpdatedAt { get; set; }
@@ -87,4 +99,18 @@ public sealed class UserClaim
     public required string Type { get; set; }
 
     public required string Value { get; set; }
+}
+
+/// <summary>A one-time 2FA recovery code; only its SHA-256 hash is stored.</summary>
+public sealed class RecoveryCode
+{
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+
+    public required Guid UserId { get; init; }
+
+    public required byte[] CodeHash { get; init; }
+
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    public DateTimeOffset? UsedAt { get; set; }
 }

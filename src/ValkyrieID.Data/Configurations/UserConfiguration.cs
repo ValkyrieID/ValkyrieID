@@ -23,6 +23,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(e => e.FamilyName).HasMaxLength(100);
         builder.Property(e => e.PasswordHash).HasMaxLength(200);
         builder.Property(e => e.SecurityStamp).HasMaxLength(64);
+        builder.Property(e => e.TotpSecret).HasMaxLength(128);
         builder.HasMany(e => e.Roles).WithMany().UsingEntity(
             "UserRoles",
             r => r.HasOne(typeof(Role)).WithMany().HasForeignKey("RoleId").OnDelete(DeleteBehavior.Cascade),
@@ -71,6 +72,19 @@ internal sealed class UserClaimConfiguration : IEntityTypeConfiguration<UserClai
         builder.Property(e => e.Id).ValueGeneratedNever();
         builder.Property(e => e.Type).HasMaxLength(100);
         builder.Property(e => e.Value).HasMaxLength(1000);
+    }
+}
+
+internal sealed class RecoveryCodeConfiguration : IEntityTypeConfiguration<RecoveryCode>
+{
+    public void Configure(EntityTypeBuilder<RecoveryCode> builder)
+    {
+        builder.ToTable("RecoveryCodes");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.CodeHash).HasMaxLength(32);
+        builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(e => e.UserId);
     }
 }
 

@@ -17,6 +17,7 @@ internal static class RateLimitPolicies
     public const string Login = "login";
     public const string Token = "token";
     public const string Authorize = "authorize";
+    public const string TwoFactor = "two-factor";
 }
 
 internal static class AccountExtensions
@@ -33,12 +34,15 @@ internal static class AccountExtensions
         AddOptions<SsoSessionOptions>(services, configuration, SsoSessionOptions.SectionName);
         AddOptions<RateLimitOptions>(services, configuration, RateLimitOptions.SectionName);
         AddOptions<BrandingOptions>(services, configuration, BrandingOptions.SectionName);
+        services.AddOptions<TwoFactorOptions>().Bind(configuration.GetSection(TwoFactorOptions.SectionName));
 
         services.AddSingleton(sp => new PasswordHasher(sp.GetRequiredService<IOptions<PasswordHashingOptions>>().Value.ToParameters()));
         services.AddHttpClient<BreachedPasswordChecker>(client => client.Timeout = TimeSpan.FromSeconds(5));
         services.AddScoped<PasswordValidator>();
         services.AddScoped<UserAdministration>();
         services.AddScoped<LoginService>();
+        services.AddScoped<TwoFactorService>();
+        services.AddScoped<PendingLogin>();
         services.AddScoped<SessionManager>();
         services.AddScoped<SessionService>();
         services.AddScoped<SessionCookieEvents>();
@@ -62,6 +66,17 @@ internal static class AccountExtensions
                 options.ReturnUrlParameter = "returnUrl";
                 options.SlidingExpiration = false;
                 options.EventsType = typeof(SessionCookieEvents);
+            })
+            // Remembers a verified password until the second factor is entered; grants no access by itself.
+            .AddCookie(PendingLogin.Scheme, options =>
+            {
+                options.Cookie.Name = PendingLogin.CookieName;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.Cookie.Path = "/";
+                options.ExpireTimeSpan = PendingLogin.Lifetime;
+                options.SlidingExpiration = false;
             });
         services.AddOptions<CookieAuthenticationOptions>(SessionClaims.Scheme)
             .Configure<IOptions<SsoSessionOptions>>((options, session) => options.ExpireTimeSpan = session.Value.Lifetime);
@@ -96,6 +111,9 @@ internal static class AccountExtensions
                 : RateLimitPartition.GetNoLimiter(string.Empty));
             options.AddPolicy(RateLimitPolicies.Token, context => FixedWindowPerIp(context, RateLimitPolicies.Token, o => o.Token));
             options.AddPolicy(RateLimitPolicies.Authorize, context => FixedWindowPerIp(context, RateLimitPolicies.Authorize, o => o.Authorize));
+            options.AddPolicy(RateLimitPolicies.TwoFactor, context => HttpMethods.IsPost(context.Request.Method)
+                ? FixedWindowPerIp(context, RateLimitPolicies.TwoFactor, o => o.TwoFactor)
+                : RateLimitPartition.GetNoLimiter(string.Empty));
         });
 
         return services;

@@ -1,0 +1,32 @@
+@page "/account/two-factor"
+@model TwoFactorSetupModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+}
+<h1>Two-factor authentication</h1>
+@if (Model.RecoveryCodes is not null)
+{
+    <p role="status">Two-factor authentication is on. You'll be asked for a code from your authenticator app when you sign in.</p>
+    <partial name="_RecoveryCodes" model="Model.RecoveryCodes" />
+    <p><a href="~/account">Back to your account</a></p>
+}
+else if (Model.Enrollment is not null)
+{
+    <p>Protect your account with a code from an authenticator app in addition to your password.</p>
+    <partial name="_Errors" model="Model.Errors" />
+    <form method="post" novalidate>
+        <partial name="_TotpEnrollment" model="Model.Enrollment" />
+        <div class="field">
+            <label for="password">Current password</label>
+            <input id="password" name="Password" type="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit">Turn on two-factor authentication</button>
+    </form>
+    <p class="secondary"><a href="~/account">Cancel</a></p>
+}
+else
+{
+    <p>Two-factor authentication is on. You have @Model.UnusedRecoveryCodes unused recovery code(s).</p>
+    <p>If you lost your authenticator app, contact your administrator to reset two-factor authentication.</p>
+    <p><a href="~/account">Back to your account</a></p>
+}

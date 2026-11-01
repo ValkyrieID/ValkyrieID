@@ -476,6 +476,32 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.ToTable("Groups", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RecoveryCodes", (string)null);
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Users.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -562,6 +588,19 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<long?>("TotpLastUsedStep")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("TotpSecret")
+                        .HasMaxLength(128)
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TwoFactorRequired")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -753,6 +792,15 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

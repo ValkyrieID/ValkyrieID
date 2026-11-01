@@ -20,8 +20,9 @@ Every change is written to the audit log with the actor `cli`.
 | Command | Description |
 |---|---|
 | `user create <username> [--email <email>] [--name <display name>]` | Create a user. Prompts for the password. |
-| `user list` | List users with their state (`enabled`, `locked`, `disabled`), email, and roles. |
+| `user list` | List users with their state (`enabled`, `locked`, `disabled`), email, roles, and 2FA state (`on`, `required`, `off`). |
 | `user enable <user>` / `user disable <user>` | Disabled users can't sign in; disabling also revokes their sessions. |
+| `user require-2fa <user>` / `user unrequire-2fa <user>` | Require [two-factor authentication](/guide/two-factor) for this user, regardless of `TwoFactor:Required`. Applies from their next sign-in. |
 
 Usernames are 1-64 letters, digits, `.`, `_` or `-`. They can't contain `@`, so a sign-in name with `@` is always treated as an email address. Usernames and email addresses are unique, ignoring case.
 
@@ -55,6 +56,7 @@ Break-glass commands for when nobody can sign in as an admin.
 |---|---|
 | `admin reset-password <user>` | Set a new password. Also unlocks the account and revokes its sessions. |
 | `admin unlock <user>` | Clear a lockout. |
+| `admin reset-2fa <user>` | Turn off two-factor authentication, e.g. after a lost phone: deletes the TOTP secret and recovery codes and revokes the user's sessions. If 2FA is required, the user sets it up again at their next sign-in. |
 | `admin grant-admin <user>` | Give the user the built-in `admin` role. |
 | `admin revoke-admin <user>` | Remove the `admin` role. |
 | `admin reencrypt [--check]` | Re-encrypt secrets with the current master key. See [Rotate the key](/operations/master-key#rotate-the-key). |

@@ -381,12 +381,17 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
      - users' own sessions page *(deferred: phase 7)*
    - logout conformance setup (test clients, plan configuration)
      - running the RP-Initiated and Back-Channel Logout plans *(deferred: phase 10)*
-7. **2FA and account self-service:**
-   - TOTP enrollment, recovery codes, 2FA enforcement
+7. **2FA and account self-service** (delivered in three steps):
+   - **7a: 2FA**
+     - TOTP enrollment (server-rendered QR code), recovery codes, 2FA enforcement (global and per user)
+     - two-step login: the session is created only after the second factor; `amr` per RFC 8176
      - `admin reset-2fa`, 2FA rate limiting, 2FA state on the user model *(deferred: from phase 3)*
-   - self-service account page
+   - **7b: self-service account page**
+     - profile, change password (revokes the user's other sessions), manage 2FA and recovery codes
      - users' own sessions page *(deferred: from phase 6)*
-   - SMTP: email verification and password reset
+   - **7c: SMTP**
+     - email verification and password reset (a reset revokes all sessions)
+     - email change requires verifying the new address
 8. **Admin REST API + Angular admin UI:**
    - full management of users, clients, resources, settings, branding, keys, and sessions
      - seed the admin UI client *(deferred: from phase 3)*

@@ -55,30 +55,42 @@ internal sealed class LoginService(
 
         if (result == PasswordVerificationResult.Failed)
         {
-            await RecordFailureAsync(user, ipAddress, now, cancellationToken);
+            await RecordFailureAsync(user, ipAddress, "invalid_password", cancellationToken);
             return null;
         }
 
-        user.AccessFailedCount = 0;
-        user.LockoutEnd = null;
+        // The failure count is kept until the whole sign-in succeeds (CompleteAsync); resetting it here would
+        // let someone who knows the password guess 2FA codes without ever reaching the lockout.
         if (result == PasswordVerificationResult.SuccessRehashNeeded)
         {
             user.PasswordHash = hasher.Hash(password);
+            await db.SaveChangesAsync(cancellationToken);
         }
 
-        audit.Add("user.login.succeeded", ipAddress: ipAddress, subjectId: user.Id, actor: user.Id.ToString());
-        await db.SaveChangesAsync(cancellationToken);
         return user;
     }
 
-    private async Task RecordFailureAsync(User user, string? ipAddress, DateTimeOffset now, CancellationToken cancellationToken)
+    /// <summary>Records a successful sign-in with all required factors and resets the failure count.</summary>
+    public async Task CompleteAsync(User user, IReadOnlyList<string> methods, string? ipAddress, CancellationToken cancellationToken)
     {
+        await db.Users.Where(u => u.Id == user.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.AccessFailedCount, 0).SetProperty(u => u.LockoutEnd, (DateTimeOffset?)null), cancellationToken);
+        audit.Add("user.login.succeeded", ipAddress: ipAddress, subjectId: user.Id, actor: user.Id.ToString(),
+            details: new Dictionary<string, object?> { ["amr"] = string.Join(' ', methods) });
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Counts a failed attempt (wrong password or 2FA code) towards the lockout.</summary>
+    public async Task RecordFailureAsync(User user, string? ipAddress, string reason, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+
         // Increment in the database so concurrent failures aren't lost.
         await db.Users.Where(u => u.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.AccessFailedCount, u => u.AccessFailedCount + 1), cancellationToken);
         var failures = await db.Users.Where(u => u.Id == user.Id).Select(u => u.AccessFailedCount).SingleAsync(cancellationToken);
 
-        audit.Add("user.login.failed", success: false, ipAddress: ipAddress, subjectId: user.Id, details: Reason("invalid_password"));
+        audit.Add("user.login.failed", success: false, ipAddress: ipAddress, subjectId: user.Id, details: Reason(reason));
 
         var lockout = lockoutOptions.Value;
         if (failures >= lockout.MaxFailedAttempts)

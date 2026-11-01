@@ -1,0 +1,17 @@
+@using ValkyrieID.Server.Authentication
+@model TotpEnrollment
+<ol class="steps">
+    <li>Scan this QR code with an authenticator app, such as Google Authenticator, Microsoft Authenticator, or 1Password.
+        <img class="qr" src="@Model.QrCodeDataUri" alt="QR code for your authenticator app" width="200" height="200">
+    </li>
+    <li>If you can't scan it, enter this key in the app instead:
+        <code class="secret" id="totp-secret">@Model.Secret</code>
+    </li>
+    <li>Enter the 6-digit code the app shows.</li>
+</ol>
+<input type="hidden" name="State" value="@Model.State">
+<div class="field">
+    <label for="code">Code from your authenticator app</label>
+    <input id="code" name="Code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="16"
+           autocapitalize="none" spellcheck="false" required>
+</div>

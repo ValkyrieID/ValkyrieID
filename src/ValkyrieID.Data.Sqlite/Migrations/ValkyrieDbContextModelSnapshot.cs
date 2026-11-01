@@ -468,6 +468,32 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.ToTable("Groups", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("BLOB");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("UsedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RecoveryCodes", (string)null);
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Users.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -554,6 +580,19 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("TotpLastUsedStep")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("TotpSecret")
+                        .HasMaxLength(128)
+                        .HasColumnType("BLOB");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("TwoFactorRequired")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("UpdatedAt")
                         .HasColumnType("INTEGER");
@@ -745,6 +784,15 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

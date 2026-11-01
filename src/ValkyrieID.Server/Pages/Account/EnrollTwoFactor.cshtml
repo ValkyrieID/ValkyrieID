@@ -1,0 +1,22 @@
+@page "/account/login/enroll"
+@model EnrollTwoFactorModel
+@{
+    ViewData["Title"] = "Set up two-factor authentication";
+}
+@if (Model.RecoveryCodes is not null)
+{
+    <h1>Two-factor authentication is on</h1>
+    <partial name="_RecoveryCodes" model="Model.RecoveryCodes" />
+    <p><a class="button" href="@Model.SafeReturnUrl">Continue</a></p>
+}
+else if (Model.Enrollment is not null)
+{
+    <h1>Set up two-factor authentication</h1>
+    <p>Your account requires two-factor authentication. Set it up to finish signing in.</p>
+    <partial name="_Errors" model="Model.Errors" />
+    <form method="post" novalidate>
+        <input type="hidden" asp-for="ReturnUrl">
+        <partial name="_TotpEnrollment" model="Model.Enrollment" />
+        <button type="submit">Turn on two-factor authentication</button>
+    </form>
+}

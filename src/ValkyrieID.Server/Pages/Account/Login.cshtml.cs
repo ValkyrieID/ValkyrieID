@@ -7,7 +7,8 @@ using ValkyrieID.Server.Configuration;
 namespace ValkyrieID.Server.Pages.Account;
 
 [EnableRateLimiting(RateLimitPolicies.Login)]
-internal sealed class LoginModel(LoginService login, SessionManager sessions, LoginAttemptLimiter limiter) : PageModel
+internal sealed class LoginModel(
+    LoginService login, SessionManager sessions, LoginAttemptLimiter limiter, TwoFactorService twoFactor, PendingLogin pending) : PageModel
 {
     // Deliberately the same for unknown users, wrong passwords, and disabled or locked-out accounts.
     internal const string InvalidCredentials = "Invalid username or password.";
@@ -62,13 +63,27 @@ internal sealed class LoginModel(LoginService login, SessionManager sessions, Lo
             return Page();
         }
 
-        var user = await login.PasswordLoginAsync(identifier, password, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var user = await login.PasswordLoginAsync(identifier, password, ipAddress, cancellationToken);
         if (user is null)
         {
             Errors = [InvalidCredentials];
             return Page();
         }
 
+        if (user.TwoFactorEnabled)
+        {
+            await pending.StartAsync(HttpContext, user, PendingStep.Verify);
+            return RedirectToPage("/Account/TwoFactor", new { returnUrl = SafeReturnUrl });
+        }
+
+        if (twoFactor.IsRequired(user))
+        {
+            await pending.StartAsync(HttpContext, user, PendingStep.Enroll);
+            return RedirectToPage("/Account/EnrollTwoFactor", new { returnUrl = SafeReturnUrl });
+        }
+
+        await login.CompleteAsync(user, ["pwd"], ipAddress, cancellationToken);
         await sessions.SignInAsync(HttpContext, user, ["pwd"], cancellationToken);
         return LocalRedirect(SafeReturnUrl);
     }

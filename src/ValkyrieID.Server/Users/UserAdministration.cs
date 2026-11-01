@@ -134,6 +134,37 @@ internal sealed class UserAdministration(
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Turns off 2FA and deletes the TOTP secret and recovery codes, e.g. after a lost device. The user's sessions
+    /// are signed out; if 2FA is required, they enroll again at their next sign-in.
+    /// </summary>
+    public async Task ResetTwoFactorAsync(User user, AuditActor actor, CancellationToken cancellationToken)
+    {
+        user.TwoFactorEnabled = false;
+        user.TotpSecret = null;
+        user.TotpLastUsedStep = null;
+        Touch(user, timeProvider.GetUtcNow());
+        db.RecoveryCodes.RemoveRange(await db.RecoveryCodes.Where(c => c.UserId == user.Id).ToListAsync(cancellationToken));
+        await RevokeSessionsAsync(user, actor, "2fa_reset", cancellationToken);
+        AddAudit("user.2fa.reset", user, actor);
+        await db.SaveChangesAsync(cancellationToken);
+        sessions.WakeDeliveryWorker();
+    }
+
+    /// <summary>Requires 2FA for this user regardless of the global setting; it applies from their next sign-in.</summary>
+    public async Task SetTwoFactorRequiredAsync(User user, bool required, AuditActor actor, CancellationToken cancellationToken)
+    {
+        if (user.TwoFactorRequired == required)
+        {
+            return;
+        }
+
+        user.TwoFactorRequired = required;
+        user.UpdatedAt = timeProvider.GetUtcNow();
+        AddAudit(required ? "user.2fa.required" : "user.2fa.not_required", user, actor);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task SetAdminAsync(User user, bool admin, AuditActor actor, CancellationToken cancellationToken)
     {
         var hasRole = user.Roles.Any(r => r.Id == Role.AdminRoleId);

@@ -233,7 +233,7 @@ ID tokens are JWTs signed with RS256:
 |---|---|
 | `iss`, `sub`, `aud` | The issuer, the user's immutable id, the client id |
 | `iat`, `exp` | Issue time and expiry (default 5 minutes) |
-| `auth_time`, `amr` | When and how the user signed in (`pwd`) |
+| `auth_time`, `amr` | When and how the user signed in (RFC 8176): `pwd`; with 2FA `pwd otp mfa`, or `pwd mfa` with a recovery code |
 | `sid` | The session id. Logout tokens carry the same value. |
 | `nonce` | From the authorization request, if sent |
 | `at_hash` | Hash of the access token (OpenID Connect Core A3.1.3.6) |

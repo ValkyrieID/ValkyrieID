@@ -1,0 +1,10 @@
+@model IReadOnlyList<string>
+<h2 id="recovery-codes-heading">Your recovery codes</h2>
+<p>Save these codes somewhere safe. If you lose access to your authenticator app, you can sign in with one of them.
+    Each code works only once, and they won't be shown again.</p>
+<ul class="recovery-codes" aria-labelledby="recovery-codes-heading">
+    @foreach (var code in Model)
+    {
+        <li><code>@code</code></li>
+    }
+</ul>

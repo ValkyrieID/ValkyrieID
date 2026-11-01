@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Data;
+using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.IntegrationTests;
@@ -127,6 +128,11 @@ public abstract class HostTests
         {
             oldMasterKey = first.MasterKey;
             protectedPayload = Protector(first).Protect(Payload);
+            Assert.Equal(0, (await first.RunCliWithInputAsync("correct horse battery staple\n", "user", "create", "alice")).ExitCode);
+            await using var scope = first.Services.CreateAsyncScope();
+            var secret = scope.ServiceProvider.GetRequiredService<SecretProtector>().Protect(Totp.GenerateSecret(), TwoFactorService.TotpSecretPurpose);
+            await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().Users
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.TotpSecret, secret).SetProperty(u => u.TwoFactorEnabled, true), CancellationToken);
         }
 
         var newMasterKey = MasterKey.Generate().ToBase64();
@@ -135,13 +141,14 @@ public abstract class HostTests
             var before = await rotated.RunCliAsync("admin", "reencrypt", "--check");
             Assert.Equal(1, before.ExitCode);
             Assert.Contains("signing keys: 1", before.Output, StringComparison.Ordinal);
+            Assert.Contains("TOTP secrets: 1", before.Output, StringComparison.Ordinal);
 
             Assert.Equal(0, (await rotated.RunCliAsync("admin", "reencrypt")).ExitCode);
 
             var after = await rotated.RunCliAsync("admin", "reencrypt", "--check");
             Assert.Equal(0, after.ExitCode);
             var again = await rotated.RunCliAsync("admin", "reencrypt");
-            Assert.Contains("signing keys: 0, data protection keys: 0", again.Output, StringComparison.Ordinal);
+            Assert.Contains("signing keys: 0, data protection keys: 0, TOTP secrets: 0", again.Output, StringComparison.Ordinal);
 
             await using var scope = rotated.Services.CreateAsyncScope();
             Assert.True(await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>()

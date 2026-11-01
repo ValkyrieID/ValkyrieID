@@ -1,0 +1,18 @@
+@page "/account/login/2fa"
+@model TwoFactorModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+}
+<h1>Two-factor authentication</h1>
+<partial name="_Errors" model="Model.Errors" />
+<form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl">
+    <div class="field">
+        <label for="code">Code from your authenticator app</label>
+        <input id="code" name="Code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="16"
+               autocapitalize="none" spellcheck="false" required autofocus
+               aria-invalid="@(Model.Errors.Count > 0 ? "true" : null)" aria-describedby="@(Model.Errors.Count > 0 ? "errors" : null)">
+    </div>
+    <button type="submit">Verify</button>
+</form>
+<p class="secondary"><a asp-page="/Account/RecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">Use a recovery code instead</a></p>

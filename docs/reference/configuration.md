@@ -118,10 +118,20 @@ Each password check briefly uses the configured memory, so peak memory grows wit
 
 | Key | Default | Description |
 |---|---|---|
-| `Lockout:MaxFailedAttempts` | `5` | Consecutive failed logins that lock an account. |
+| `Lockout:MaxFailedAttempts` | `5` | Consecutive failed sign-in attempts (wrong passwords and wrong 2FA or recovery codes) that lock an account. |
 | `Lockout:Duration` | `00:15:00` | How long the account stays locked. |
 
 While an account is locked, every login attempt fails with the same message as a wrong password. Unlock an account early with [`admin unlock`](/reference/cli#admin-recovery).
+
+For users with 2FA, the failure count is only reset once the whole sign-in succeeds, so entering the password again doesn't give more attempts at the code.
+
+## Two-factor authentication
+
+| Key | Default | Description |
+|---|---|---|
+| `TwoFactor:Required` | `false` | Require 2FA for every user. Users who haven't set it up must do so at their next sign-in. |
+
+Admins can also require it per user with [`user require-2fa`](/reference/cli#users). See [Two-factor authentication](/guide/two-factor).
 
 ## Session
 
@@ -153,6 +163,7 @@ See [Back-channel logout](/reference/endpoints#back-channel-logout).
 | `RateLimits:LoginAccount:PermitLimit` / `:Window` | `10` / `00:15:00` | Login attempts per username or email, whether or not the account exists. |
 | `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token, userinfo, revocation, and introspection endpoint requests per client IP address. |
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
+| `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA) per client IP address. |
 
 Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 

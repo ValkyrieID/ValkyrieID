@@ -32,6 +32,8 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
 
     public DbSet<Group> Groups => Set<Group>();
 
+    public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
+
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     public DbSet<UserSessionClient> UserSessionClients => Set<UserSessionClient>();

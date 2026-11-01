@@ -15,6 +15,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
     {
         "reset-password" => Done(ResetPasswordAsync(args, cancellationToken)),
         "unlock" => Done(UnlockAsync(args, cancellationToken)),
+        "reset-2fa" => Done(ResetTwoFactorAsync(args, cancellationToken)),
         "grant-admin" => Done(SetAdminAsync(args, true, cancellationToken)),
         "revoke-admin" => Done(SetAdminAsync(args, false, cancellationToken)),
         "reencrypt" => ReencryptAsync(args, cancellationToken),
@@ -34,6 +35,13 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
         var user = await _userCommands.FindAsync(args, cancellationToken);
         await _users.UnlockAsync(user, UserCommands.Actor, cancellationToken);
         await output.WriteLineAsync($"User '{user.UserName}' unlocked.");
+    }
+
+    private async Task ResetTwoFactorAsync(CliArguments args, CancellationToken cancellationToken)
+    {
+        var user = await _userCommands.FindAsync(args, cancellationToken);
+        await _users.ResetTwoFactorAsync(user, UserCommands.Actor, cancellationToken);
+        await output.WriteLineAsync($"2FA of '{user.UserName}' reset; its recovery codes are deleted and its sessions are signed out.");
     }
 
     private async Task SetAdminAsync(CliArguments args, bool admin, CancellationToken cancellationToken)
@@ -59,7 +67,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             throw new CliException("Some data can't be decrypted. Configure every master key it was encrypted with in MasterKey:Previous.");
         }
 
-        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}";
+        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}, TOTP secrets: {report.TotpSecrets}";
         if (check)
         {
             await output.WriteLineAsync(report.Total == 0
@@ -73,6 +81,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
         {
             ["signing_keys"] = report.SigningKeys,
             ["data_protection_keys"] = report.DataProtectionKeys,
+            ["totp_secrets"] = report.TotpSecrets,
         });
         await services.GetRequiredService<Data.ValkyrieDbContext>().SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Re-encrypted with the current master key ({summary}). Previous keys can now be removed.");

@@ -1,0 +1,19 @@
+@page "/account/login/recovery"
+@model RecoveryCodeModel
+@{
+    ViewData["Title"] = "Use a recovery code";
+}
+<h1>Use a recovery code</h1>
+<partial name="_Errors" model="Model.Errors" />
+<form method="post" novalidate>
+    <input type="hidden" asp-for="ReturnUrl">
+    <div class="field">
+        <label for="code">Recovery code</label>
+        <input id="code" name="Code" type="text" autocomplete="off" maxlength="64"
+               autocapitalize="characters" spellcheck="false" required autofocus
+               aria-invalid="@(Model.Errors.Count > 0 ? "true" : null)" aria-describedby="code-hint@(Model.Errors.Count > 0 ? " errors" : "")">
+        <p class="hint" id="code-hint">Each recovery code works only once.</p>
+    </div>
+    <button type="submit">Verify</button>
+</form>
+<p class="secondary"><a asp-page="/Account/TwoFactor" asp-route-returnUrl="@Model.ReturnUrl">Use your authenticator app instead</a></p>

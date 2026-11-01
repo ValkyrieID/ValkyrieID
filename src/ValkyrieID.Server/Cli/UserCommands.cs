@@ -19,6 +19,8 @@ internal sealed class UserCommands(IServiceProvider services, TextReader input, 
         "list" => ListAsync(args, cancellationToken),
         "enable" => SetEnabledAsync(args, true, cancellationToken),
         "disable" => SetEnabledAsync(args, false, cancellationToken),
+        "require-2fa" => SetTwoFactorRequiredAsync(args, true, cancellationToken),
+        "unrequire-2fa" => SetTwoFactorRequiredAsync(args, false, cancellationToken),
         var other => throw new CliException($"Unknown user command '{other}'."),
     };
 
@@ -43,8 +45,18 @@ internal sealed class UserCommands(IServiceProvider services, TextReader input, 
         {
             var state = !user.Enabled ? "disabled" : user.IsLockedOut(now) ? "locked" : "enabled";
             var roles = user.Roles.Count == 0 ? "-" : string.Join(' ', user.Roles.Select(r => r.Name).Order(StringComparer.Ordinal));
-            await output.WriteLineAsync($"{user.UserName}  {state}  {user.Email ?? "-"}  roles: {roles}  sub: {user.Id}");
+            var twoFactor = user.TwoFactorEnabled ? "on" : user.TwoFactorRequired ? "required" : "off";
+            await output.WriteLineAsync($"{user.UserName}  {state}  {user.Email ?? "-"}  roles: {roles}  2fa: {twoFactor}  sub: {user.Id}");
         }
+    }
+
+    private async Task SetTwoFactorRequiredAsync(CliArguments args, bool required, CancellationToken cancellationToken)
+    {
+        var user = await FindAsync(args, cancellationToken);
+        await _users.SetTwoFactorRequiredAsync(user, required, Actor, cancellationToken);
+        await output.WriteLineAsync(required
+            ? $"User '{user.UserName}' must use 2FA from their next sign-in."
+            : $"User '{user.UserName}' no longer has 2FA required individually.");
     }
 
     private async Task SetEnabledAsync(CliArguments args, bool enabled, CancellationToken cancellationToken)
