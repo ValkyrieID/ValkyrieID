@@ -3,7 +3,7 @@ using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Pages.Account;
 
-/// <summary>Edits the user's names. The email address can't be changed here; that needs verification (phase 7c).</summary>
+/// <summary>Edits the user's names. The email address is changed on its own page, since that needs verification.</summary>
 internal sealed class ProfileModel(AccountService account) : AccountPageModel(account)
 {
     [BindProperty]

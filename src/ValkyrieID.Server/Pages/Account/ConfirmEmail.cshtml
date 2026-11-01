@@ -1,0 +1,24 @@
+@page "/account/confirm-email"
+@model ConfirmEmailModel
+@{
+    ViewData["Title"] = "Confirm new email address";
+}
+<h1>Confirm new email address</h1>
+@if (Model.Changed)
+{
+    <p role="status">Your email address has been changed.</p>
+    <p><a href="~/account">Go to your account</a></p>
+}
+else if (Model.Errors.Count > 0)
+{
+    <partial name="_Errors" model="Model.Errors" />
+    <p><a href="~/account/email">Back to your email settings</a></p>
+}
+else
+{
+    <p>Confirm that you want to use this email address for your account.</p>
+    <form method="post" novalidate>
+        <input type="hidden" name="Token" value="@Model.Token">
+        <button type="submit">Change email address</button>
+    </form>
+}

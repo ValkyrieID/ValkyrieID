@@ -42,6 +42,10 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
+
+    public DbSet<OutboundEmail> OutboundEmails => Set<OutboundEmail>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         // SQLite has no native DateTimeOffset type and can't order or compare it in queries;

@@ -2,8 +2,8 @@ using System.Threading.Channels;
 
 namespace ValkyrieID.Server.Logout;
 
-/// <summary>Wakes the delivery worker when notifications were queued or rescheduled in this process.</summary>
-internal sealed class BackChannelLogoutSignal
+/// <summary>Wakes a background worker when work was queued or rescheduled in this process.</summary>
+internal abstract class WakeSignal
 {
     private readonly Channel<bool> _channel = Channel.CreateBounded<bool>(
         new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
@@ -27,3 +27,6 @@ internal sealed class BackChannelLogoutSignal
         cancellationToken.ThrowIfCancellationRequested();
     }
 }
+
+/// <summary>Wakes the back-channel logout delivery worker.</summary>
+internal sealed class BackChannelLogoutSignal : WakeSignal;

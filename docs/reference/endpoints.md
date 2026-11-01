@@ -29,6 +29,11 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 | `/account/password` | Change the password; signs out other sessions and revokes all refresh tokens. |
 | `/account/two-factor` | Turn two-factor authentication on or off, and get new recovery codes. |
 | `/account/sessions` | List and sign out the user's own sessions. |
+| `/account/email` | Show the email address, send a verification link, and change the address. Only with SMTP. |
+| `/account/forgot-password` | Request a password reset link. Only with SMTP. |
+| `/account/reset-password` | Choose a new password with a link from a reset email; signs out all sessions. Only with SMTP. |
+| `/account/verify-email` | Verify the email address with a link. Only with SMTP. |
+| `/account/confirm-email` | Confirm an email change with the link sent to the new address. Only with SMTP. |
 
 Every response carries these headers:
 

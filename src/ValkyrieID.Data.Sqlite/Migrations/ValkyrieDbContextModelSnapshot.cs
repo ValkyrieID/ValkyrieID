@@ -446,6 +446,50 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.ToTable("BackChannelLogoutDeliveries", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.EmailToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("BLOB");
+
+                    b.Property<long?>("UsedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Purpose");
+
+                    b.ToTable("EmailTokens", (string)null);
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Users.Group", b =>
                 {
                     b.Property<Guid>("Id")
@@ -466,6 +510,47 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .IsUnique();
 
                     b.ToTable("Groups", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.OutboundEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("EncryptedMessage")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("LeaseExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LeaseOwner")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("NextAttemptAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt");
+
+                    b.ToTable("OutboundEmails", (string)null);
                 });
 
             modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
@@ -784,6 +869,15 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.EmailToken", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

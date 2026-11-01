@@ -18,6 +18,7 @@ internal static class RateLimitPolicies
     public const string Token = "token";
     public const string Authorize = "authorize";
     public const string TwoFactor = "two-factor";
+    public const string Email = "email";
 }
 
 internal static class AccountExtensions
@@ -43,6 +44,7 @@ internal static class AccountExtensions
         services.AddScoped<LoginService>();
         services.AddScoped<TwoFactorService>();
         services.AddScoped<AccountService>();
+        services.AddValkyrieEmail(configuration);
         services.AddScoped<PendingLogin>();
         services.AddScoped<SessionManager>();
         services.AddScoped<SessionService>();
@@ -114,6 +116,9 @@ internal static class AccountExtensions
             options.AddPolicy(RateLimitPolicies.Authorize, context => FixedWindowPerIp(context, RateLimitPolicies.Authorize, o => o.Authorize));
             options.AddPolicy(RateLimitPolicies.TwoFactor, context => HttpMethods.IsPost(context.Request.Method)
                 ? FixedWindowPerIp(context, RateLimitPolicies.TwoFactor, o => o.TwoFactor)
+                : RateLimitPartition.GetNoLimiter(string.Empty));
+            options.AddPolicy(RateLimitPolicies.Email, context => HttpMethods.IsPost(context.Request.Method)
+                ? FixedWindowPerIp(context, RateLimitPolicies.Email, o => o.Email)
                 : RateLimitPartition.GetNoLimiter(string.Empty));
         });
 

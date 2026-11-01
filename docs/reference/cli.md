@@ -54,12 +54,13 @@ Break-glass commands for when nobody can sign in as an admin.
 
 | Command | Description |
 |---|---|
-| `admin reset-password <user>` | Set a new password. Also unlocks the account and revokes its sessions. |
+| `admin reset-password <user>` | Set a new password. Also unlocks the account and revokes its sessions. With SMTP, the user's address gets a notice. |
 | `admin unlock <user>` | Clear a lockout. |
 | `admin reset-2fa <user>` | Turn off two-factor authentication, e.g. after a lost phone: deletes the TOTP secret and recovery codes and revokes the user's sessions. If 2FA is required, the user sets it up again at their next sign-in. |
 | `admin grant-admin <user>` | Give the user the built-in `admin` role. |
 | `admin revoke-admin <user>` | Remove the `admin` role. |
 | `admin reencrypt [--check]` | Re-encrypt secrets with the current master key. See [Rotate the key](/operations/master-key#rotate-the-key). |
+| `admin send-test-email <address>` | Send a test email right away, to check the [SMTP settings](/reference/configuration#smtp). Prints the SMTP error if it fails. |
 
 The last enabled admin can't be disabled or lose the `admin` role, so there is always someone who can administer the server.
 

@@ -155,6 +155,32 @@ Administrators list and revoke sessions with the [`session` commands](/reference
 
 See [Back-channel logout](/reference/endpoints#back-channel-logout).
 
+## SMTP
+
+Email features ([password reset, email verification, email change](/guide/email)) are turned on by setting `Smtp:Host`.
+
+| Key | Default | Description |
+|---|---|---|
+| `Smtp:Host` | *(none)* | The SMTP server. Unset turns the email features off. |
+| `Smtp:Port` | `587` | |
+| `Smtp:Security` | `StartTls` | `StartTls` (upgrade the connection; fail if the server doesn't offer it), `Tls` (TLS from the start, usually port 465), or `None` (only allowed for `localhost` or a loopback address). The server certificate is always validated. |
+| `Smtp:UserName` / `Smtp:Password` | *(none)* | Credentials; set both or neither. Supply the password through an environment variable or secret store. |
+| `Smtp:FromAddress` | *(none)* | Sender address. Required when `Smtp:Host` is set. |
+| `Smtp:FromName` | `Branding:ProductName` | Sender display name. |
+| `Smtp:Timeout` | `00:00:30` | Timeout of each SMTP operation (1 second to 5 minutes). |
+| `Smtp:RetryDelays` | `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, or `4xx` reply. After the last one the email is abandoned. Set as an array, e.g. `Smtp__RetryDelays__0=00:01:00`; at most 20 entries. |
+| `Smtp:PollInterval` | `00:01:00` | How often each instance checks for emails queued by another process (the CLI or another instance). |
+
+Settings are read from configuration only. Editing them in the admin UI, with the password stored encrypted in the database, comes with the admin UI.
+
+## Email links
+
+| Key | Default | Description |
+|---|---|---|
+| `Email:PasswordResetLifetime` | `00:30:00` | How long a password reset link works (5 minutes to 24 hours). |
+| `Email:VerificationLifetime` | `1.00:00:00` | How long email verification and email change links work (5 minutes to 7 days). |
+| `Email:ResendInterval` | `00:01:00` | At most one email of each kind per account in this interval (0 to 1 hour); further requests are ignored silently. |
+
 ## Rate limits
 
 | Key | Default | Description |
@@ -164,6 +190,7 @@ See [Back-channel logout](/reference/endpoints#back-channel-logout).
 | `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token, userinfo, revocation, and introspection endpoint requests per client IP address. |
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
 | `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA), and the account forms that ask for the current password, per client IP address. |
+| `RateLimits:Email:PermitLimit` / `:Window` | `5` / `00:05:00` | Submissions of the [email](/guide/email) forms (forgot password, reset password, verify email, change email) per client IP address. |
 
 Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 

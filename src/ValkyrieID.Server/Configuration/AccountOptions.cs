@@ -91,6 +91,9 @@ public sealed class RateLimitOptions
 
     /// <summary>2FA code submissions (TOTP and recovery codes, at login and enrollment) per client IP address.</summary>
     public RateLimitRule TwoFactor { get; set; } = new() { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) };
+
+    /// <summary>Form submissions that send email or use an email link (password reset, verification, email change) per client IP address.</summary>
+    public RateLimitRule Email { get; set; } = new() { PermitLimit = 5, Window = TimeSpan.FromMinutes(5) };
 }
 
 public sealed class TwoFactorOptions
@@ -228,7 +231,7 @@ internal sealed class AccountOptionsValidator :
     public ValidateOptionsResult Validate(string? name, RateLimitOptions options)
     {
         List<string> failures = [];
-        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize), ("TwoFactor", options.TwoFactor) })
+        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize), ("TwoFactor", options.TwoFactor), ("Email", options.Email) })
         {
             if (rule.PermitLimit < 1 || rule.Window <= TimeSpan.Zero)
             {

@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
+using Microsoft.Extensions.Options;
+using ValkyrieID.Core.Users;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Email;
 using ValkyrieID.Server.Security;
 using ValkyrieID.Server.Users;
 
@@ -19,6 +23,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
         "grant-admin" => Done(SetAdminAsync(args, true, cancellationToken)),
         "revoke-admin" => Done(SetAdminAsync(args, false, cancellationToken)),
         "reencrypt" => ReencryptAsync(args, cancellationToken),
+        "send-test-email" => Done(SendTestEmailAsync(args, cancellationToken)),
         var other => throw new CliException($"Unknown admin command '{other}'."),
     };
 
@@ -67,7 +72,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             throw new CliException("Some data can't be decrypted. Configure every master key it was encrypted with in MasterKey:Previous.");
         }
 
-        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}, TOTP secrets: {report.TotpSecrets}";
+        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}, TOTP secrets: {report.TotpSecrets}, queued emails: {report.QueuedEmails}";
         if (check)
         {
             await output.WriteLineAsync(report.Total == 0
@@ -82,10 +87,44 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             ["signing_keys"] = report.SigningKeys,
             ["data_protection_keys"] = report.DataProtectionKeys,
             ["totp_secrets"] = report.TotpSecrets,
+            ["queued_emails"] = report.QueuedEmails,
         });
         await services.GetRequiredService<Data.ValkyrieDbContext>().SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Re-encrypted with the current master key ({summary}). Previous keys can now be removed.");
         return 0;
+    }
+
+    /// <summary>Sends an email right away, without the queue, so SMTP problems are reported here.</summary>
+    private async Task SendTestEmailAsync(CliArguments args, CancellationToken cancellationToken)
+    {
+        var address = args.Argument(2, "address");
+        args.EnsureConsumed(3);
+        if (!services.GetRequiredService<IOptions<SmtpOptions>>().Value.Enabled)
+        {
+            throw new CliException("SMTP isn't configured; set Smtp:Host and Smtp:FromAddress.");
+        }
+
+        if (!UserNames.IsValidEmail(address))
+        {
+            throw new CliException("The email address is invalid.");
+        }
+
+        var product = services.GetRequiredService<IOptions<BrandingOptions>>().Value.ProductName;
+        var audit = services.GetRequiredService<AuditRecorder>();
+        try
+        {
+            await services.GetRequiredService<IEmailSender>().SendAsync(EmailTemplates.Test(product, address), cancellationToken);
+        }
+        catch (EmailDeliveryException ex)
+        {
+            audit.Add("email.test", success: false, actor: AuditRecorder.CliActor, details: new Dictionary<string, object?> { ["result"] = ex.Result });
+            await services.GetRequiredService<Data.ValkyrieDbContext>().SaveChangesAsync(cancellationToken);
+            throw new CliException($"Sending the test email failed ({ex.Result}): {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        audit.Add("email.test", actor: AuditRecorder.CliActor, details: new Dictionary<string, object?> { ["result"] = "sent" });
+        await services.GetRequiredService<Data.ValkyrieDbContext>().SaveChangesAsync(cancellationToken);
+        await output.WriteLineAsync($"Test email sent to {address}.");
     }
 
     private static async Task<int> Done(Task task)

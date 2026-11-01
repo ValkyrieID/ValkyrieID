@@ -403,6 +403,8 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
    - audit log viewer
    - audit log retention *(planned: from ยง11, unscheduled)*
    - DB-backed runtime settings with env precedence
+     - SMTP settings in the DB, with the SMTP password encrypted by the master key
+   - setting to prompt for or require email verification after sign-in *(planned: from ง6, unscheduled)*
 9. **Multi-instance:**
    - Redis for authorization codes, rate limits, and cache
    - multi-instance integration tests
@@ -435,6 +437,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Audit log retention | (ยง11, unscheduled) | 8 | Belongs with the audit log viewer. |
 | Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |
 | Changing the email address on the account page | 7b | 7c | An email change needs verification of the new address, which needs SMTP (7c). 7b edits names only. |
+| Prompting for or requiring email verification after sign-in | (ง6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
 
 ### Spec deviations
 

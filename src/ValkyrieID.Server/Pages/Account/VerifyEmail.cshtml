@@ -1,0 +1,26 @@
+@page "/account/verify-email"
+@model VerifyEmailModel
+@{
+    ViewData["Title"] = "Verify email address";
+}
+<h1>Verify email address</h1>
+@if (Model.Verified == true)
+{
+    <p role="status">Your email address has been verified.</p>
+    <p><a href="~/account">Go to your account</a></p>
+}
+else if (Model.Verified == false)
+{
+    <div class="alert" role="alert" id="errors" tabindex="-1">
+        <p>@ValkyrieID.Server.Users.EmailAccountService.InvalidLink</p>
+    </div>
+    <p><a href="~/account/email">Request a new link</a></p>
+}
+else
+{
+    <p>Confirm that this email address belongs to your account.</p>
+    <form method="post" novalidate>
+        <input type="hidden" name="Token" value="@Model.Token">
+        <button type="submit">Verify email address</button>
+    </form>
+}

@@ -77,6 +77,7 @@ internal static class CliApp
           admin grant-admin <user>
           admin revoke-admin <user>
           admin reencrypt [--check]
+          admin send-test-email <address>
 
         Passwords are read from a hidden prompt, or as one line from standard input when it is redirected.
 

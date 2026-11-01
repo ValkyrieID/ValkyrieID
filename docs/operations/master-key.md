@@ -4,7 +4,8 @@ ValkyrieID encrypts secrets stored in the database with a master key:
 
 - ASP.NET Data Protection keys (used for cookies and anti-forgery tokens)
 - signing keys and TOTP secrets
-- the SMTP password (in a later release)
+- queued emails, which can contain one-time links
+- the SMTP password, once it can be stored in the database (with the admin UI)
 
 Secrets are encrypted with AES-256-GCM. The master key is never stored in the database.
 

@@ -454,6 +454,50 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.ToTable("BackChannelLogoutDeliveries", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Users.EmailToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Purpose")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Purpose");
+
+                    b.ToTable("EmailTokens", (string)null);
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Users.Group", b =>
                 {
                     b.Property<Guid>("Id")
@@ -474,6 +518,47 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .IsUnique();
 
                     b.ToTable("Groups", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.OutboundEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("EncryptedMessage")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LeaseOwner")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt");
+
+                    b.ToTable("OutboundEmails", (string)null);
                 });
 
             modelBuilder.Entity("ValkyrieID.Core.Users.RecoveryCode", b =>
@@ -792,6 +877,15 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                         .WithMany()
                         .HasForeignKey("ClientId")
                         .HasPrincipalKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Users.EmailToken", b =>
+                {
+                    b.HasOne("ValkyrieID.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

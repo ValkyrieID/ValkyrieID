@@ -1,5 +1,8 @@
 @page
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
 @using ValkyrieID.Server.Users
+@inject IOptions<SmtpOptions> Smtp
 @model ProfileModel
 @{
     ViewData["Title"] = "Profile";
@@ -14,7 +17,14 @@
     <div class="field">
         <label for="email">Email address</label>
         <input id="email" type="email" value="@Model.CurrentUser?.Email" readonly aria-describedby="email-hint">
-        <p class="hint" id="email-hint">Ask your administrator to change your email address.</p>
+        @if (Smtp.Value.Enabled)
+        {
+            <p class="hint" id="email-hint"><a href="~/account/email">Change or verify your email address</a></p>
+        }
+        else
+        {
+            <p class="hint" id="email-hint">Ask your administrator to change your email address.</p>
+        }
     </div>
     <div class="field">
         <label for="display-name">Display name</label>

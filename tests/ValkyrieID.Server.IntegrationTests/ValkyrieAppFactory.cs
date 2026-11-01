@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Cli;
+using ValkyrieID.Server.Email;
 using ValkyrieID.Server.Logout;
 
 namespace ValkyrieID.Server.IntegrationTests;
@@ -36,6 +37,12 @@ public sealed class ValkyrieAppFactory(
 
     /// <summary>Stops the background delivery worker, so tests drive deliveries themselves.</summary>
     public bool DisableBackChannelWorker { get; init; }
+
+    /// <summary>Receives the server's emails instead of an SMTP server.</summary>
+    internal TestEmailSender? EmailSender { get; init; }
+
+    /// <summary>Stops the background email worker, so tests send queued emails themselves.</summary>
+    public bool DisableEmailWorker { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -72,13 +79,25 @@ public sealed class ValkyrieAppFactory(
 
         if (DisableBackChannelWorker)
         {
-            builder.ConfigureTestServices(services =>
-            {
-                foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(BackChannelLogoutWorker)).ToList())
-                {
-                    services.Remove(descriptor);
-                }
-            });
+            builder.ConfigureTestServices(services => RemoveHostedService<BackChannelLogoutWorker>(services));
+        }
+
+        if (EmailSender is { } sender)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender>(sender));
+        }
+
+        if (DisableEmailWorker)
+        {
+            builder.ConfigureTestServices(services => RemoveHostedService<EmailWorker>(services));
+        }
+    }
+
+    private static void RemoveHostedService<T>(IServiceCollection services)
+    {
+        foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(T)).ToList())
+        {
+            services.Remove(descriptor);
         }
     }
 
@@ -126,4 +145,26 @@ public sealed class TestTimeProvider(DateTimeOffset start) : TimeProvider
     public override DateTimeOffset GetUtcNow() => _now;
 
     public void Advance(TimeSpan by) => _now += by;
+}
+
+/// <summary>Collects sent emails; can be told to fail.</summary>
+internal sealed class TestEmailSender : IEmailSender
+{
+    private readonly System.Collections.Concurrent.ConcurrentQueue<EmailMessage> _sent = new();
+
+    /// <summary>Thrown for every send while set.</summary>
+    public EmailDeliveryException? Failure { get; set; }
+
+    public IReadOnlyList<EmailMessage> Sent => [.. _sent];
+
+    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
+    {
+        if (Failure is { } failure)
+        {
+            throw failure;
+        }
+
+        _sent.Enqueue(message);
+        return Task.CompletedTask;
+    }
 }

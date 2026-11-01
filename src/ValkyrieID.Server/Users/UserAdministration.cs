@@ -6,6 +6,7 @@ using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Email;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Users;
@@ -33,6 +34,7 @@ internal sealed class UserAdministration(
     PasswordValidator passwordValidator,
     RefreshTokenStore refreshTokens,
     SessionService sessions,
+    AccountEmails emails,
     AuditRecorder audit,
     TimeProvider timeProvider)
 {
@@ -101,8 +103,10 @@ internal sealed class UserAdministration(
         Touch(user, now);
         await RevokeSessionsAsync(user, actor, "password_reset", cancellationToken);
         AddAudit("user.password_reset", user, actor);
+        emails.PasswordChanged(user, PasswordChange.Admin);
         await db.SaveChangesAsync(cancellationToken);
         sessions.WakeDeliveryWorker();
+        emails.Wake();
     }
 
     public async Task SetEnabledAsync(User user, bool enabled, AuditActor actor, CancellationToken cancellationToken)

@@ -1,0 +1,48 @@
+@page
+@model EmailModel
+@{
+    ViewData["Title"] = "Email address";
+    var user = Model.CurrentUser;
+}
+<h1>Email address</h1>
+@if (user?.Email is null)
+{
+    <p>Your account has no email address.</p>
+}
+else
+{
+    <p>Your email address is <strong>@user.Email</strong>@(user.EmailVerified ? " (verified)." : " (not verified).")</p>
+    @if (Model.VerificationSent)
+    {
+        <p role="status">We've sent a verification link to your email address.</p>
+    }
+    else if (!user.EmailVerified)
+    {
+        <form method="post" asp-page-handler="Verify" novalidate>
+            <button type="submit">Send verification link</button>
+        </form>
+    }
+}
+
+<h2>Change email address</h2>
+@if (Model.ChangeRequested)
+{
+    <p role="status">We've sent an email to the new address. Open the link in it to finish the change; until then, your current address stays in use.</p>
+}
+else
+{
+    <p>We'll send a link to the new address. Your address changes when you open it.</p>
+    <partial name="_Errors" model="Model.Errors" />
+    <form method="post" novalidate>
+        <div class="field">
+            <label for="new-email">New email address</label>
+            <input id="new-email" name="NewEmail" type="email" value="@Model.NewEmail" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+            <label for="password">Current password</label>
+            <input id="password" name="Password" type="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit">Change email address</button>
+    </form>
+}
+<p class="secondary"><a href="~/account">Back to your account</a></p>

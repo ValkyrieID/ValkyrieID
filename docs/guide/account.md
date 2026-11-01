@@ -4,13 +4,17 @@ Signed-in users manage their own account at `/account`. All account pages are se
 
 ## Re-entering your password
 
-Changing the password, managing two-factor authentication, and getting new recovery codes all ask for the current password, every time. Someone who gets hold of a signed-in browser can't use it to take over the account.
+Changing the password, changing the email address, managing two-factor authentication, and getting new recovery codes all ask for the current password, every time. Someone who gets hold of a signed-in browser can't use it to take over the account.
 
 Wrong passwords on these forms count towards the [account lockout](/reference/configuration#lockout), like wrong passwords at sign-in. While the account is locked, these forms are refused even with the right password. The current session stays signed in. Form submissions are [rate limited](/reference/configuration#rate-limits) with the `TwoFactor` rule.
 
 ## Profile
 
-`/account/profile` changes the display name, given name, and family name. These are returned in the `name`, `given_name`, and `family_name` claims (`profile` scope). The email address can't be changed here; ask an administrator.
+`/account/profile` changes the display name, given name, and family name. These are returned in the `name`, `given_name`, and `family_name` claims (`profile` scope). The email address is changed on /account/email when [email is set up](/guide/email#email-change); otherwise, ask an administrator.
+
+## Email address
+
+`/account/email` shows the address and whether it's verified, sends a verification link, and changes the address with confirmation from the new one. It's only available when SMTP is configured; see [Email](/guide/email).
 
 ## Change password
 
@@ -20,7 +24,8 @@ After the change:
 
 - this browser stays signed in;
 - all other sessions are signed out, and their applications are notified by [back-channel logout](/reference/endpoints#back-channel-logout);
-- **all** of the user's refresh tokens are revoked, including those issued to applications in this session. Applications that keep the user signed in with `offline_access` need a new sign-in.
+- **all** of the user's refresh tokens are revoked, including those issued to applications in this session. Applications that keep the user signed in with `offline_access` need a new sign-in;
+- if email is set up, the account's address gets a notice.
 
 ## Two-factor authentication
 
@@ -49,4 +54,5 @@ Every change is written to the audit log with the user's ID as the actor:
 | `user.2fa.enabled` / `user.2fa.disabled` | 2FA turned on or off. |
 | `user.2fa.recovery_codes_regenerated` | New recovery codes. |
 | `session.revoked` | A session was signed out; `reason` is `user_revoked`, `user_revoked_others`, `password_changed`, or `2fa_disabled`. |
+| `user.email_change.requested` / `user.email_changed` | See [Email](/guide/email#audit-log). |
 | `user.login.failed` / `user.locked_out` | Wrong password or code on an account form, or the account locked. |

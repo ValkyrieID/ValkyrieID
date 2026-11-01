@@ -88,6 +88,36 @@ internal sealed class RecoveryCodeConfiguration : IEntityTypeConfiguration<Recov
     }
 }
 
+internal sealed class EmailTokenConfiguration : IEntityTypeConfiguration<EmailToken>
+{
+    public void Configure(EntityTypeBuilder<EmailToken> builder)
+    {
+        builder.ToTable("EmailTokens");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.TokenHash).HasMaxLength(32);
+        builder.HasIndex(e => e.TokenHash).IsUnique();
+        builder.Property(e => e.Email).HasMaxLength(UserNames.MaxEmailLength);
+        builder.Property(e => e.SecurityStamp).HasMaxLength(64);
+        builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(e => new { e.UserId, e.Purpose });
+    }
+}
+
+internal sealed class OutboundEmailConfiguration : IEntityTypeConfiguration<OutboundEmail>
+{
+    public void Configure(EntityTypeBuilder<OutboundEmail> builder)
+    {
+        builder.ToTable("OutboundEmails");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).ValueGeneratedNever();
+        builder.Property(e => e.Kind).HasMaxLength(64);
+        // A concurrency token, so an instance whose lease expired and was taken over can't overwrite the new owner.
+        builder.Property(e => e.LeaseOwner).HasMaxLength(64).IsConcurrencyToken();
+        builder.HasIndex(e => e.NextAttemptAt);
+    }
+}
+
 internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
 {
     public void Configure(EntityTypeBuilder<UserSession> builder)

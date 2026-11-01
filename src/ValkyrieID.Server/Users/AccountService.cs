@@ -4,6 +4,7 @@ using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Email;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Users;
@@ -20,6 +21,7 @@ internal sealed class AccountService(
     TwoFactorService twoFactor,
     SessionService sessions,
     RefreshTokenStore refreshTokens,
+    AccountEmails emails,
     AuditRecorder audit,
     TimeProvider timeProvider)
 {
@@ -153,8 +155,10 @@ internal sealed class AccountService(
         await RevokeOthersAsync(user.Id, currentSessionId, actor, "password_changed", cancellationToken);
         var revokedTokens = await refreshTokens.RevokeForUserAsync(user.Id, cancellationToken);
         Audit("user.password_changed", user, actor, new Dictionary<string, object?> { ["refresh_tokens_revoked"] = revokedTokens });
+        emails.PasswordChanged(user, PasswordChange.Changed);
         await db.SaveChangesAsync(cancellationToken);
         sessions.WakeDeliveryWorker();
+        emails.Wake();
         return [];
     }
 

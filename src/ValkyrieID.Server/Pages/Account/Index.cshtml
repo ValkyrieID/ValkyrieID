@@ -1,5 +1,8 @@
 @page
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
 @model IndexModel
+@inject IOptions<SmtpOptions> Smtp
 @{
     ViewData["Title"] = "Your account";
 }
@@ -7,6 +10,10 @@
 <p>You are signed in as <strong>@User.Identity?.Name</strong>.</p>
 <ul class="links">
     <li><a href="~/account/profile">Profile</a></li>
+    @if (Smtp.Value.Enabled)
+    {
+        <li><a href="~/account/email">Email address</a></li>
+    }
     <li><a href="~/account/password">Change password</a></li>
     <li><a href="~/account/two-factor">Two-factor authentication</a></li>
     <li><a href="~/account/sessions">Your sessions</a></li>
