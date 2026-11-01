@@ -346,6 +346,7 @@ public abstract class RefreshTokenTests
 
     [Theory]
     [InlineData("password")]
+    [InlineData("self-service-password")]
     [InlineData("user-disable")]
     [InlineData("client-disable")]
     public async Task Refresh_tokens_are_revoked_on_password_change_and_disable(string trigger)
@@ -362,6 +363,17 @@ public abstract class RefreshTokenTests
             case "password":
                 var result = await factory.RunCliWithInputAsync("another correct horse battery\n", "admin", "reset-password", "alice");
                 Assert.True(result.ExitCode == 0, result.Error);
+                break;
+            case "self-service-password":
+                // Includes the refresh tokens of the session that made the change, which stays signed in.
+                var changed = await Forms.PostAsync(browser, "/account/password", new()
+                {
+                    ["CurrentPassword"] = Password,
+                    ["NewPassword"] = "another correct horse battery",
+                    ["ConfirmPassword"] = "another correct horse battery",
+                });
+                Assert.Contains("password has been changed", await changed.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
+                Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
                 break;
             case "user-disable":
                 await RunCliOkAsync(factory, "user", "disable", "alice");

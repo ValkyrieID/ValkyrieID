@@ -503,6 +503,49 @@ public abstract class LogoutTests
     }
 
     [Fact]
+    public async Task A_user_revoking_their_own_session_revokes_its_refresh_tokens_and_notifies_clients()
+    {
+        await using var factory = CreateFactory(disableWorker: true);
+        await CreateUserAsync(factory, "alice");
+        var secret = await CreateClientAsync(factory, "web", backChannelUri: BackChannelUri);
+        var other = factory.CreateBrowser();
+        await Forms.LoginAsync(other, "alice", Password);
+        var tokens = await RedeemAsync(other, "web", secret, "openid offline_access");
+        var sid = new JsonWebToken(tokens.GetProperty("id_token").GetString()!).GetClaim("sid").Value;
+        var current = factory.CreateBrowser();
+        await Forms.LoginAsync(current, "alice", Password);
+
+        await Forms.PostAsync(current, "/account/sessions?handler=Revoke", new() { ["SessionId"] = sid });
+
+        var refresh = await other.SendAsync(RefreshRequest(tokens.GetProperty("refresh_token").GetString()!, secret), CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, refresh.StatusCode);
+        Assert.Equal(sid, (await SingleDeliveryAsync(factory)).SessionId);
+        Assert.Equal(HttpStatusCode.OK, (await current.GetAsync("/account", CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Changing_the_password_notifies_the_clients_of_the_other_sessions()
+    {
+        await using var factory = CreateFactory(disableWorker: true);
+        await CreateUserAsync(factory, "alice");
+        var secret = await CreateClientAsync(factory, "web", backChannelUri: BackChannelUri);
+        var other = factory.CreateBrowser();
+        await Forms.LoginAsync(other, "alice", Password);
+        var sid = new JsonWebToken((await RedeemAsync(other, "web", secret, "openid")).GetProperty("id_token").GetString()!).GetClaim("sid").Value;
+        var current = factory.CreateBrowser();
+        await Forms.LoginAsync(current, "alice", Password);
+
+        await Forms.PostAsync(current, "/account/password", new()
+        {
+            ["CurrentPassword"] = Password,
+            ["NewPassword"] = "another correct horse battery",
+            ["ConfirmPassword"] = "another correct horse battery",
+        });
+
+        Assert.Equal(sid, (await SingleDeliveryAsync(factory)).SessionId);
+    }
+
+    [Fact]
     public async Task Sign_out_notifies_clients_but_keeps_offline_refresh_tokens()
     {
         var receiver = new BackChannelReceiver();

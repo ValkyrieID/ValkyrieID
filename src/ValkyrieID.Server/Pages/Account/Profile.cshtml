@@ -1,0 +1,33 @@
+@page
+@using ValkyrieID.Server.Users
+@model ProfileModel
+@{
+    ViewData["Title"] = "Profile";
+}
+<h1>Profile</h1>
+@if (Model.Saved)
+{
+    <p role="status">Your profile has been saved.</p>
+}
+<partial name="_Errors" model="Model.Errors" />
+<form method="post" novalidate>
+    <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" type="email" value="@Model.CurrentUser?.Email" readonly aria-describedby="email-hint">
+        <p class="hint" id="email-hint">Ask your administrator to change your email address.</p>
+    </div>
+    <div class="field">
+        <label for="display-name">Display name</label>
+        <input id="display-name" name="DisplayName" type="text" value="@Model.DisplayName" maxlength="@AccountService.MaxDisplayNameLength" autocomplete="nickname">
+    </div>
+    <div class="field">
+        <label for="given-name">Given name</label>
+        <input id="given-name" name="GivenName" type="text" value="@Model.GivenName" maxlength="@AccountService.MaxNameLength" autocomplete="given-name">
+    </div>
+    <div class="field">
+        <label for="family-name">Family name</label>
+        <input id="family-name" name="FamilyName" type="text" value="@Model.FamilyName" maxlength="@AccountService.MaxNameLength" autocomplete="family-name">
+    </div>
+    <button type="submit">Save</button>
+</form>
+<p class="secondary"><a href="~/account">Back to your account</a></p>

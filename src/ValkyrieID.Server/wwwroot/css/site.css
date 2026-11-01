@@ -183,6 +183,27 @@ h2 {
   list-style: none;
 }
 
+.sessions {
+  padding: 0;
+  list-style: none;
+}
+
+.sessions li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid currentColor;
+  overflow-wrap: anywhere;
+}
+
+.sessions dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+}
+
+.sessions dd {
+  margin: 0;
+}
+
 a.button {
   display: block;
   padding: 0.625rem 1rem;

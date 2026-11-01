@@ -24,7 +24,11 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 | `/setup` | First-run setup wizard. Only available while no user exists; returns `404` afterwards. See [First run](/guide/first-run). |
 | `/account/login` | Sign in with a username or email address and password. Accepts a local `returnUrl`; other URLs are ignored. `prompt=login` shows the form even when a session exists; `login_hint` pre-fills the username. |
 | `/account/logout` | Asks for confirmation, then ends the session. Also shows sign-out requests from applications; see [End session endpoint](#end-session-endpoint). |
-| `/account` | Shows who is signed in. |
+| `/account` | The signed-in user's account: links to the pages below. See [Your account](/guide/account). |
+| `/account/profile` | Change the display, given, and family name. |
+| `/account/password` | Change the password; signs out other sessions and revokes all refresh tokens. |
+| `/account/two-factor` | Turn two-factor authentication on or off, and get new recovery codes. |
+| `/account/sessions` | List and sign out the user's own sessions. |
 
 Every response carries these headers:
 

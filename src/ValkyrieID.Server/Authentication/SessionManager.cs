@@ -115,6 +115,38 @@ internal sealed class SessionManager(
         await context.SignOutAsync(SessionClaims.Scheme);
     }
 
+    /// <summary>
+    /// Re-issues the current session's cookie with the user's new security stamp, after a change that signs out
+    /// the user's other sessions. The session, <c>auth_time</c>, <c>amr</c>, and expiry stay the same.
+    /// </summary>
+    public async Task RefreshCookieAsync(HttpContext context, User user, CancellationToken cancellationToken)
+    {
+        var sessionId = context.User.FindFirstValue(SessionClaims.SessionId);
+        var session = sessionId is null
+            ? null
+            : await db.UserSessions.AsNoTracking().SingleOrDefaultAsync(s => s.Id == sessionId && s.UserId == user.Id, cancellationToken);
+        if (session is null || !session.IsActive(timeProvider.GetUtcNow()))
+        {
+            return;
+        }
+
+        List<Claim> claims =
+        [
+            .. context.User.Claims
+                .Where(c => c.Type != SessionClaims.SecurityStamp)
+                .Select(c => new Claim(c.Type, c.Value, c.ValueType)),
+            new(SessionClaims.SecurityStamp, user.SecurityStamp),
+        ];
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SessionClaims.Scheme, SessionClaims.Name, null));
+        await context.SignInAsync(SessionClaims.Scheme, principal, new AuthenticationProperties
+        {
+            IssuedUtc = timeProvider.GetUtcNow(),
+            ExpiresUtc = session.ExpiresAt,
+            IsPersistent = false,
+            AllowRefresh = false,
+        });
+    }
+
     private static string? Truncate(string value, int length) =>
         value.Length == 0 ? null : value.Length <= length ? value : value[..length];
 }

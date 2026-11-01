@@ -1,0 +1,45 @@
+@page
+@model SessionsModel
+@{
+    ViewData["Title"] = "Your sessions";
+}
+<h1>Your sessions</h1>
+<p>These are the browsers and devices where you're signed in. Signing a session out also signs it out of applications that support it.</p>
+@if (Model.Message is not null)
+{
+    <p role="status">@Model.Message</p>
+}
+<partial name="_Errors" model="Model.Errors" />
+<ul class="sessions">
+    @foreach (var session in Model.Sessions)
+    {
+        <li>
+            <p>
+                <strong>@(session.UserAgent ?? "Unknown device")</strong>
+                @if (Model.IsCurrent(session))
+                {
+                    <span> (this session)</span>
+                }
+            </p>
+            <dl>
+                <dt>IP address</dt>
+                <dd>@(session.IpAddress ?? "Unknown")</dd>
+                <dt>Signed in</dt>
+                <dd><time datetime="@session.AuthenticatedAt.ToString("O")">@session.AuthenticatedAt.ToString("u")</time></dd>
+                <dt>Last activity</dt>
+                <dd><time datetime="@session.LastActivityAt.ToString("O")">@session.LastActivityAt.ToString("u")</time></dd>
+            </dl>
+            <form method="post" asp-page-handler="Revoke">
+                <input type="hidden" name="SessionId" value="@session.Id">
+                <button type="submit">@(Model.IsCurrent(session) ? "Sign out" : "Sign out this session")</button>
+            </form>
+        </li>
+    }
+</ul>
+@if (Model.Sessions.Any(s => !Model.IsCurrent(s)))
+{
+    <form method="post" asp-page-handler="RevokeOthers">
+        <button type="submit">Sign out all other sessions</button>
+    </form>
+}
+<p class="secondary"><a href="~/account">Back to your account</a></p>

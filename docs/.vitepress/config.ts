@@ -20,6 +20,7 @@ export default defineConfig({
           { text: 'Protect an API', link: '/guide/protect-an-api' },
           { text: 'Sign in users', link: '/guide/sign-in-users' },
           { text: 'Two-factor authentication', link: '/guide/two-factor' },
+          { text: 'Your account', link: '/guide/account' },
         ],
       },
       {

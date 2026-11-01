@@ -42,6 +42,7 @@ internal static class AccountExtensions
         services.AddScoped<UserAdministration>();
         services.AddScoped<LoginService>();
         services.AddScoped<TwoFactorService>();
+        services.AddScoped<AccountService>();
         services.AddScoped<PendingLogin>();
         services.AddScoped<SessionManager>();
         services.AddScoped<SessionService>();

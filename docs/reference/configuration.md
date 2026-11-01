@@ -163,7 +163,7 @@ See [Back-channel logout](/reference/endpoints#back-channel-logout).
 | `RateLimits:LoginAccount:PermitLimit` / `:Window` | `10` / `00:15:00` | Login attempts per username or email, whether or not the account exists. |
 | `RateLimits:Token:PermitLimit` / `:Window` | `100` / `00:01:00` | Token, userinfo, revocation, and introspection endpoint requests per client IP address. |
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
-| `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA) per client IP address. |
+| `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA), and the account forms that ask for the current password, per client IP address. |
 
 Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 

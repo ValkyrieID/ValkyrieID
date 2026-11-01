@@ -182,6 +182,11 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - Login, 2FA, recovery code, 2FA enrollment, password reset, email verification, and logout pages.
 - No JavaScript required; strict CSP; anti-forgery tokens.
 - **Self-service account page:** change password, update profile (name, email; email change requires re-verification when SMTP is configured), manage 2FA and recovery codes, view and revoke sessions.
+  - Sensitive actions (password change, turning 2FA on or off, new recovery codes) require the current password on every submission; there is no "sudo" window. Wrong passwords count towards lockout, and the forms are refused while the account is locked.
+  - A password change keeps the current session (its cookie is re-issued with the new security stamp), revokes all other sessions with back-channel logout, and revokes **all** the user's refresh tokens, including the current session's.
+  - Turning 2FA off requires the password and a TOTP or recovery code, is refused while 2FA is required, and revokes the other sessions like a password change. The current session keeps its `amr`, which records how it actually authenticated.
+  - New recovery codes replace all existing ones and don't affect sessions.
+  - Users can only list and revoke their own sessions; revocation uses the shared session service (back-channel logout plus the session's refresh tokens).
 - **Branding:** background image, logo, product name/title, colors (CSS variables), optional custom CSS.
 
 ### 8.2 Admin UI (Angular, latest version, signals)
@@ -387,11 +392,11 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
      - two-step login: the session is created only after the second factor; `amr` per RFC 8176
      - `admin reset-2fa`, 2FA rate limiting, 2FA state on the user model *(deferred: from phase 3)*
    - **7b: self-service account page**
-     - profile, change password (revokes the user's other sessions), manage 2FA and recovery codes
+     - profile (display, given, and family name), change password (revokes the user's other sessions), manage 2FA and recovery codes
      - users' own sessions page *(deferred: from phase 6)*
    - **7c: SMTP**
      - email verification and password reset (a reset revokes all sessions)
-     - email change requires verifying the new address
+     - email change requires verifying the new address; changing the email from the account page *(deferred: from 7b)*
 8. **Admin REST API + Angular admin UI:**
    - full management of users, clients, resources, settings, branding, keys, and sessions
      - seed the admin UI client *(deferred: from phase 3)*
@@ -429,6 +434,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Reverse proxy support (forwarded headers, trusted proxies, path base) | (§11, unscheduled) | 5 | Needed before deployments behind a proxy get correct client IPs; not part of the phase 4 protocol work. |
 | Audit log retention | (§11, unscheduled) | 8 | Belongs with the audit log viewer. |
 | Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |
+| Changing the email address on the account page | 7b | 7c | An email change needs verification of the new address, which needs SMTP (7c). 7b edits names only. |
 
 ### Spec deviations
 

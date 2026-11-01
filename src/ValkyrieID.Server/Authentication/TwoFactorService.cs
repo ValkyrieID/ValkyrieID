@@ -159,6 +159,10 @@ internal sealed class TwoFactorService(
     public Task<int> CountUnusedRecoveryCodesAsync(User user, CancellationToken cancellationToken) =>
         db.RecoveryCodes.CountAsync(c => c.UserId == user.Id && c.UsedAt == null, cancellationToken);
 
+    /// <summary>Replaces all of the user's recovery codes with new ones; the caller saves the changes.</summary>
+    public Task<IReadOnlyList<string>> ReplaceRecoveryCodesAsync(User user, CancellationToken cancellationToken) =>
+        ReplaceRecoveryCodesAsync(user, timeProvider.GetUtcNow(), cancellationToken);
+
     private async Task<IReadOnlyList<string>> ReplaceRecoveryCodesAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await db.RecoveryCodes.Where(c => c.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);

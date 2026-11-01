@@ -23,7 +23,11 @@ ID tokens report the sign-in methods in `amr` (RFC 8176): `pwd otp mfa` after a 
 
 ## Recovery codes
 
-If the authenticator isn't available, the user chooses **Use a recovery code instead** and enters one of their recovery codes. Each code works once. Codes are stored as hashes, so they can't be shown again; the account's 2FA page shows how many are left.
+If the authenticator isn't available, the user chooses **Use a recovery code instead** and enters one of their recovery codes. Each code works once. Codes are stored as hashes, so they can't be shown again; the account's 2FA page shows how many are left and can replace them with a new set (this asks for the password).
+
+## Turn it off
+
+Users turn 2FA off on the same page with their password and a code from the app or a recovery code. This signs out their other sessions. It isn't possible while 2FA is [required](#require-2fa). See [Your account](/guide/account#two-factor-authentication).
 
 A user who has lost both the authenticator and the recovery codes needs an administrator to run [`admin reset-2fa`](/reference/cli#admin-recovery). This turns 2FA off and signs the user out everywhere.
 
