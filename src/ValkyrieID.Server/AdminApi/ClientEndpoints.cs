@@ -84,7 +84,8 @@ internal sealed record CreateClientRequest(
     int? RefreshTokenAbsoluteLifetime = null,
     int? SecretExpiresDays = null)
 {
-    public ClientSettingsRequest Settings => new(
+    // A method rather than a property, so it isn't part of the request schema.
+    public ClientSettingsRequest ToSettingsRequest() => new(
         GrantTypes, Scopes, DisplayName, RedirectUris, PostLogoutRedirectUris, CorsOrigins, BackChannelLogoutUri, RequirePkce,
         AllowClientSecretPost, AccessTokenLifetime, IdTokenLifetime, RefreshTokenLifetime, RefreshTokenAbsoluteLifetime);
 }
@@ -151,7 +152,7 @@ internal static class ClientEndpoints
             "public" => ClientType.Public,
             _ => throw new AdministrationException("type must be 'confidential' or 'public'."),
         };
-        var (client, secret) = await admin.CreateAsync(request.ClientId, type, request.Settings.ToSettings(), request.SecretExpiresDays, caller.Actor, ct);
+        var (client, secret) = await admin.CreateAsync(request.ClientId, type, request.ToSettingsRequest().ToSettings(), request.SecretExpiresDays, caller.Actor, ct);
         return TypedResults.Created(
             $"{AdminApiAuthentication.PathPrefix}/clients/{client.Id}",
             new CreatedClient(Dto(client, time.GetUtcNow()), secret is null ? null : new CreatedSecret(secret.Id, secret.Plaintext, secret.ExpiresAt)));

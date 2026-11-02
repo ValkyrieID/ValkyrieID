@@ -11,6 +11,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>@ViewData["Title"] – @branding.ProductName</title>
+    <link rel="icon" href="~/favicon.ico" sizes="32x32">
+    <link rel="icon" href="~/img/favicon-32x32.png" type="image/png">
+    <link rel="apple-touch-icon" href="~/img/apple-touch-icon.png">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
     <link rel="stylesheet" href="~/theme.css">
     @if (branding.CustomCss is not null)
@@ -27,6 +30,8 @@
             }
             else
             {
+                @* Decorative: the product name next to it is the accessible name (WCAG 1.1.1). *@
+                <img src="~/img/logo-192.png" alt="" width="64" height="64">
                 <p class="product-name">@branding.ProductName</p>
             }
         </header>

@@ -31,6 +31,19 @@ If ValkyrieID is served under a path such as `https://example.com/auth`:
 
 `ReverseProxy:PathBase` must equal the path of `Issuer:Url`; the server doesn't start otherwise. Cookies keep `Path=/`, as the `__Host-` prefix requires, so don't host other apps that set cookies with the same names on the same host.
 
+The [admin UI](/guide/admin-ui) takes its URLs from `Issuer:Url`, so it works under a path base either way.
+
+## Keeping administration internal
+
+To keep the admin UI and the Admin API off the internet, block both paths at the proxy and administer from an internal address (or with the [CLI](/reference/cli)). Sign-in still goes through the public issuer, which only the browser needs to reach.
+
+```nginx
+location /admin     { allow 10.0.0.0/8; deny all; proxy_pass http://valkyrieid:8080; }
+location /api/admin { allow 10.0.0.0/8; deny all; proxy_pass http://valkyrieid:8080; }
+```
+
+If you don't need them at all, turn them off with `AdminUI__Enabled=false` or `AdminApi__Enabled=false` ([configuration](/reference/configuration#admin-api-and-admin-ui)).
+
 ## nginx example
 
 ```nginx

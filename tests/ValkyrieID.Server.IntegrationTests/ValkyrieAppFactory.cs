@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using ValkyrieID.Data;
+using ValkyrieID.Server.AdminUi;
 using ValkyrieID.Server.Cli;
 using ValkyrieID.Server.Email;
 using ValkyrieID.Server.Logout;
@@ -46,6 +48,9 @@ public sealed class ValkyrieAppFactory(
 
     /// <summary>The host environment; <c>Testing</c> unless a test needs Development-only behavior.</summary>
     public string EnvironmentName { get; init; } = "Testing";
+
+    /// <summary>Serves the admin UI from this directory instead of the build output in wwwroot/admin.</summary>
+    public string? AdminUiDirectory { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -93,6 +98,11 @@ public sealed class ValkyrieAppFactory(
         if (DisableEmailWorker)
         {
             builder.ConfigureTestServices(services => RemoveHostedService<EmailWorker>(services));
+        }
+
+        if (AdminUiDirectory is { } adminUi)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(new AdminUiFiles(new PhysicalFileProvider(adminUi))));
         }
     }
 

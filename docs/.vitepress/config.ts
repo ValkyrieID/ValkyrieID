@@ -6,7 +6,9 @@ export default defineConfig({
   lang: 'en-US',
   cleanUrls: true,
   lastUpdated: true,
+  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
   themeConfig: {
+    logo: '/logo.png',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Reference', link: '/reference/configuration' },
@@ -22,6 +24,7 @@ export default defineConfig({
           { text: 'Two-factor authentication', link: '/guide/two-factor' },
           { text: 'Your account', link: '/guide/account' },
           { text: 'Email', link: '/guide/email' },
+          { text: 'Admin UI', link: '/guide/admin-ui' },
         ],
       },
       {

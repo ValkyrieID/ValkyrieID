@@ -5,6 +5,9 @@ hero:
   name: ValkyrieID
   text: Minimal OpenID Connect server
   tagline: A small, spec-compliant OpenID Connect / OAuth 2.0 identity server built on .NET.
+  image:
+    src: /logo.png
+    alt: ValkyrieID logo, a winged helmet with a keyhole
   actions:
     - theme: brand
       text: Get started

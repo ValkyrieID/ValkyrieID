@@ -1,0 +1,75 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Title } from '@angular/platform-browser';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
+import { AuthService } from './auth/auth.service';
+import { Notifier } from './shared/util';
+
+@Component({
+  selector: 'app-root',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './app.html',
+})
+export class App {
+  protected readonly auth = inject(AuthService);
+  protected readonly notifier = inject(Notifier);
+  protected readonly router = inject(Router);
+  private readonly title = inject(Title);
+  private readonly main = viewChild<ElementRef<HTMLElement>>('main');
+
+  protected readonly nav = [
+    { path: '/', label: 'Dashboard', exact: true },
+    { path: '/users', label: 'Users', exact: false },
+    { path: '/roles', label: 'Roles', exact: false },
+    { path: '/groups', label: 'Groups', exact: false },
+    { path: '/clients', label: 'Clients', exact: false },
+    { path: '/resources', label: 'API resources', exact: false },
+    { path: '/signing-keys', label: 'Signing keys', exact: false },
+    { path: '/audit', label: 'Audit log', exact: false },
+  ];
+
+  constructor() {
+    // After client-side navigation, move focus to the new page and announce its title, like a page load would.
+    let first = true;
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(inject(DestroyRef)),
+      )
+      .subscribe(() => {
+        if (first) {
+          first = false;
+          return;
+        }
+
+        this.main()?.nativeElement.focus();
+        this.notifier.announce(this.title.getTitle());
+      });
+  }
+
+  protected skipToContent(event: Event): void {
+    event.preventDefault();
+    this.main()?.nativeElement.focus();
+  }
+
+  protected signIn(): void {
+    void this.auth.signIn(this.router.url, false);
+  }
+
+  protected renew(): void {
+    void this.auth.signIn(this.router.url, true);
+  }
+
+  protected signOut(): void {
+    void this.auth.signOut();
+  }
+}

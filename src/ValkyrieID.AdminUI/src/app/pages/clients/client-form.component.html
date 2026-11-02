@@ -1,0 +1,257 @@
+<form class="form" (ngSubmit)="submit()">
+  <fieldset [disabled]="readOnly()">
+    @if (creating()) {
+      <div class="field">
+        <label for="client-id">Client id</label>
+        <input
+          id="client-id"
+          name="clientId"
+          [(ngModel)]="clientId"
+          required
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          aria-describedby="client-id-hint"
+          [attr.aria-invalid]="fieldError('clientId').length > 0"
+        />
+        <p class="hint" id="client-id-hint">Can't be changed later.</p>
+      </div>
+      <fieldset class="group">
+        <legend>Client type</legend>
+        <div class="field checkbox">
+          <input
+            id="client-type-confidential"
+            type="radio"
+            name="type"
+            value="confidential"
+            [(ngModel)]="type"
+          />
+          <label for="client-type-confidential"
+            >Confidential: a server-side app that can keep a secret</label
+          >
+        </div>
+        <div class="field checkbox">
+          <input
+            id="client-type-public"
+            type="radio"
+            name="type"
+            value="public"
+            [(ngModel)]="type"
+          />
+          <label for="client-type-public"
+            >Public: a browser, mobile, or desktop app (no secret)</label
+          >
+        </div>
+      </fieldset>
+    } @else {
+      <dl class="facts">
+        <dt>Client id</dt>
+        <dd>
+          <code>{{ clientId() }}</code>
+        </dd>
+        <dt>Type</dt>
+        <dd>{{ type() }}</dd>
+      </dl>
+    }
+
+    <div class="field">
+      <label for="client-display">Display name <span class="optional">(optional)</span></label>
+      <input id="client-display" name="displayName" [(ngModel)]="displayName" autocomplete="off" />
+    </div>
+
+    <fieldset class="group">
+      <legend>Grant types</legend>
+      @for (grant of grantTypes; track grant.value) {
+        <div class="field checkbox">
+          <input
+            [id]="'grant-' + grant.value"
+            type="checkbox"
+            [name]="'grant-' + grant.value"
+            [checked]="grants().has(grant.value)"
+            [disabled]="readOnly() || (grant.value === 'client_credentials' && isPublic())"
+            (change)="toggleGrant(grant.value, $event)"
+          />
+          <label [for]="'grant-' + grant.value">{{ grant.label }}</label>
+        </div>
+      }
+    </fieldset>
+
+    <div class="field">
+      <label for="client-scopes">Scopes</label>
+      <input
+        id="client-scopes"
+        name="scopes"
+        [(ngModel)]="scopes"
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="client-scopes-hint"
+        [attr.aria-invalid]="fieldError('scopes').length > 0"
+      />
+      <p class="hint" id="client-scopes-hint">
+        Separated by spaces, e.g. <code>openid profile email offline_access orders.read</code>.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="client-redirect"
+        >Redirect URIs <span class="optional">(one per line)</span></label
+      >
+      <textarea
+        id="client-redirect"
+        name="redirectUris"
+        rows="3"
+        [(ngModel)]="redirectUris"
+        spellcheck="false"
+        aria-describedby="client-redirect-hint"
+        [attr.aria-invalid]="fieldError('redirectUris').length > 0"
+      ></textarea>
+      <p class="hint" id="client-redirect-hint">
+        Matched exactly. Must be https, http on a loopback host, or a private-use scheme.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="client-post-logout"
+        >Post-logout redirect URIs <span class="optional">(one per line)</span></label
+      >
+      <textarea
+        id="client-post-logout"
+        name="postLogoutRedirectUris"
+        rows="2"
+        [(ngModel)]="postLogoutRedirectUris"
+        spellcheck="false"
+      ></textarea>
+    </div>
+
+    <div class="field">
+      <label for="client-cors"
+        >Allowed CORS origins <span class="optional">(one per line)</span></label
+      >
+      <textarea
+        id="client-cors"
+        name="corsOrigins"
+        rows="2"
+        [(ngModel)]="corsOrigins"
+        spellcheck="false"
+        aria-describedby="client-cors-hint"
+      ></textarea>
+      <p class="hint" id="client-cors-hint">
+        For browser apps that call the token endpoint, e.g. <code>https://app.example.com</code>.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="client-bcl"
+        >Back-channel logout URI <span class="optional">(optional)</span></label
+      >
+      <input
+        id="client-bcl"
+        name="backChannelLogoutUri"
+        type="url"
+        [(ngModel)]="backChannelLogoutUri"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+
+    <div class="field checkbox">
+      <input
+        id="client-pkce"
+        name="requirePkce"
+        type="checkbox"
+        [(ngModel)]="requirePkce"
+        [disabled]="readOnly() || isPublic()"
+        aria-describedby="client-pkce-hint"
+      />
+      <label for="client-pkce">Require PKCE</label>
+    </div>
+    <p class="hint" id="client-pkce-hint">
+      Always on for public clients. Turn it off only for confidential clients that can't send it.
+    </p>
+
+    @if (!isPublic()) {
+      <div class="field checkbox">
+        <input
+          id="client-secret-post"
+          name="allowClientSecretPost"
+          type="checkbox"
+          [(ngModel)]="allowClientSecretPost"
+        />
+        <label for="client-secret-post"
+          >Allow <code>client_secret_post</code> (secret in the request body)</label
+        >
+      </div>
+    }
+
+    <fieldset class="group">
+      <legend>
+        Lifetimes in seconds <span class="optional">(empty: the server default)</span>
+      </legend>
+      <div class="grid">
+        <div class="field">
+          <label for="client-at">Access token</label>
+          <input
+            id="client-at"
+            name="accessTokenLifetime"
+            type="number"
+            min="1"
+            [(ngModel)]="accessTokenLifetime"
+          />
+        </div>
+        <div class="field">
+          <label for="client-idt">ID token</label>
+          <input
+            id="client-idt"
+            name="idTokenLifetime"
+            type="number"
+            min="1"
+            [(ngModel)]="idTokenLifetime"
+          />
+        </div>
+        <div class="field">
+          <label for="client-rt">Refresh token (sliding)</label>
+          <input
+            id="client-rt"
+            name="refreshTokenLifetime"
+            type="number"
+            min="1"
+            [(ngModel)]="refreshTokenLifetime"
+          />
+        </div>
+        <div class="field">
+          <label for="client-rta">Refresh token (absolute)</label>
+          <input
+            id="client-rta"
+            name="refreshTokenAbsoluteLifetime"
+            type="number"
+            min="1"
+            [(ngModel)]="refreshTokenAbsoluteLifetime"
+          />
+        </div>
+      </div>
+    </fieldset>
+
+    @if (creating() && !isPublic()) {
+      <div class="field">
+        <label for="client-secret-days"
+          >First secret expires after (days) <span class="optional">(empty: never)</span></label
+        >
+        <input
+          id="client-secret-days"
+          name="secretExpiresDays"
+          type="number"
+          min="1"
+          [(ngModel)]="secretExpiresDays"
+        />
+      </div>
+    }
+
+    @if (!readOnly()) {
+      <div class="actions">
+        <button type="submit" [disabled]="busy()">
+          {{ creating() ? 'Create client' : 'Save changes' }}
+        </button>
+      </div>
+    }
+  </fieldset>
+</form>

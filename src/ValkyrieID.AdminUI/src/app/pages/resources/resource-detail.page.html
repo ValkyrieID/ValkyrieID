@@ -1,0 +1,186 @@
+<p><a routerLink="/resources">API resources</a></p>
+<app-problem [problem]="loadProblem()" />
+@if (resource.value(); as r) {
+  <div class="page-header">
+    <h1>{{ r.displayName ?? r.name }}</h1>
+    @if (!r.builtIn) {
+      @if (r.enabled) {
+        <app-confirm-button
+          label="Disable"
+          [title]="'Disable ' + r.name + '?'"
+          message="Tokens can't be issued for its scopes, and it can't call the introspection endpoint."
+          [danger]="true"
+          [disabled]="busy()"
+          (confirmed)="setEnabled(false)"
+        />
+      } @else {
+        <button type="button" [disabled]="busy()" (click)="setEnabled(true)">Enable</button>
+      }
+    }
+  </div>
+  <p class="muted">
+    Audience <code>{{ r.name }}</code> · created {{ r.createdAt | date: 'medium' }} ·
+    {{ r.enabled ? 'Enabled' : 'Disabled' }}
+  </p>
+  @if (r.builtIn) {
+    <p class="notice">
+      This is the built-in resource of the Admin API. It is managed by the server and can't be
+      changed.
+    </p>
+  }
+  <app-problem [problem]="problem()" />
+
+  @if (!r.builtIn) {
+    <section aria-labelledby="settings-title">
+      <h2 id="settings-title">Settings</h2>
+      <form class="form" (ngSubmit)="save()">
+        <div class="field">
+          <label for="resource-edit-display"
+            >Display name <span class="optional">(optional)</span></label
+          >
+          <input
+            id="resource-edit-display"
+            name="displayName"
+            [(ngModel)]="displayName"
+            autocomplete="off"
+          />
+        </div>
+        <div class="field checkbox">
+          <input
+            id="resource-secret-post"
+            name="allowClientSecretPost"
+            type="checkbox"
+            [(ngModel)]="allowClientSecretPost"
+          />
+          <label for="resource-secret-post"
+            >Allow <code>client_secret_post</code> at the introspection endpoint</label
+          >
+        </div>
+        <div class="actions">
+          <button type="submit" [disabled]="busy()">Save</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section aria-labelledby="scopes-title">
+    <h2 id="scopes-title">Scopes</h2>
+    <p class="hint">
+      Scope names can't be changed. A scope can't be removed while a client may request it.
+    </p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Description</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (scope of r.scopes; track scope.id) {
+            <tr>
+              <td>
+                <code>{{ scope.name }}</code>
+              </td>
+              <td>
+                @if (r.builtIn) {
+                  {{ scope.description ?? '–' }}
+                } @else {
+                  <label class="visually-hidden" [for]="'scope-' + scope.id"
+                    >Description of {{ scope.name }}</label
+                  >
+                  <input
+                    [id]="'scope-' + scope.id"
+                    [value]="description(scope)"
+                    (input)="setDescription(scope, $event)"
+                    autocomplete="off"
+                  />
+                }
+              </td>
+              <td>
+                @if (!r.builtIn) {
+                  <div class="actions">
+                    <button
+                      type="button"
+                      class="secondary"
+                      [disabled]="busy()"
+                      [attr.aria-label]="'Save the description of ' + scope.name"
+                      (click)="saveScope(scope)"
+                    >
+                      Save
+                    </button>
+                    <app-confirm-button
+                      label="Remove"
+                      [title]="'Remove the scope ' + scope.name + '?'"
+                      message="Clients can no longer request it."
+                      [danger]="true"
+                      [disabled]="busy()"
+                      (confirmed)="removeScope(scope)"
+                    />
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!r.builtIn) {
+      <form class="inline" (ngSubmit)="addScope()">
+        <div class="field">
+          <label for="scope-name">Scope name</label>
+          <input
+            id="scope-name"
+            name="scopeName"
+            [(ngModel)]="scopeName"
+            required
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div class="field">
+          <label for="scope-description"
+            >Description <span class="optional">(optional)</span></label
+          >
+          <input
+            id="scope-description"
+            name="scopeDescription"
+            [(ngModel)]="scopeDescription"
+            autocomplete="off"
+          />
+        </div>
+        <button type="submit" [disabled]="busy() || !scopeName().trim()">Add scope</button>
+      </form>
+    }
+  </section>
+
+  @if (!r.builtIn) {
+    <section aria-labelledby="resource-secrets-title">
+      <h2 id="resource-secrets-title">Introspection secrets</h2>
+      <p class="hint">The resource uses these to call the introspection endpoint.</p>
+      <app-secrets
+        prefix="resource"
+        [secrets]="r.secrets"
+        [busy]="busy()"
+        [(created)]="createdSecret"
+        (add)="addSecret($event)"
+        (remove)="removeSecret($event)"
+      />
+    </section>
+
+    <section class="danger-zone" aria-labelledby="resource-delete-title">
+      <h2 id="resource-delete-title">Delete API resource</h2>
+      <app-confirm-button
+        label="Delete API resource"
+        [title]="'Delete ' + r.name + '?'"
+        message="The resource, its scopes, and its secrets are deleted. This can't be undone."
+        [danger]="true"
+        [disabled]="busy()"
+        (confirmed)="remove()"
+      />
+    </section>
+  }
+} @else if (resource.isLoading()) {
+  <p role="status">Loading…</p>
+}

@@ -25,4 +25,35 @@
     <InternalsVisibleTo Include="ValkyrieID.Server.IntegrationTests" />
   </ItemGroup>
 
+  <!--
+    The admin UI (src/ValkyrieID.AdminUI) builds into wwwroot/admin (git-ignored). It is not a static web asset of
+    this project; the server serves it itself (AdminUi/AdminUiExtensions.cs). `dotnet publish` builds it and adds it
+    to the output; pass -p:SkipAdminUI=true to publish without it (e.g. when CI built it in a separate step).
+  -->
+  <PropertyGroup>
+    <AdminUIProjectDir>$(MSBuildProjectDirectory)\..\ValkyrieID.AdminUI\</AdminUIProjectDir>
+    <AdminUIOutputDir>$(MSBuildProjectDirectory)\wwwroot\admin\</AdminUIOutputDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\admin\**" />
+    <None Remove="wwwroot\admin\**" />
+  </ItemGroup>
+
+  <Target Name="BuildAdminUI" BeforeTargets="ComputeFilesToPublish" Condition="'$(SkipAdminUI)' != 'true'">
+    <Exec Command="npm ci" WorkingDirectory="$(AdminUIProjectDir)" />
+    <Exec Command="npm run build" WorkingDirectory="$(AdminUIProjectDir)" />
+  </Target>
+
+  <Target Name="PublishAdminUI" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <AdminUIFiles Include="$(AdminUIOutputDir)**" />
+      <ResolvedFileToPublish Include="@(AdminUIFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot\admin\%(AdminUIFiles.RecursiveDir)%(AdminUIFiles.Filename)%(AdminUIFiles.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
 </Project>

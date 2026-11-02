@@ -2413,9 +2413,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/ClientSettingsRequest"
           }
         },
         "additionalProperties": false

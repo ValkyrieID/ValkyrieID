@@ -53,6 +53,42 @@ jobs:
       - name: Unit and SQLite integration tests
         run: dotnet test --no-build -c Release -- --filter-not-trait "Category=PostgreSql"
 
+  admin-ui:
+    name: Admin UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/ValkyrieID.AdminUI
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: src/ValkyrieID.AdminUI/package-lock.json
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - run: npm ci
+      - name: Verify formatting
+        run: npm run format:check
+      - run: npm run lint
+      - name: Unit tests
+        run: npm test
+
+      # dotnet publish builds the admin UI and adds it to the output.
+      - name: Publish with the admin UI
+        working-directory: .
+        run: |
+          dotnet publish src/ValkyrieID.Server -c Release -o publish
+          test -f publish/wwwroot/admin/index.html
+
   postgres:
     name: PostgreSQL integration tests
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'

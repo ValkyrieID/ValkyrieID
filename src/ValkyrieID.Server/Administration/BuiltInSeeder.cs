@@ -18,6 +18,8 @@ internal sealed partial class BuiltInSeeder(
     AuditRecorder audit,
     TimeProvider timeProvider,
     IOptions<IssuerOptions> issuer,
+    IOptions<AdminApiOptions> adminApi,
+    IOptions<AdminUiOptions> adminUi,
     ILogger<BuiltInSeeder> logger)
 {
     public static string AdminUiRedirectUri(IssuerOptions issuer) => issuer.Endpoint(BuiltIn.AdminUiPath + "/callback");
@@ -37,6 +39,12 @@ internal sealed partial class BuiltInSeeder(
             await SeedOnceAsync(cancellationToken);
         }
     }
+
+    // A disabled Admin API or UI keeps its entity but disables it, so no admin tokens can be issued for it
+    // (fail closed) and turning it back on restores it unchanged.
+    private bool ApiEnabled => adminApi.Value.Enabled;
+
+    private bool UiEnabled => ApiEnabled && adminUi.Value.Enabled;
 
     private async Task SeedOnceAsync(CancellationToken cancellationToken)
     {
@@ -65,6 +73,7 @@ internal sealed partial class BuiltInSeeder(
                 Name = BuiltIn.AdminResource,
                 DisplayName = "ValkyrieID Admin API",
                 BuiltIn = true,
+                Enabled = ApiEnabled,
                 CreatedAt = timeProvider.GetUtcNow(),
                 Scopes = [new ApiScope { Name = BuiltIn.AdminScope, Description = "Manage ValkyrieID through the Admin API." }],
             };
@@ -75,9 +84,9 @@ internal sealed partial class BuiltInSeeder(
             return;
         }
 
-        if (!resource.Enabled || resource.AllowClientSecretPost || scope is null)
+        if (resource.Enabled != ApiEnabled || resource.AllowClientSecretPost || scope is null)
         {
-            resource.Enabled = true;
+            resource.Enabled = ApiEnabled;
             resource.AllowClientSecretPost = false;
             if (scope is null)
             {
@@ -85,7 +94,7 @@ internal sealed partial class BuiltInSeeder(
             }
 
             audit.Add("api_resource.updated", actor: AuditRecorder.SystemActor,
-                details: new Dictionary<string, object?> { ["name"] = resource.Name, ["built_in"] = true });
+                details: new Dictionary<string, object?> { ["name"] = resource.Name, ["built_in"] = true, ["enabled"] = resource.Enabled });
         }
     }
 
@@ -108,7 +117,7 @@ internal sealed partial class BuiltInSeeder(
 
         // Same-origin SPA: no CORS origins. No refresh tokens: the admin UI renews tokens through the SSO session.
         var upToDate = !isNew
-            && client.Enabled
+            && client.Enabled == UiEnabled
             && client.DisplayName == "ValkyrieID Admin"
             && client.AllowedGrantTypes.SequenceEqual(grants)
             && client.AllowedScopes.SequenceEqual(scopes)
@@ -128,7 +137,7 @@ internal sealed partial class BuiltInSeeder(
             return;
         }
 
-        client.Enabled = true;
+        client.Enabled = UiEnabled;
         client.DisplayName = "ValkyrieID Admin";
         client.AllowedGrantTypes = [.. grants];
         client.AllowedScopes = [.. scopes];
@@ -149,7 +158,7 @@ internal sealed partial class BuiltInSeeder(
         }
 
         audit.Add(isNew ? "client.created" : "client.updated", actor: AuditRecorder.SystemActor, clientId: client.ClientId,
-            details: new Dictionary<string, object?> { ["built_in"] = true, ["redirect_uris"] = client.RedirectUris });
+            details: new Dictionary<string, object?> { ["built_in"] = true, ["enabled"] = client.Enabled, ["redirect_uris"] = client.RedirectUris });
         LogSeeded(logger, "client", client.ClientId);
     }
 

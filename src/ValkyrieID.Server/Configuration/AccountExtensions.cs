@@ -208,10 +208,18 @@ internal static class SecurityHeadersExtensions
     private const string ContentSecurityPolicy =
         "default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'";
 
+    // The admin UI (PROJECT.md §8.2) additionally runs its own scripts and calls the same-origin Admin API and token
+    // endpoint. Still no inline scripts or styles, nothing from other origins, and no framing.
+    private const string AdminUiContentSecurityPolicy =
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+        + "manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
     public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app) => app.Use((context, next) =>
     {
         var headers = context.Response.Headers;
-        headers.ContentSecurityPolicy = ContentSecurityPolicy;
+        headers.ContentSecurityPolicy = context.Request.Path.StartsWithSegments(Administration.BuiltIn.AdminUiPath, StringComparison.OrdinalIgnoreCase)
+            ? AdminUiContentSecurityPolicy
+            : ContentSecurityPolicy;
         headers.XFrameOptions = "DENY";
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "no-referrer";

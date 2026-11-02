@@ -16,6 +16,14 @@ updates:
       docs-minor-patch:
         update-types: [minor, patch]
 
+  - package-ecosystem: npm
+    directory: /src/ValkyrieID.AdminUI
+    schedule:
+      interval: weekly
+    groups:
+      admin-ui-minor-patch:
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

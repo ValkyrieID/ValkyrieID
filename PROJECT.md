@@ -202,6 +202,8 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - settings and branding
 - Includes an audit log viewer.
 - Talks exclusively to the **Admin REST API**.
+- Served under `/admin` with its own CSP (`script-src 'self'`, `connect-src 'self'`, no inline scripts or styles, no framing). Tokens are kept in memory only; with no refresh tokens, it renews them by a top-level `prompt=none` redirect through the SSO session. Uses `oidc-client-ts`, plus the RFC 9207 `iss` check and ID token claim checks it lacks.
+- `AdminUI:Enabled=false` turns it off (`/admin` answers 404, its client is disabled), for installations managed with the CLI only.
 
 ### 8.3 First-run setup wizard
 
@@ -232,6 +234,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Built-in entities:** the server seeds the `valkyrieid-admin` resource and the `valkyrieid-admin-ui` public PKCE client (authorization code only, no refresh tokens, 10-minute access tokens, redirect URIs derived from the issuer). They are read-only, and their names are reserved.
 - No CORS (the admin UI is same-origin). Responses are `no-store`. Errors are RFC 9457 problem details; lists use `limit`/`offset`, the audit log a keyset cursor. Concurrent edits: last write wins.
 - Every change is audited with the actor `admin:<sub>`. Clients, resources, and users are managed through the same services as the CLI.
+- `AdminApi:Enabled=false` turns it off: `/api/admin` answers 404, the admin resource is disabled so no admin tokens can be issued, and the admin UI is off too.
 
 ## 10. Configuration
 
@@ -263,7 +266,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
     - build with warnings as errors
     - `dotnet format --verify-no-changes`, `prettier --check`, lint
     - unit tests and SQLite integration tests
-    - Angular tests
+    - Angular tests, `prettier --check`, and lint; a `dotnet publish` that includes the admin UI
   - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers).
   - **On release tags / manual trigger only:** Docker image build and publish, OpenID conformance suite, OWASP ZAP scan.
   - **Nightly:** OpenID conformance suite (all plans), to catch regressions between releases.
@@ -420,6 +423,7 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
      - latest Angular (signals, OnPush, zoneless, WCAG 2.2 AA), served by the ASP.NET Core app at `/admin`
      - signs in through ValkyrieID itself with the seeded public PKCE client
      - audit log viewer
+     - `AdminUI:Enabled` / `AdminApi:Enabled` switches, so installations can run without them (CLI only)
    - **8c: runtime settings**
      - DB-backed runtime settings with env precedence (shown as locked in the admin UI): lifetimes, branding, password policy, lockout, 2FA enforcement
        - SMTP settings in the DB, with the SMTP password encrypted by the master key
@@ -463,6 +467,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Group and custom-claim management | 3 | 8 | Phase 3 adds the tables; managing them comes with the Admin API. Claims are emitted from phase 4. |
 | Changing the email address on the account page | 7b | 7c | An email change needs verification of the new address, which needs SMTP (7c). 7b edits names only. |
 | Prompting for or requiring email verification after sign-in | (§6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
+| `AdminUI:Enabled` / `AdminApi:Enabled` switches | (new) | 8b | Lets installations run without the admin UI or the Admin API (CLI only), decided while planning 8b instead of a separate admin deployment. |
 
 ### Spec deviations
 

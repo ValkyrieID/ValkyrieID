@@ -48,6 +48,15 @@ The issuer is published in discovery and in the `iss` claim. Every endpoint URL 
 
 Forwarded headers are ignored unless at least one proxy or network is configured. See [Reverse proxy](/operations/reverse-proxy).
 
+## Admin API and admin UI
+
+| Key | Default | Description |
+|---|---|---|
+| `AdminApi:Enabled` | `true` | Serve the [Admin API](/reference/admin-api) under `/api/admin`. When `false`, it answers `404`, the built-in `valkyrieid-admin` resource is disabled so no admin tokens can be issued, and the admin UI is off too. The [CLI](/reference/cli) keeps working. |
+| `AdminUI:Enabled` | `true` | Serve the [admin UI](/guide/admin-ui) under `/admin`. When `false`, it answers `404` and the built-in `valkyrieid-admin-ui` client is disabled. |
+
+Turning a switch back on re-enables the built-in entries at the next start.
+
 ## Tokens
 
 | Key | Default | Description |
@@ -200,7 +209,7 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Count
 |---|---|---|
 | `Branding:ProductName` | `ValkyrieID` | Shown in page titles and in place of a logo. |
 | `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. |
-| `Branding:Logo` | *(none)* | Logo file name in `Branding:Directory`. |
+| `Branding:Logo` | *(none)* | Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
 | `Branding:BackgroundImage` | *(none)* | Background image file name in `Branding:Directory`. |
 | `Branding:CustomCss` | *(none)* | Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
 | `Branding:PrimaryColor` | `#1f4fd1` | Buttons, links, and focus outlines. |

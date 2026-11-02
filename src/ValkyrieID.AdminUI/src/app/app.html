@@ -1,0 +1,77 @@
+@switch (auth.status()) {
+  @case ('signed-in') {
+    <a class="skip-link" href="#main" (click)="skipToContent($event)">Skip to content</a>
+    <header class="topbar">
+      <a class="brand" routerLink="/">
+        <img src="android-chrome-192x192.png" alt="" width="40" height="40" />
+        <span>ValkyrieID Admin</span>
+      </a>
+      <div class="account">
+        <span>{{ auth.displayName() }}</span>
+        <button type="button" class="secondary" (click)="signOut()">Sign out</button>
+      </div>
+    </header>
+    <div class="layout">
+      <nav class="sidebar" aria-label="Main">
+        <ul>
+          @for (item of nav; track item.path) {
+            <li>
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: item.exact }"
+                ariaCurrentWhenActive="page"
+                >{{ item.label }}</a
+              >
+            </li>
+          }
+        </ul>
+      </nav>
+      <main id="main" #main tabindex="-1">
+        @if (auth.forbidden()) {
+          <h1>Not authorized</h1>
+          <p>
+            Your account doesn't have the <code>admin</code> role, or it was removed. Ask another
+            administrator for access, or sign in with a different account.
+          </p>
+          <button type="button" (click)="signOut()">Sign out</button>
+        } @else {
+          @if (auth.sessionExpired()) {
+            <div class="alert" role="alert">
+              <p class="alert-title">Your session has expired.</p>
+              <p>Sign in again to continue. Unsaved changes on this page will be lost.</p>
+              <button type="button" (click)="renew()">Sign in again</button>
+            </div>
+          }
+          <router-outlet />
+        }
+      </main>
+    </div>
+  }
+  @case ('signed-out') {
+    <main class="landing">
+      <img src="android-chrome-512x512.png" alt="" width="160" height="160" />
+      <h1>ValkyrieID Admin</h1>
+      <p>You have signed out.</p>
+      <button type="button" (click)="signIn()">Sign in</button>
+    </main>
+  }
+  @case ('error') {
+    <main class="landing">
+      <img src="android-chrome-512x512.png" alt="" width="160" height="160" />
+      <h1>ValkyrieID Admin</h1>
+      <div class="alert" role="alert">
+        <p class="alert-title">The sign-in didn't complete.</p>
+        <p>{{ auth.error() }}</p>
+      </div>
+      <button type="button" (click)="signIn()">Try again</button>
+    </main>
+  }
+  @default {
+    <main class="landing">
+      <img src="android-chrome-512x512.png" alt="" width="160" height="160" />
+      <p role="status">Signing in…</p>
+    </main>
+  }
+}
+<div class="visually-hidden" role="status" aria-live="polite">{{ notifier.message() }}</div>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Server.AdminApi;
+using ValkyrieID.Server.AdminUi;
 using ValkyrieID.Server.Cli;
 using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Protocol;
@@ -18,6 +19,8 @@ builder.Services.AddValkyrieProtocol(builder.Configuration);
 builder.Services.AddValkyrieReverseProxy(builder.Configuration);
 builder.Services.AddValkyrieAccounts(builder.Configuration);
 builder.Services.AddValkyrieAdministration();
+builder.Services.AddValkyrieAdminOptions(builder.Configuration);
+builder.Services.AddValkyrieAdminUi();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 builder.AddValkyrieTelemetry();
@@ -44,14 +47,25 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseProtocolCors();
+if (builder.Configuration.AdminUiEnabled())
+{
+    app.UseValkyrieAdminUi();
+}
+
 app.UseValkyrieAccounts();
-app.UseAdminApiAuthentication();
+if (builder.Configuration.AdminApiEnabled())
+{
+    app.UseAdminApiAuthentication();
+}
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 app.MapValkyrieProtocol();
 app.MapValkyrieAccounts();
-app.MapValkyrieAdminApi();
+if (builder.Configuration.AdminApiEnabled())
+{
+    app.MapValkyrieAdminApi();
+}
 
 await app.RunAsync();
 return 0;
