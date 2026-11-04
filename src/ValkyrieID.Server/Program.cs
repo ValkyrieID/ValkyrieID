@@ -12,6 +12,7 @@ var isCli = CliApp.IsCommand(args);
 var builder = WebApplication.CreateBuilder(isCli ? [] : args);
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.AddValkyrieRuntimeSettings();
 builder.Services.AddValkyrieMasterKey(builder.Configuration);
 builder.Services.AddValkyrieDatabase(builder.Configuration);
 builder.Services.AddValkyrieDataProtection();
@@ -30,6 +31,7 @@ var app = builder.Build();
 // Fail fast on an invalid master key before touching the database.
 app.Services.GetRequiredService<SecretProtector>();
 await app.Services.MigrateDatabaseAsync(app.Lifetime.ApplicationStopping);
+await app.Services.LoadRuntimeSettingsAsync(app.Lifetime.ApplicationStopping);
 
 if (isCli)
 {

@@ -258,3 +258,43 @@ export interface AuditFilter {
   from?: string;
   to?: string;
 }
+
+/** Durations are whole seconds; enums and files are strings from `options`. */
+export type SettingKind =
+  'duration' | 'integer' | 'boolean' | 'string' | 'enum' | 'file' | 'secret';
+
+export type SettingSource = 'default' | 'database' | 'configuration';
+
+export type SettingValue = string | number | boolean | null;
+
+export interface SettingDto {
+  name: string;
+  key: string;
+  kind: SettingKind;
+  /** Always `null` for secrets; see `isSet`. */
+  value: SettingValue;
+  defaultValue: SettingValue;
+  /** Set by appsettings or an environment variable; can't be changed through the API. */
+  locked: boolean;
+  source: SettingSource;
+  isSet: boolean | null;
+  options: string[] | null;
+}
+
+export interface SettingsSectionDto {
+  name: string;
+  settings: SettingDto[];
+}
+
+export interface SettingsDto {
+  sections: SettingsSectionDto[];
+}
+
+/** `PATCH /settings/{section}`: only the listed settings change; `null` resets one. */
+export type SettingsChange = Record<string, SettingValue>;
+
+export interface SmtpTestResult {
+  success: boolean;
+  result: string;
+  to: string;
+}

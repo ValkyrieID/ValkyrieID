@@ -13,7 +13,7 @@ internal sealed class AccessTokenValidator(
     SigningKeyStore keyStore,
     TimeProvider timeProvider,
     IOptions<IssuerOptions> issuerOptions,
-    IOptions<TokenOptions> tokenOptions)
+    IOptionsMonitor<TokenOptions> tokenOptions)
 {
     private static readonly JsonWebTokenHandler Handler = new();
 
@@ -39,7 +39,7 @@ internal sealed class AccessTokenValidator(
     private bool IsCurrent(JsonWebToken jwt)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var skew = tokenOptions.Value.ClockSkew;
+        var skew = tokenOptions.CurrentValue.ClockSkew;
         return jwt.ValidTo != DateTime.MinValue
             && now < jwt.ValidTo + skew
             && (jwt.ValidFrom == DateTime.MinValue || now >= jwt.ValidFrom - skew);

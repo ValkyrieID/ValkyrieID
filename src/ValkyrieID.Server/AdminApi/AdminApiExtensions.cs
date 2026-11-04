@@ -62,6 +62,7 @@ internal static class AdminApiExtensions
         ClientEndpoints.Map(api);
         ResourceEndpoints.Map(api);
         SystemEndpoints.Map(api);
+        SettingsEndpoints.Map(api);
 
         // /openapi/v1.json; not served in production, where the document is published in the docs instead.
         if (app.Environment.IsDevelopment())

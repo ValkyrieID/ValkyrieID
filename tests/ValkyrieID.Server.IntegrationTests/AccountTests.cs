@@ -33,8 +33,11 @@ public abstract class AccountTests
             ["ConfirmPassword"] = Password,
         });
 
+        // The first user is an admin, and admins must use 2FA by default: the session starts after enrollment.
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/account", response.Headers.Location?.OriginalString);
+        Assert.Equal("/account/login/enroll?returnUrl=%2Faccount", response.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
+        await Forms.CompleteEnrollmentAsync(browser);
         Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync("/setup", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await factory.CreateBrowser().GetAsync("/setup", CancellationToken)).StatusCode);

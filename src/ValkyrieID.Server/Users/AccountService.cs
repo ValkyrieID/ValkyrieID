@@ -174,7 +174,7 @@ internal sealed class AccountService(
             return [];
         }
 
-        if (twoFactor.IsRequired(user))
+        if (await twoFactor.IsRequiredAsync(user, cancellationToken))
         {
             return ["Two-factor authentication is required for your account and can't be turned off."];
         }

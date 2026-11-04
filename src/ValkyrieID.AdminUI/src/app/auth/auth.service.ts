@@ -84,6 +84,8 @@ export class AuthService {
   readonly sessionExpired = signal(false);
   /** The Admin API answered 403: the user isn't (or is no longer) an admin. */
   readonly forbidden = signal(false);
+  /** The Admin API requires a sign-in with a second factor (RFC 9470); a silent renewal can't provide one. */
+  readonly secondFactorRequired = signal(false);
 
   readonly accessToken = computed(() => this.currentUser()?.access_token ?? null);
   readonly displayName = computed(() => {
@@ -120,14 +122,17 @@ export class AuthService {
     return this.signIn(`/${route}${url.search}${url.hash}`, true);
   }
 
-  /** Redirects to the authorization endpoint; with `silent`, `prompt=none` reuses the SSO session. */
-  signIn(returnPath: string, silent: boolean): Promise<void> {
+  /**
+   * Redirects to the authorization endpoint; with `silent`, `prompt=none` reuses the SSO session. With `fresh`,
+   * `prompt=login` asks for the credentials again, so the server can require a second factor.
+   */
+  signIn(returnPath: string, silent: boolean, fresh = false): Promise<void> {
     const state: SigninState = { returnPath: safeReturnPath(returnPath), silent };
     return this.redirect(() =>
       this.client.signinRedirect({
         state,
         nonce: randomToken(),
-        prompt: silent ? 'none' : undefined,
+        prompt: silent ? 'none' : fresh ? 'login' : undefined,
       }),
     );
   }
@@ -172,6 +177,7 @@ export class AuthService {
     this.currentUser.set(user);
     this.sessionExpired.set(false);
     this.forbidden.set(false);
+    this.secondFactorRequired.set(false);
     this.status.set('signed-in');
     this.replaceUrl(
       new URL(this.settings.adminBase).pathname + (state?.returnPath ?? '/').slice(1),

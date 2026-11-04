@@ -21,7 +21,14 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       error: (error: unknown) => {
         if (error instanceof HttpErrorResponse) {
           if (error.status === 401) {
-            auth.sessionExpired.set(true);
+            // RFC 9470 §3: the token is valid, but the sign-in behind it didn't use a second factor.
+            if (
+              error.headers.get('WWW-Authenticate')?.includes('insufficient_user_authentication')
+            ) {
+              auth.secondFactorRequired.set(true);
+            } else {
+              auth.sessionExpired.set(true);
+            }
           } else if (error.status === 403) {
             auth.forbidden.set(true);
           }

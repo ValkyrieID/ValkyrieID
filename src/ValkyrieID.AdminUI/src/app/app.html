@@ -35,6 +35,13 @@
             administrator for access, or sign in with a different account.
           </p>
           <button type="button" (click)="signOut()">Sign out</button>
+        } @else if (auth.secondFactorRequired()) {
+          <h1>Two-factor authentication required</h1>
+          <p>
+            The admin area requires a sign-in with two-factor authentication. Sign in again; if you
+            haven't set up two-factor authentication yet, you'll be asked to do so.
+          </p>
+          <button type="button" (click)="stepUp()">Sign in again</button>
         } @else {
           @if (auth.sessionExpired()) {
             <div class="alert" role="alert">

@@ -4,6 +4,20 @@ ValkyrieID reads configuration from `appsettings.json`, `appsettings.{Environmen
 
 Nested keys are separated by `:` in JSON and command-line arguments, and by `__` (double underscore) in environment variables. For example, `Database:Provider` becomes `Database__Provider`.
 
+## Runtime settings
+
+Settings marked **runtime** in the tables below can also be changed while the server runs: in the [admin UI](/guide/admin-ui) (**Settings**), through the [Admin API](/reference/admin-api#settings), or with the [`settings` CLI commands](/reference/cli#settings). They are stored in the database and apply without a restart.
+
+- **Configuration takes precedence.** A runtime setting that is set in `appsettings.json`, an environment variable, or on the command line can't be changed at runtime. The admin UI shows it as *set by configuration*, read-only. Remove it from the configuration to manage it in the admin UI.
+- **Changes are validated as a whole**, with the same rules as at startup, before anything is saved. Every change is written to the audit log (`settings.updated`) with the old and new values; secrets appear only as `(secret)`.
+- **Secrets** (the SMTP password) are encrypted with the [master key](/operations/master-key), never returned by the API, and included in `admin reencrypt`.
+- **Other instances and the CLI**: the server that makes a change applies it at once. Every instance also checks for changes every `Settings:ReloadInterval` and applies them then. If stored settings are invalid together with an instance's configuration (for example after an environment variable changed), that instance keeps its previous settings and logs an error; on startup, it refuses to start, like for any invalid configuration. The CLI can still run to fix them (`settings reset`).
+- **Already issued** tokens, sessions, and links keep the lifetime they were issued with.
+
+| Key | Default | Description |
+|---|---|---|
+| `Settings:ReloadInterval` | `00:00:30` | How often each instance checks for settings changed by another instance or the CLI (1 second to 10 minutes). Configuration only. |
+
 ## Database
 
 | Key | Default | Description |
@@ -53,6 +67,7 @@ Forwarded headers are ignored unless at least one proxy or network is configured
 | Key | Default | Description |
 |---|---|---|
 | `AdminApi:Enabled` | `true` | Serve the [Admin API](/reference/admin-api) under `/api/admin`. When `false`, it answers `404`, the built-in `valkyrieid-admin` resource is disabled so no admin tokens can be issued, and the admin UI is off too. The [CLI](/reference/cli) keeps working. |
+| `AdminApi:RequireTwoFactor` | `true` | **Runtime.** Admins must sign in with [two-factor authentication](/guide/two-factor) to use the Admin API and the admin UI. Users with the `admin` role who haven't set it up do so at their next sign-in. Access tokens from a sign-in without a second factor get `401` with `error="insufficient_user_authentication"`. |
 | `AdminUI:Enabled` | `true` | Serve the [admin UI](/guide/admin-ui) under `/admin`. When `false`, it answers `404` and the built-in `valkyrieid-admin-ui` client is disabled. |
 
 Turning a switch back on re-enables the built-in entries at the next start.
@@ -61,11 +76,11 @@ Turning a switch back on re-enables the built-in entries at the next start.
 
 | Key | Default | Description |
 |---|---|---|
-| `Tokens:AccessTokenLifetime` | `00:30:00` | Default access token lifetime. Clients can override it. |
-| `Tokens:IdTokenLifetime` | `00:05:00` | Default ID token lifetime. Clients can override it. |
+| `Tokens:AccessTokenLifetime` | `00:30:00` | **Runtime.** Default access token lifetime. Clients can override it. |
+| `Tokens:IdTokenLifetime` | `00:05:00` | **Runtime.** Default ID token lifetime. Clients can override it. |
 | `Tokens:ClockSkew` | `00:00:30` | Clock skew tolerated when validating tokens (0 to 5 minutes). |
-| `Tokens:RefreshTokenSlidingLifetime` | `14.00:00:00` | A refresh token expires when unused this long. Clients can override it. |
-| `Tokens:RefreshTokenAbsoluteLifetime` | `30.00:00:00` | A refresh token family ends this long after the original sign-in, however often it is refreshed. At least the sliding lifetime. Clients can override it. |
+| `Tokens:RefreshTokenSlidingLifetime` | `14.00:00:00` | **Runtime.** A refresh token expires when unused this long. Clients can override it. |
+| `Tokens:RefreshTokenAbsoluteLifetime` | `30.00:00:00` | **Runtime.** A refresh token family ends this long after the original sign-in, however often it is refreshed. At least the sliding lifetime. Clients can override it. |
 
 Authorization codes always live 60 seconds and can be redeemed once. They are kept in memory, so a restart invalidates codes that haven't been redeemed yet; the user simply signs in again.
 
@@ -86,14 +101,14 @@ See [Signing key rotation](/operations/key-rotation).
 
 | Key | Default | Description |
 |---|---|---|
-| `PasswordPolicy:MinimumLength` | `8` | Minimum length in characters (Unicode code points). At least 8. |
-| `PasswordPolicy:MaximumLength` | `128` | Maximum length (64 to 1024). |
-| `PasswordPolicy:RequireUppercase` | `false` | Require an uppercase letter. |
-| `PasswordPolicy:RequireLowercase` | `false` | Require a lowercase letter. |
-| `PasswordPolicy:RequireDigit` | `false` | Require a digit. |
-| `PasswordPolicy:RequireNonAlphanumeric` | `false` | Require a character that isn't a letter or digit. |
-| `PasswordPolicy:CheckBreachedPasswords` | `false` | Reject passwords that appear in [Have I Been Pwned](https://haveibeenpwned.com/Passwords). |
-| `PasswordPolicy:BreachedPasswordApiUrl` | `https://api.pwnedpasswords.com/range/` | Range API base URL, e.g. a self-hosted mirror. |
+| `PasswordPolicy:MinimumLength` | `8` | **Runtime.** Minimum length in characters (Unicode code points). At least 8. |
+| `PasswordPolicy:MaximumLength` | `128` | **Runtime.** Maximum length (64 to 1024). |
+| `PasswordPolicy:RequireUppercase` | `false` | **Runtime.** Require an uppercase letter. |
+| `PasswordPolicy:RequireLowercase` | `false` | **Runtime.** Require a lowercase letter. |
+| `PasswordPolicy:RequireDigit` | `false` | **Runtime.** Require a digit. |
+| `PasswordPolicy:RequireNonAlphanumeric` | `false` | **Runtime.** Require a character that isn't a letter or digit. |
+| `PasswordPolicy:CheckBreachedPasswords` | `false` | **Runtime.** Reject passwords that appear in [Have I Been Pwned](https://haveibeenpwned.com/Passwords). |
+| `PasswordPolicy:BreachedPasswordApiUrl` | `https://api.pwnedpasswords.com/range/` | Range API base URL, e.g. a self-hosted mirror. Configuration only. |
 
 The defaults follow NIST SP 800-63B, which recommends length and a breached-password check over composition rules. A password can never equal the username or email address.
 
@@ -127,8 +142,8 @@ Each password check briefly uses the configured memory, so peak memory grows wit
 
 | Key | Default | Description |
 |---|---|---|
-| `Lockout:MaxFailedAttempts` | `5` | Consecutive failed sign-in attempts (wrong passwords and wrong 2FA or recovery codes) that lock an account. |
-| `Lockout:Duration` | `00:15:00` | How long the account stays locked. |
+| `Lockout:MaxFailedAttempts` | `5` | **Runtime.** Consecutive failed sign-in attempts (wrong passwords and wrong 2FA or recovery codes) that lock an account. |
+| `Lockout:Duration` | `00:15:00` | **Runtime.** How long the account stays locked. |
 
 While an account is locked, every login attempt fails with the same message as a wrong password. Unlock an account early with [`admin unlock`](/reference/cli#admin-recovery).
 
@@ -138,15 +153,15 @@ For users with 2FA, the failure count is only reset once the whole sign-in succe
 
 | Key | Default | Description |
 |---|---|---|
-| `TwoFactor:Required` | `false` | Require 2FA for every user. Users who haven't set it up must do so at their next sign-in. |
+| `TwoFactor:Required` | `false` | **Runtime.** Require 2FA for every user. Users who haven't set it up must do so at their next sign-in. |
 
-Admins can also require it per user with [`user require-2fa`](/reference/cli#users). See [Two-factor authentication](/guide/two-factor).
+Admins can also require it per user with [`user require-2fa`](/reference/cli#users). Users with the `admin` role need it while [`AdminApi:RequireTwoFactor`](#admin-api-and-admin-ui) is on (the default). See [Two-factor authentication](/guide/two-factor).
 
 ## Session
 
 | Key | Default | Description |
 |---|---|---|
-| `Session:Lifetime` | `08:00:00` | Absolute lifetime of the single sign-on session. It isn't extended by activity. |
+| `Session:Lifetime` | `08:00:00` | **Runtime.** Absolute lifetime of the single sign-on session. It isn't extended by activity. Applies to new sessions. |
 
 The session cookie is `__Host-valkyrie.session` (`Secure`, `HttpOnly`, `SameSite=Lax`). It is a browser-session cookie, so it is also dropped when the browser closes. Each session is stored in the database and checked on every request, so revoking it, disabling the user, resetting the password or changing roles signs the user out immediately.
 
@@ -170,24 +185,25 @@ Email features ([password reset, email verification, email change](/guide/email)
 
 | Key | Default | Description |
 |---|---|---|
-| `Smtp:Host` | *(none)* | The SMTP server. Unset turns the email features off. |
-| `Smtp:Port` | `587` | |
-| `Smtp:Security` | `StartTls` | `StartTls` (upgrade the connection; fail if the server doesn't offer it), `Tls` (TLS from the start, usually port 465), or `None` (only allowed for `localhost` or a loopback address). The server certificate is always validated. |
-| `Smtp:UserName` / `Smtp:Password` | *(none)* | Credentials; set both or neither. Supply the password through an environment variable or secret store. |
-| `Smtp:FromAddress` | *(none)* | Sender address. Required when `Smtp:Host` is set. |
-| `Smtp:FromName` | `Branding:ProductName` | Sender display name. |
+| `Smtp:Host` | *(none)* | **Runtime.** The SMTP server. Unset turns the email features off. |
+| `Smtp:Port` | `587` | **Runtime.** |
+| `Smtp:Security` | `StartTls` | **Runtime.** `StartTls` (upgrade the connection; fail if the server doesn't offer it), `Tls` (TLS from the start, usually port 465), or `None` (only allowed for `localhost` or a loopback address). The server certificate is always validated. |
+| `Smtp:UserName` / `Smtp:Password` | *(none)* | **Runtime.** Credentials; set both or neither. In configuration, supply the password through an environment variable or secret store; set at runtime, it is stored encrypted with the master key. |
+| `Smtp:FromAddress` | *(none)* | **Runtime.** Sender address. Required when `Smtp:Host` is set. |
+| `Smtp:FromName` | `Branding:ProductName` | **Runtime.** Sender display name. |
 | `Smtp:Timeout` | `00:00:30` | Timeout of each SMTP operation (1 second to 5 minutes). |
 | `Smtp:RetryDelays` | `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, or `4xx` reply. After the last one the email is abandoned. Set as an array, e.g. `Smtp__RetryDelays__0=00:01:00`; at most 20 entries. |
 | `Smtp:PollInterval` | `00:01:00` | How often each instance checks for emails queued by another process (the CLI or another instance). |
 
-Settings are read from configuration only. Editing them in the admin UI, with the password stored encrypted in the database, comes with the admin UI.
+Check the settings with **Send test email** on the admin UI's SMTP settings page, or with [`admin send-test-email`](/reference/cli#admin-recovery).
 
 ## Email links
 
 | Key | Default | Description |
 |---|---|---|
-| `Email:PasswordResetLifetime` | `00:30:00` | How long a password reset link works (5 minutes to 24 hours). |
-| `Email:VerificationLifetime` | `1.00:00:00` | How long email verification and email change links work (5 minutes to 7 days). |
+| `Email:VerificationAtSignIn` | `Off` | **Runtime.** After sign-in, users whose email address isn't verified see a verification page before returning to the application: `Prompt` offers it once per sign-in, `Require` lets them continue only once the address is verified. Only applies while SMTP is configured; see [Email](/guide/email#verification-at-sign-in). |
+| `Email:PasswordResetLifetime` | `00:30:00` | **Runtime.** How long a password reset link works (5 minutes to 24 hours). |
+| `Email:VerificationLifetime` | `1.00:00:00` | **Runtime.** How long email verification and email change links work (5 minutes to 7 days). |
 | `Email:ResendInterval` | `00:01:00` | At most one email of each kind per account in this interval (0 to 1 hour); further requests are ignored silently. |
 
 ## Rate limits
@@ -207,19 +223,26 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Count
 
 | Key | Default | Description |
 |---|---|---|
-| `Branding:ProductName` | `ValkyrieID` | Shown in page titles and in place of a logo. |
-| `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. |
-| `Branding:Logo` | *(none)* | Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
-| `Branding:BackgroundImage` | *(none)* | Background image file name in `Branding:Directory`. |
-| `Branding:CustomCss` | *(none)* | Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
-| `Branding:PrimaryColor` | `#1f4fd1` | Buttons, links, and focus outlines. |
-| `Branding:BackgroundColor` | `#eef1f6` | Page background. |
-| `Branding:SurfaceColor` | `#ffffff` | Card background. |
-| `Branding:TextColor` | `#1a1d23` | Text. |
+| `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and in place of a logo. |
+| `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. Configuration only. |
+| `Branding:Logo` | *(none)* | **Runtime.** Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
+| `Branding:BackgroundImage` | *(none)* | **Runtime.** Background image file name in `Branding:Directory`. |
+| `Branding:CustomCss` | *(none)* | **Runtime.** Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
+| `Branding:PrimaryColor` | `#1f4fd1` | **Runtime.** Buttons, links, and focus outlines. |
+| `Branding:BackgroundColor` | `#eef1f6` | **Runtime.** Page background. |
+| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card background. |
+| `Branding:TextColor` | `#1a1d23` | **Runtime.** Text. |
 
-Colors must be hex (`#1f4fd1`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths. The server doesn't start if a value is invalid.
+Colors must be hex (`#1f4fd1`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
 
 The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-error`, `--vid-error-background` and `--vid-border`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA).
+
+## Audit log
+
+| Key | Default | Description |
+|---|---|---|
+| `AuditLog:Retention` | `365.00:00:00` | **Runtime.** Entries older than this are deleted. `00:00:00` keeps them forever; otherwise 1 to 3650 days. |
+| `AuditLog:CleanupInterval` | `01:00:00` | How often old entries are deleted (1 minute to 1 day). Each deletion is recorded as `audit.purged`. |
 
 ## Logging
 

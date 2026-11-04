@@ -125,7 +125,7 @@ internal sealed class TwoFactorSetupModel(AccountService account, TwoFactorServi
 
     private async Task ShowAsync(User user, CancellationToken cancellationToken)
     {
-        Required = twoFactor.IsRequired(user);
+        Required = await twoFactor.IsRequiredAsync(user, cancellationToken);
         if (user.TwoFactorEnabled)
         {
             UnusedRecoveryCodes = await twoFactor.CountUnusedRecoveryCodesAsync(user, cancellationToken);

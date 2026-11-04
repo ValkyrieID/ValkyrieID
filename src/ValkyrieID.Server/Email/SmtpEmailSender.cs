@@ -24,18 +24,18 @@ internal sealed class EmailDeliveryException(string result, bool permanent, Exce
     public bool Permanent { get; } = permanent;
 }
 
-internal sealed class SmtpEmailSender(IOptions<SmtpOptions> smtpOptions, IOptions<BrandingOptions> branding) : IEmailSender
+internal sealed class SmtpEmailSender(IOptionsMonitor<SmtpOptions> smtpOptions, IOptionsMonitor<BrandingOptions> branding) : IEmailSender
 {
     public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
-        var options = smtpOptions.Value;
+        var options = smtpOptions.CurrentValue;
         if (options is not { Enabled: true, Host: { } host, FromAddress: { } from })
         {
             throw new EmailDeliveryException("smtp_not_configured", permanent: true);
         }
 
         using var mime = new MimeMessage();
-        mime.From.Add(new MailboxAddress(options.FromName ?? branding.Value.ProductName, from));
+        mime.From.Add(new MailboxAddress(options.FromName ?? branding.CurrentValue.ProductName, from));
         mime.To.Add(new MailboxAddress(string.Empty, message.To));
         mime.Subject = message.Subject;
         mime.Body = new TextPart("plain") { Text = message.Body };

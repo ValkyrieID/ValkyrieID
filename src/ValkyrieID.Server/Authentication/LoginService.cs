@@ -21,7 +21,7 @@ internal sealed class LoginService(
     PasswordHasher hasher,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptions<LockoutOptions> lockoutOptions)
+    IOptionsMonitor<LockoutOptions> lockoutOptions)
 {
     /// <summary>Inputs longer than this are rejected without lookup; well above any valid identifier or allowed password.</summary>
     private const int MaxInputLength = 1024;
@@ -92,7 +92,7 @@ internal sealed class LoginService(
 
         audit.Add("user.login.failed", success: false, ipAddress: ipAddress, subjectId: user.Id, details: Reason(reason));
 
-        var lockout = lockoutOptions.Value;
+        var lockout = lockoutOptions.CurrentValue;
         if (failures >= lockout.MaxFailedAttempts)
         {
             var end = now + lockout.Duration;

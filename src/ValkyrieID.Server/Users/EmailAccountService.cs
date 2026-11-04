@@ -28,7 +28,7 @@ internal sealed class EmailAccountService(
     RefreshTokenStore refreshTokens,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptions<EmailOptions> options)
+    IOptionsMonitor<EmailOptions> options)
 {
     public const string InvalidLink = "This link is invalid or has expired. Request a new one.";
     public const string EmailInUse = "This email address is already used by another account.";
@@ -50,13 +50,13 @@ internal sealed class EmailAccountService(
             null => "unknown_user",
             { Enabled: false } => "disabled",
             { Email: null } => "no_email",
-            _ when await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.ResetPassword, options.Value.ResendInterval, cancellationToken) => "throttled",
+            _ when await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.ResetPassword, options.CurrentValue.ResendInterval, cancellationToken) => "throttled",
             _ => null,
         };
 
         if (reason is null)
         {
-            var lifetime = options.Value.PasswordResetLifetime;
+            var lifetime = options.CurrentValue.PasswordResetLifetime;
             var token = await tokens.IssueAsync(user!, EmailTokenPurpose.ResetPassword, user!.Email, lifetime, cancellationToken);
             emails.PasswordReset(user, token, lifetime);
         }
@@ -126,12 +126,12 @@ internal sealed class EmailAccountService(
     public async Task SendVerificationAsync(User user, AuditActor actor, CancellationToken cancellationToken)
     {
         if (!Enabled || user.Email is null || user.EmailVerified
-            || await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.VerifyEmail, options.Value.ResendInterval, cancellationToken))
+            || await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.VerifyEmail, options.CurrentValue.ResendInterval, cancellationToken))
         {
             return;
         }
 
-        var lifetime = options.Value.VerificationLifetime;
+        var lifetime = options.CurrentValue.VerificationLifetime;
         var token = await tokens.IssueAsync(user, EmailTokenPurpose.VerifyEmail, user.Email, lifetime, cancellationToken);
         emails.VerifyEmail(user, token, lifetime);
         audit.Add("user.email_verification.requested", actor: actor.Name, ipAddress: actor.IpAddress, subjectId: user.Id);
@@ -189,14 +189,14 @@ internal sealed class EmailAccountService(
             return ["This is already your email address."];
         }
 
-        if (await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.ChangeEmail, options.Value.ResendInterval, cancellationToken))
+        if (await tokens.IssuedRecentlyAsync(user.Id, EmailTokenPurpose.ChangeEmail, options.CurrentValue.ResendInterval, cancellationToken))
         {
             return [];
         }
 
         // A token is issued either way, so both cases do the same work. One for an address in use can never be
         // confirmed: confirming checks the address again.
-        var lifetime = options.Value.VerificationLifetime;
+        var lifetime = options.CurrentValue.VerificationLifetime;
         var token = await tokens.IssueAsync(user, EmailTokenPurpose.ChangeEmail, newEmail, lifetime, cancellationToken);
         var inUse = await db.Users.AnyAsync(u => u.NormalizedEmail == normalized && u.Id != user.Id, cancellationToken);
         if (inUse)

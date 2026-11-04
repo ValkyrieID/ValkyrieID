@@ -27,6 +27,12 @@ internal static class PasswordReader
     private static string Required(string? password) =>
         string.IsNullOrEmpty(password) ? throw new CliException("No password was given.") : password;
 
+    /// <summary>Reads a secret value (e.g. the SMTP password) the same way as a password, without confirmation.</summary>
+    public static async Task<string> ReadSecretAsync(TextReader input, string prompt) =>
+        ReferenceEquals(input, Console.In) && !Console.IsInputRedirected
+            ? Required(Prompt(prompt))
+            : Required(await input.ReadLineAsync());
+
     private static string Prompt(string prompt)
     {
         Console.Error.Write(prompt);

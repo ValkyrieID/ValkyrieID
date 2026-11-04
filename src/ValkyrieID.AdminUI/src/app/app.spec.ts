@@ -11,6 +11,7 @@ describe('App shell', () => {
       error: signal<string | null>('The user denied access.'),
       sessionExpired: signal(false),
       forbidden: signal(forbidden),
+      secondFactorRequired: signal(false),
       displayName: signal('Alice'),
       signIn: vi.fn(() => Promise.resolve()),
       signOut: vi.fn(() => Promise.resolve()),

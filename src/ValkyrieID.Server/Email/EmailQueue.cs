@@ -51,7 +51,7 @@ internal sealed partial class EmailDispatcher(
     IEmailSender sender,
     EmailSignal signal,
     TimeProvider timeProvider,
-    IOptions<SmtpOptions> options,
+    IOptionsMonitor<SmtpOptions> options,
     ILogger<EmailDispatcher> logger)
 {
     private const int BatchSize = 20;
@@ -112,7 +112,7 @@ internal sealed partial class EmailDispatcher(
     {
         await using var scope = scopes.CreateAsyncScope();
         var now = timeProvider.GetUtcNow();
-        var leaseExpiresAt = now + options.Value.LeaseDuration;
+        var leaseExpiresAt = now + options.CurrentValue.LeaseDuration;
         return await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().OutboundEmails
             .Where(e => e.Id == id && e.NextAttemptAt <= now && (e.LeaseExpiresAt == null || e.LeaseExpiresAt <= now))
             .ExecuteUpdateAsync(
@@ -160,7 +160,7 @@ internal sealed partial class EmailDispatcher(
             retry = !ex.Permanent;
         }
 
-        var delays = options.Value.EffectiveRetryDelays;
+        var delays = options.CurrentValue.EffectiveRetryDelays;
         var reschedule = retry && email.Attempts <= delays.Count;
         if (reschedule)
         {
@@ -234,26 +234,27 @@ internal sealed partial class EmailWorker(
     EmailDispatcher dispatcher,
     EmailSignal signal,
     TimeProvider timeProvider,
-    IOptions<SmtpOptions> options,
+    IOptionsMonitor<SmtpOptions> options,
     ILogger<EmailWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!options.Value.Enabled)
-        {
-            return;
-        }
+        // SMTP can be turned on or off in the runtime settings; wake up when that happens.
+        using var subscription = options.OnChange(_ => signal.Notify());
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var wait = options.Value.PollInterval;
+            var wait = options.CurrentValue.PollInterval;
             try
             {
-                await dispatcher.ProcessDueAsync(stoppingToken);
-                if (await dispatcher.NextAttemptAtAsync(stoppingToken) is { } next)
+                if (options.CurrentValue.Enabled)
                 {
-                    var untilNext = next - timeProvider.GetUtcNow();
-                    wait = untilNext <= TimeSpan.Zero ? TimeSpan.Zero : untilNext < wait ? untilNext : wait;
+                    await dispatcher.ProcessDueAsync(stoppingToken);
+                    if (await dispatcher.NextAttemptAtAsync(stoppingToken) is { } next)
+                    {
+                        var untilNext = next - timeProvider.GetUtcNow();
+                        wait = untilNext <= TimeSpan.Zero ? TimeSpan.Zero : untilNext < wait ? untilNext : wait;
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

@@ -7,7 +7,7 @@ using ValkyrieID.Server.Configuration;
 namespace ValkyrieID.Server.Users;
 
 /// <summary>Checks passwords against the Have I Been Pwned range API using k-anonymity: only the first 5 hex characters of the SHA-1 hash are sent.</summary>
-internal sealed partial class BreachedPasswordChecker(HttpClient http, IOptions<PasswordPolicyOptions> options, ILogger<BreachedPasswordChecker> logger)
+internal sealed partial class BreachedPasswordChecker(HttpClient http, IOptionsMonitor<PasswordPolicyOptions> options, ILogger<BreachedPasswordChecker> logger)
 {
     public async Task<bool> IsBreachedAsync(string password, CancellationToken cancellationToken)
     {
@@ -18,7 +18,7 @@ internal sealed partial class BreachedPasswordChecker(HttpClient http, IOptions<
         string body;
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(options.Value.BreachedPasswordApiUrl, prefix));
+            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(options.CurrentValue.BreachedPasswordApiUrl, prefix));
             // Padding hides the real size of the response from network observers.
             request.Headers.Add("Add-Padding", "true");
             using var response = await http.SendAsync(request, cancellationToken);
@@ -57,11 +57,11 @@ internal sealed partial class BreachedPasswordChecker(HttpClient http, IOptions<
     private static partial void LogUnavailable(ILogger logger, Exception exception);
 }
 
-internal sealed class PasswordValidator(IOptions<PasswordPolicyOptions> options, BreachedPasswordChecker breachedPasswords)
+internal sealed class PasswordValidator(IOptionsMonitor<PasswordPolicyOptions> options, BreachedPasswordChecker breachedPasswords)
 {
     public async Task<IReadOnlyList<string>> ValidateAsync(string password, string? userName, string? email, CancellationToken cancellationToken)
     {
-        var policy = options.Value;
+        var policy = options.CurrentValue;
         List<string> errors = [];
 
         // NIST SP 800-63B §5.1.1.2: each Unicode code point counts as one character.

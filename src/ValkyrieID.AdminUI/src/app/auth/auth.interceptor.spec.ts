@@ -15,6 +15,7 @@ describe('authInterceptor', () => {
     accessToken: () => string | null;
     sessionExpired: { set: ReturnType<typeof vi.fn> };
     forbidden: { set: ReturnType<typeof vi.fn> };
+    secondFactorRequired: { set: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(() => {
@@ -22,6 +23,7 @@ describe('authInterceptor', () => {
       accessToken: () => 'secret-token',
       sessionExpired: { set: vi.fn() },
       forbidden: { set: vi.fn() },
+      secondFactorRequired: { set: vi.fn() },
     };
     TestBed.configureTestingModule({
       providers: [
@@ -76,5 +78,21 @@ describe('authInterceptor', () => {
 
     await expect(response).rejects.toBeTruthy();
     expect(auth.forbidden.set).toHaveBeenCalledWith(true);
+  });
+
+  it('asks for a sign-in with a second factor on insufficient_user_authentication', async () => {
+    const response = firstValueFrom(http.get(`${issuer}/api/admin/users`));
+    backend.expectOne(`${issuer}/api/admin/users`).flush(null, {
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: {
+        'WWW-Authenticate':
+          'Bearer realm="ValkyrieID", error="insufficient_user_authentication", error_description="x"',
+      },
+    });
+
+    await expect(response).rejects.toBeTruthy();
+    expect(auth.secondFactorRequired.set).toHaveBeenCalledWith(true);
+    expect(auth.sessionExpired.set).not.toHaveBeenCalled();
   });
 });

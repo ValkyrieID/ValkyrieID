@@ -32,7 +32,7 @@ After the change:
 `/account/two-factor` turns [two-factor authentication](/guide/two-factor) on and off and replaces recovery codes.
 
 - **New recovery codes** require the password. All previous codes, used or not, stop working, and the new ones are shown once.
-- **Turning 2FA off** requires the password and a current code from the authenticator app or an unused recovery code. Like a password change, it signs out all other sessions; this browser stays signed in. It's not possible while 2FA is required, by `TwoFactor:Required` or `user require-2fa`.
+- **Turning 2FA off** requires the password and a current code from the authenticator app or an unused recovery code. Like a password change, it signs out all other sessions; this browser stays signed in. It's not possible while 2FA is required, by `TwoFactor:Required`, `user require-2fa`, or because the user is an admin and `AdminApi:RequireTwoFactor` is on.
 
 ## Sessions
 

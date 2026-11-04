@@ -23,6 +23,7 @@ internal sealed class AuthorizeEndpoint(
     IAuthorizationCodeStore codes,
     AuditRecorder audit,
     TimeProvider timeProvider,
+    EmailVerificationGate verificationGate,
     IOptions<IssuerOptions> issuerOptions)
 {
     public const string Path = "/connect/authorize";
@@ -136,6 +137,21 @@ internal sealed class AuthorizeEndpoint(
             }
 
             return Results.Redirect(LoginUrl(context, parameters, forceLogin));
+        }
+
+        // Email verification after sign-in (EmailOptions.VerificationAtSignIn): the session exists, but the user is
+        // shown the verification page before being sent back to the client.
+        var verification = await verificationGate.CheckAsync(context, Guid.Parse(subject!), sessionId!, cancellationToken);
+        if (verification == EmailVerificationAtSignIn.Require && request.Prompt.Contains("none"))
+        {
+            // OIDC Core A3.1.2.6: the user has to interact before the request can complete.
+            return reply.Error(AuthorizeErrors.InteractionRequired, "The user must verify their email address.");
+        }
+
+        if (verification != EmailVerificationAtSignIn.Off && !request.Prompt.Contains("none"))
+        {
+            var returnUrl = context.Request.PathBase + Path + QueryString.Create(parameters);
+            return Results.Redirect(context.Request.PathBase + EmailVerificationGate.PagePath + QueryString.Create("returnUrl", returnUrl));
         }
 
         var grant = new AuthorizationCodeGrant(
@@ -376,6 +392,7 @@ internal static class AuthorizeErrors
     public const string UnsupportedResponseType = "unsupported_response_type";
     public const string InvalidScope = "invalid_scope";
     public const string LoginRequired = "login_required";
+    public const string InteractionRequired = "interaction_required";
     public const string ConsentRequired = "consent_required";
     public const string RequestNotSupported = "request_not_supported";
     public const string RequestUriNotSupported = "request_uri_not_supported";

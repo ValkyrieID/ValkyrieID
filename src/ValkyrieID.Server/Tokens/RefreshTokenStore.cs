@@ -20,13 +20,13 @@ internal sealed record RefreshTokenGrant(
     IReadOnlyList<string> Scopes);
 
 /// <summary>Creates, finds, and revokes refresh tokens. Only SHA-256 hashes of the tokens are stored.</summary>
-internal sealed class RefreshTokenStore(ValkyrieDbContext db, TimeProvider timeProvider, IOptions<TokenOptions> tokenOptions)
+internal sealed class RefreshTokenStore(ValkyrieDbContext db, TimeProvider timeProvider, IOptionsMonitor<TokenOptions> tokenOptions)
 {
     /// <summary>Adds the first token of a new family to the context; the caller saves it.</summary>
     public string Create(Client client, RefreshTokenGrant grant)
     {
         var now = timeProvider.GetUtcNow();
-        var familyExpiresAt = now + (client.RefreshTokenAbsoluteLifetime ?? tokenOptions.Value.RefreshTokenAbsoluteLifetime);
+        var familyExpiresAt = now + (client.RefreshTokenAbsoluteLifetime ?? tokenOptions.CurrentValue.RefreshTokenAbsoluteLifetime);
         return Add(client, Guid.CreateVersion7(), grant, familyExpiresAt, now).Plaintext;
     }
 
@@ -91,7 +91,7 @@ internal sealed class RefreshTokenStore(ValkyrieDbContext db, TimeProvider timeP
     private (RefreshToken Token, string Plaintext) Add(Client client, Guid id, RefreshTokenGrant grant, DateTimeOffset familyExpiresAt, DateTimeOffset now)
     {
         var plaintext = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
-        var sliding = now + (client.RefreshTokenSlidingLifetime ?? tokenOptions.Value.RefreshTokenSlidingLifetime);
+        var sliding = now + (client.RefreshTokenSlidingLifetime ?? tokenOptions.CurrentValue.RefreshTokenSlidingLifetime);
         var token = new RefreshToken
         {
             Id = id,

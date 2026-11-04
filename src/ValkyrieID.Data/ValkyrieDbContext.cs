@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ValkyrieID.Core.Auditing;
 using ValkyrieID.Core.Clients;
 using ValkyrieID.Core.Resources;
+using ValkyrieID.Core.Settings;
 using ValkyrieID.Core.Tokens;
 using ValkyrieID.Core.Users;
 
@@ -45,6 +46,10 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
     public DbSet<EmailToken> EmailTokens => Set<EmailToken>();
 
     public DbSet<OutboundEmail> OutboundEmails => Set<OutboundEmail>();
+
+    public DbSet<Setting> Settings => Set<Setting>();
+
+    public DbSet<SettingsRevision> SettingsRevisions => Set<SettingsRevision>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

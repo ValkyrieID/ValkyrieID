@@ -304,6 +304,51 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.ToTable("ApiScopes", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Settings.Setting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("EncryptedValue")
+                        .HasColumnType("BLOB");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("Settings", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Settings.SettingsRevision", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SettingsRevision", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Revision = 0L
+                        });
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")

@@ -33,8 +33,9 @@ A user who has lost both the authenticator and the recovery codes needs an admin
 
 ## Require 2FA
 
-- For everyone: set [`TwoFactor:Required`](/reference/configuration#two-factor-authentication) to `true`.
+- For everyone: set [`TwoFactor:Required`](/reference/configuration#two-factor-authentication) to `true`, or turn it on in the admin UI (**Settings → Two-factor authentication**).
 - For one user: [`user require-2fa <user>`](/reference/cli#users).
+- For administrators: required by default ([`AdminApi:RequireTwoFactor`](/reference/configuration#admin-api-and-admin-ui)). Users with the `admin` role set it up at their next sign-in, and the Admin API only accepts tokens from sign-ins that used a second factor (`mfa` in `amr`). An admin who is still signed in with only a password is asked to sign in again.
 
 A user who must use 2FA but hasn't set it up is taken through the setup after entering their password, and only gets a session once it's done. Existing sessions continue until they end.
 

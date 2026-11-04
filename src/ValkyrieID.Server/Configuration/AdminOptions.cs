@@ -10,6 +10,12 @@ public sealed class AdminApiOptions
     /// tokens can be issued. The admin UI needs the API, so it is turned off too. The CLI keeps working.
     /// </summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// The admin's sign-in must have used a second factor (its <c>amr</c> contains one of
+    /// <see cref="Authentication.AuthenticationMethods.SecondFactor"/>). Users with the admin role must then set up 2FA.
+    /// </summary>
+    public bool RequireTwoFactor { get; set; } = true;
 }
 
 /// <summary>The Angular admin UI under <c>/admin</c> (PROJECT.md §8.2).</summary>

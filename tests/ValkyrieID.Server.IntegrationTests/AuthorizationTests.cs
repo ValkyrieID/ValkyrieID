@@ -56,7 +56,8 @@ public abstract class AuthorizationTests
         await AddUserDataAsync(factory, "alice");
         var secret = await CreateClientAsync(factory, "web", ["openid", "profile", "email", "roles", "groups"]);
         var browser = factory.CreateBrowser();
-        await Forms.LoginAsync(browser, "alice", Password);
+        // alice has the admin role, so she must sign in with 2FA (AdminApi:RequireTwoFactor).
+        await Forms.LoginWithEnrollmentAsync(browser, "alice", Password);
         var (verifier, challenge) = NewPkce();
 
         var location = await AuthorizeAsync(browser, Params("web", "openid profile email roles groups", challenge) with { Nonce = "n-0S6_WzA2Mj", State = "af0ifjsldkj" });
@@ -82,7 +83,7 @@ public abstract class AuthorizationTests
         Assert.Equal(AtHash(accessToken), idToken.GetClaim("at_hash").Value);
         Assert.False(string.IsNullOrEmpty(idToken.GetClaim("sid").Value));
         Assert.True(idToken.TryGetPayloadValue<long>("auth_time", out _));
-        Assert.Equal(["pwd"], idToken.GetPayloadValue<string[]>("amr"));
+        Assert.Equal(["pwd", "otp", "mfa"], idToken.GetPayloadValue<string[]>("amr"));
         Assert.Equal(TimeSpan.FromMinutes(5), idToken.ValidTo - idToken.IssuedAt);
         Assert.Equal("alice", idToken.GetClaim("preferred_username").Value);
         Assert.Equal("Alice Example", idToken.GetClaim("name").Value);
@@ -95,6 +96,8 @@ public abstract class AuthorizationTests
         Assert.Equal("at+jwt", access.Typ);
         Assert.Equal(userId.ToString(), access.Subject);
         Assert.Equal(["web"], access.Audiences);
+        // amr is only disclosed to the Admin API.
+        Assert.False(access.TryGetPayloadValue<string[]>("amr", out _));
 
         var userInfo = await UserInfoAsync(browser, accessToken);
         Assert.Equal(HttpStatusCode.OK, userInfo.StatusCode);

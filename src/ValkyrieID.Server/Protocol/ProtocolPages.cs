@@ -60,7 +60,7 @@ internal static class ProtocolPages
         public Task ExecuteAsync(HttpContext httpContext)
         {
             var response = httpContext.Response;
-            var branding = httpContext.RequestServices.GetRequiredService<IOptions<BrandingOptions>>().Value;
+            var branding = httpContext.RequestServices.GetRequiredService<IOptionsMonitor<BrandingOptions>>().CurrentValue;
             var pathBase = httpContext.Request.PathBase.Value ?? string.Empty;
             response.StatusCode = statusCode;
             ProtocolHeaders.NoStore(response);

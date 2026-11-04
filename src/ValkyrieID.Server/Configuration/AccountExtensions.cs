@@ -49,6 +49,7 @@ internal static class AccountExtensions
         services.AddScoped<SessionManager>();
         services.AddScoped<SessionService>();
         services.AddScoped<SessionCookieEvents>();
+        services.AddScoped<EmailVerificationGate>();
         services.AddSingleton<LoginAttemptLimiter>();
         services.AddScoped<MasterKeyReencryptor>();
         services.AddSingleton<ThemeStylesheet>();
@@ -81,8 +82,8 @@ internal static class AccountExtensions
                 options.ExpireTimeSpan = PendingLogin.Lifetime;
                 options.SlidingExpiration = false;
             });
-        services.AddOptions<CookieAuthenticationOptions>(SessionClaims.Scheme)
-            .Configure<IOptions<SsoSessionOptions>>((options, session) => options.ExpireTimeSpan = session.Value.Lifetime);
+        // The session cookie's expiry is set per sign-in from Session:Lifetime (SessionManager), so a changed
+        // lifetime applies to new sessions without a restart.
         services.AddAuthorization();
 
         services.AddAntiforgery(options =>
@@ -127,6 +128,7 @@ internal static class AccountExtensions
 
     public static WebApplication UseValkyrieAccounts(this WebApplication app)
     {
+        // Branding:Directory is configuration-only, so it can be read once.
         var branding = app.Services.GetRequiredService<IOptions<BrandingOptions>>().Value;
         app.UseStaticFiles();
         if (branding.Directory is not null)
@@ -148,7 +150,16 @@ internal static class AccountExtensions
     public static IEndpointRouteBuilder MapValkyrieAccounts(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapRazorPages();
-        endpoints.MapGet(ThemePath, (ThemeStylesheet theme) => Results.Text(theme.Css, "text/css", Encoding.UTF8));
+        endpoints.MapGet(ThemePath, (HttpContext context, ThemeStylesheet theme) =>
+        {
+            var (css, etag) = theme.Current;
+            context.Response.Headers.ETag = etag;
+            // Revalidated on every use, so branding changes show up without a restart or a stale cache.
+            context.Response.Headers.CacheControl = "no-cache";
+            return context.Request.Headers.IfNoneMatch == etag
+                ? Results.StatusCode(StatusCodes.Status304NotModified)
+                : Results.Text(css, "text/css", Encoding.UTF8);
+        });
         return endpoints;
     }
 
@@ -171,11 +182,29 @@ internal static class AccountExtensions
 }
 
 /// <summary>CSS variables generated from <see cref="BrandingOptions"/>; values are validated, so they can't inject CSS.</summary>
-internal sealed class ThemeStylesheet(IOptions<BrandingOptions> options)
+internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
 {
-    private readonly Lazy<string> _css = new(() => Build(options.Value));
+    private (BrandingOptions Options, string Css, string ETag)? _cache;
 
-    public string Css => _css.Value;
+    /// <summary>The stylesheet for the current branding, rebuilt when the settings change.</summary>
+    public (string Css, string ETag) Current
+    {
+        get
+        {
+            var branding = options.CurrentValue;
+            if (_cache is { } cache && ReferenceEquals(cache.Options, branding))
+            {
+                return (cache.Css, cache.ETag);
+            }
+
+            var css = Build(branding);
+            var etag = $"\"{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(css)))[..16]}\"";
+            _cache = (branding, css, etag);
+            return (css, etag);
+        }
+    }
+
+    public string Css => Current.Css;
 
     private static string Build(BrandingOptions branding)
     {

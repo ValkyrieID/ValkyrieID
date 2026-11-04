@@ -6,7 +6,7 @@ namespace ValkyrieID.Server.Cli;
 /// </summary>
 internal static class CliApp
 {
-    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "session", "admin", "help" };
+    private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "session", "admin", "settings", "help" };
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
 
@@ -41,6 +41,9 @@ internal static class CliApp
                     break;
                 case "admin":
                     return await new AdminCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
+                case "settings":
+                    await new SettingsCommands(scope.ServiceProvider, input, output).RunAsync(parsed, cancellationToken);
+                    break;
                 default:
                     await output.WriteLineAsync(Usage);
                     break;
@@ -80,6 +83,12 @@ internal static class CliApp
           admin send-test-email <address>
 
         Passwords are read from a hidden prompt, or as one line from standard input when it is redirected.
+
+        Runtime settings (stored in the database; values from configuration take precedence):
+          settings show [<section>]
+          settings set <key> <value>     e.g. settings set Tokens:AccessTokenLifetime 00:15:00
+          settings set Smtp:Password     (read like a password)
+          settings reset <key|section>
 
         Clients:
           client create <client-id> --scope <scope>... [--name <display name>]

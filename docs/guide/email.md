@@ -20,13 +20,15 @@ Smtp__Password=...
 Smtp__FromAddress=id@example.com
 ```
 
-See [SMTP](/reference/configuration#smtp) for all settings. The server certificate is always validated. Then send a test email:
+See [SMTP](/reference/configuration#smtp) for all settings. The server certificate is always validated. Instead of configuration, you can also enter the settings in the admin UI (**Settings → SMTP**); the password is then stored encrypted with the [master key](/operations/master-key). Settings in configuration take precedence.
+
+Then send a test email, with **Send test email** on the admin UI's SMTP page (to your own address), or with the CLI:
 
 ```sh
 ./valkyrieid admin send-test-email you@example.com
 ```
 
-The command sends right away and prints the SMTP error if it fails.
+The command sends right away and prints the SMTP error if it fails. The admin UI only shows a short reason, such as `authentication_failed`.
 
 ## How emails are sent
 
@@ -62,6 +64,16 @@ On `/account/reset-password` the user chooses a new password that meets the [pas
 
 On `/account/email`, users with an unverified address can send themselves a verification link. Opening it (`/account/verify-email`) and confirming marks the address as verified. Signing in isn't required. A link only verifies the address it was sent to.
 
+### Verification at sign-in
+
+[`Email:VerificationAtSignIn`](/reference/configuration#email-links) asks users to verify their address when they sign in to an application:
+
+- `Off` (default): users verify from their account page, if at all.
+- `Prompt`: after sign-in, users with an unverified address see a page that offers a verification link, and can continue to the application. It is shown once per sign-in.
+- `Require`: users with an unverified address (or none) can't continue to applications until it's verified. The page offers a verification link, and a link to add an address. Once the address is verified, in this browser or another one, **Continue** returns to the application. Applications that sign in silently (`prompt=none`) get `interaction_required`.
+
+The setting only applies while SMTP is configured: without it, addresses can't be verified, so it behaves as `Off`. The admin UI and Admin API refuse `Prompt` and `Require` without SMTP.
+
 ## Email change
 
 On `/account/email`, users enter the new address and their current password. As with the other [sensitive account forms](/guide/account#re-entering-your-password), wrong passwords count towards the lockout.
@@ -82,4 +94,4 @@ On `/account/email`, users enter the new address and their current password. As 
 | `user.password_reset.failed`, `user.email_verification.failed`, `user.email_change.failed` | An invalid, used, or expired link was submitted. |
 | `session.revoked` | With `reason` `password_reset`, for every session signed out by a reset. |
 | `email.sent` / `email.failed` | An email was sent, or given up on. |
-| `email.test` | `admin send-test-email` was run. |
+| `email.test` | `admin send-test-email` was run, or **Send test email** in the admin UI. |

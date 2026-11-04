@@ -18,17 +18,17 @@ internal enum PasswordChange
 /// </summary>
 internal sealed class AccountEmails(
     EmailQueue queue,
-    IOptions<SmtpOptions> smtp,
+    IOptionsMonitor<SmtpOptions> smtp,
     IOptions<IssuerOptions> issuer,
-    IOptions<BrandingOptions> branding)
+    IOptionsMonitor<BrandingOptions> branding)
 {
     public const string ResetPasswordPath = "/account/reset-password";
     public const string VerifyEmailPath = "/account/verify-email";
     public const string ConfirmEmailChangePath = "/account/confirm-email";
 
-    public bool Enabled => smtp.Value.Enabled;
+    public bool Enabled => smtp.CurrentValue.Enabled;
 
-    private string Product => branding.Value.ProductName;
+    private string Product => branding.CurrentValue.ProductName;
 
     public void PasswordReset(User user, string token, TimeSpan lifetime) =>
         Add("password_reset", user.Id, EmailTemplates.PasswordReset(Product, user.Email!, user.UserName, Link(ResetPasswordPath, token), lifetime));

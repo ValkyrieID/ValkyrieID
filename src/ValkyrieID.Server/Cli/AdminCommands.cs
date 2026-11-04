@@ -72,7 +72,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             throw new CliException("Some data can't be decrypted. Configure every master key it was encrypted with in MasterKey:Previous.");
         }
 
-        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}, TOTP secrets: {report.TotpSecrets}, queued emails: {report.QueuedEmails}";
+        var summary = $"signing keys: {report.SigningKeys}, data protection keys: {report.DataProtectionKeys}, TOTP secrets: {report.TotpSecrets}, queued emails: {report.QueuedEmails}, settings: {report.Settings}";
         if (check)
         {
             await output.WriteLineAsync(report.Total == 0
@@ -88,6 +88,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             ["data_protection_keys"] = report.DataProtectionKeys,
             ["totp_secrets"] = report.TotpSecrets,
             ["queued_emails"] = report.QueuedEmails,
+            ["settings"] = report.Settings,
         });
         await services.GetRequiredService<Data.ValkyrieDbContext>().SaveChangesAsync(cancellationToken);
         await output.WriteLineAsync($"Re-encrypted with the current master key ({summary}). Previous keys can now be removed.");
@@ -99,7 +100,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
     {
         var address = args.Argument(2, "address");
         args.EnsureConsumed(3);
-        if (!services.GetRequiredService<IOptions<SmtpOptions>>().Value.Enabled)
+        if (!services.GetRequiredService<IOptionsMonitor<SmtpOptions>>().CurrentValue.Enabled)
         {
             throw new CliException("SMTP isn't configured; set Smtp:Host and Smtp:FromAddress.");
         }
@@ -109,7 +110,7 @@ internal sealed class AdminCommands(IServiceProvider services, TextReader input,
             throw new CliException("The email address is invalid.");
         }
 
-        var product = services.GetRequiredService<IOptions<BrandingOptions>>().Value.ProductName;
+        var product = services.GetRequiredService<IOptionsMonitor<BrandingOptions>>().CurrentValue.ProductName;
         var audit = services.GetRequiredService<AuditRecorder>();
         try
         {

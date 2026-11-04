@@ -312,6 +312,51 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.ToTable("ApiScopes", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Settings.Setting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<byte[]>("EncryptedValue")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("Settings", (string)null);
+                });
+
+            modelBuilder.Entity("ValkyrieID.Core.Settings.SettingsRevision", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SettingsRevision", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Revision = 0L
+                        });
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Tokens.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")

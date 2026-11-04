@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Configuration;
 
 namespace ValkyrieID.Server.Tokens;
@@ -12,7 +13,8 @@ internal sealed record AccessTokenRequest(
     string Subject,
     IReadOnlyList<string> Audiences,
     IReadOnlyList<string> Scopes,
-    TimeSpan Lifetime);
+    TimeSpan Lifetime,
+    IReadOnlyList<string>? AuthenticationMethods = null);
 
 internal sealed record IssuedToken(string Token, TimeSpan Lifetime);
 
@@ -42,6 +44,13 @@ internal sealed class AccessTokenIssuer(
         if (request.Scopes.Count > 0)
         {
             claims["scope"] = string.Join(' ', request.Scopes);
+        }
+
+        // RFC 9068 §2.2.1: amr may be included. Only the Admin API needs it (to require a second factor), so it isn't
+        // disclosed to other resource servers.
+        if (request.AuthenticationMethods is { Count: > 0 } methods && request.Audiences.Contains(BuiltIn.AdminResource, StringComparer.Ordinal))
+        {
+            claims["amr"] = methods.ToArray();
         }
 
         var descriptor = new SecurityTokenDescriptor

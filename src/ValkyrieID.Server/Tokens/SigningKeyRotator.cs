@@ -20,7 +20,7 @@ internal sealed partial class SigningKeyRotator(
     SigningKeyStore store,
     TimeProvider timeProvider,
     IOptions<SigningKeyOptions> keyOptions,
-    IOptions<TokenOptions> tokenOptions,
+    IOptionsMonitor<TokenOptions> tokenOptions,
     ILogger<SigningKeyRotator> logger)
 {
     public async Task RotateAsync(CancellationToken cancellationToken)
@@ -111,7 +111,7 @@ internal sealed partial class SigningKeyRotator(
     /// <summary>The longest time a token signed by a retired key can still be valid.</summary>
     private async Task<TimeSpan> GetRetentionAsync(CancellationToken cancellationToken)
     {
-        var tokens = tokenOptions.Value;
+        var tokens = tokenOptions.CurrentValue;
         var clientLifetimes = await db.Clients
             .Where(c => c.AccessTokenLifetime != null)
             .Select(c => c.AccessTokenLifetime)

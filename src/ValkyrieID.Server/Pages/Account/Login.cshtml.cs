@@ -77,7 +77,7 @@ internal sealed class LoginModel(
             return RedirectToPage("/Account/TwoFactor", new { returnUrl = SafeReturnUrl });
         }
 
-        if (twoFactor.IsRequired(user))
+        if (await twoFactor.IsRequiredAsync(user, cancellationToken))
         {
             await pending.StartAsync(HttpContext, user, PendingStep.Enroll);
             return RedirectToPage("/Account/EnrollTwoFactor", new { returnUrl = SafeReturnUrl });

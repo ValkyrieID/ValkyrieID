@@ -1,10 +1,13 @@
 using System.Net.Http.Headers;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Protocol;
 using ValkyrieID.Server.Tokens;
 using ValkyrieID.Server.Users;
@@ -12,7 +15,8 @@ using ValkyrieID.Server.Users;
 namespace ValkyrieID.Server.AdminApi;
 
 /// <summary>The administrator making an Admin API request; bound as a handler parameter.</summary>
-internal sealed record AdminCaller(Guid UserId, string UserName, string? IpAddress)
+/// <param name="SecondFactor">Whether the sign-in behind the access token used a second factor.</param>
+internal sealed record AdminCaller(Guid UserId, string UserName, string? IpAddress, bool SecondFactor = false)
 {
     /// <summary>Audit actor: the admin's immutable <c>sub</c>, so entries stay attributable after a rename.</summary>
     public AuditActor Actor => new($"admin:{UserId}", IpAddress);
@@ -40,7 +44,12 @@ internal sealed class AdminApiAuthentication(RequestDelegate next)
     public const string PathPrefix = "/api/admin";
 
     public async Task InvokeAsync(
-        HttpContext context, AccessTokenValidator validator, ValkyrieDbContext db, AuditRecorder audit, TimeProvider timeProvider)
+        HttpContext context,
+        AccessTokenValidator validator,
+        ValkyrieDbContext db,
+        AuditRecorder audit,
+        TimeProvider timeProvider,
+        IOptionsMonitor<AdminApiOptions> adminApi)
     {
         ProtocolHeaders.NoStore(context.Response);
         var request = context.Request;
@@ -107,9 +116,26 @@ internal sealed class AdminApiAuthentication(RequestDelegate next)
             return;
         }
 
-        context.Features.Set(new AdminCaller(user.Id, user.UserName, ipAddress));
+        // RFC 9470 §3: the sign-in behind the token didn't use a second factor, which this server requires for admins.
+        // The client has to sign the user in again (the login then asks for, or sets up, 2FA).
+        var methods = jwt.TryGetPayloadValue<string[]>("amr", out var amr) ? amr : [];
+        var secondFactor = AuthenticationMethods.HasSecondFactor(methods);
+        if (adminApi.CurrentValue.RequireTwoFactor && !secondFactor)
+        {
+            audit.Add("admin_api.access_denied", success: false, actor: user.Id.ToString(), ipAddress: ipAddress, subjectId: user.Id,
+                details: new Dictionary<string, object?> { ["reason"] = "second_factor_required" });
+            await db.SaveChangesAsync(cancellationToken);
+            await Challenge(context, StatusCodes.Status401Unauthorized, InsufficientUserAuthentication,
+                "The Admin API requires a sign-in with two-factor authentication.");
+            return;
+        }
+
+        context.Features.Set(new AdminCaller(user.Id, user.UserName, ipAddress, secondFactor));
         await next(context);
     }
+
+    /// <summary>RFC 9470 §3 error code.</summary>
+    public const string InsufficientUserAuthentication = "insufficient_user_authentication";
 
     private static Task InvalidToken(HttpContext context) =>
         Challenge(context, StatusCodes.Status401Unauthorized, "invalid_token", "The access token is invalid or expired.");

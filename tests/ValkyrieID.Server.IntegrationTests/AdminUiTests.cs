@@ -259,7 +259,7 @@ public abstract class AdminUiTests : IDisposable
         // The disabled client can't start a sign-in.
         await CreateAdminAsync(factory);
         var browser = factory.CreateBrowser();
-        await Forms.LoginAsync(browser, "admin", Password);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
         var authorize = await browser.GetAsync(AuthorizeUrl(Pkce().Challenge), CancellationToken);
         Assert.NotEqual(HttpStatusCode.Redirect, authorize.StatusCode);
     }
@@ -295,7 +295,7 @@ public abstract class AdminUiTests : IDisposable
         Assert.Equal((true, true), await BuiltInStateAsync(on));
         await CreateAdminAsync(on);
         var browser = on.CreateBrowser();
-        await Forms.LoginAsync(browser, "admin", Password);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
         Assert.Equal(HttpStatusCode.OK, (await SignInAsync(on, browser, prompt: "none")).StatusCode);
     }
 
@@ -307,7 +307,7 @@ public abstract class AdminUiTests : IDisposable
         await using var factory = CreateFactory();
         await CreateAdminAsync(factory);
         var browser = factory.CreateBrowser();
-        await Forms.LoginAsync(browser, "admin", Password);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
 
         var token = await SignInAsync(factory, browser, prompt: "none");
 
@@ -342,7 +342,7 @@ public abstract class AdminUiTests : IDisposable
         await using var factory = CreateFactory();
         await CreateAdminAsync(factory);
         var browser = factory.CreateBrowser();
-        await Forms.LoginAsync(browser, "admin", Password);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
 
         var response = await SignInAsync(factory, browser, prompt: "none", verifier: Pkce().Verifier);
 

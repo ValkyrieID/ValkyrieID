@@ -26,8 +26,9 @@ internal sealed class TwoFactorService(
     IDataProtectionProvider dataProtection,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptions<TwoFactorOptions> options,
-    IOptions<BrandingOptions> branding)
+    IOptionsMonitor<TwoFactorOptions> options,
+    IOptionsMonitor<AdminApiOptions> adminApi,
+    IOptionsMonitor<BrandingOptions> branding)
 {
     public const string TotpSecretPurpose = "ValkyrieID.TotpSecret";
 
@@ -36,7 +37,15 @@ internal sealed class TwoFactorService(
 
     private IDataProtector EnrollmentProtector => dataProtection.CreateProtector("ValkyrieID.TotpEnrollment");
 
-    public bool IsRequired(User user) => options.Value.Required || user.TwoFactorRequired;
+    /// <summary>
+    /// 2FA is required globally, for this user, or because the user is an admin and the Admin API requires a second
+    /// factor (<see cref="AdminApiOptions.RequireTwoFactor"/>).
+    /// </summary>
+    public async Task<bool> IsRequiredAsync(User user, CancellationToken cancellationToken) =>
+        options.CurrentValue.Required
+        || user.TwoFactorRequired
+        || (adminApi.CurrentValue is { Enabled: true, RequireTwoFactor: true }
+            && await db.Users.AnyAsync(u => u.Id == user.Id && u.Roles.Any(r => r.Id == Role.AdminRoleId), cancellationToken));
 
     /// <summary>
     /// Starts enrollment with a new secret. The secret isn't stored until a code confirms it; until then it
@@ -200,7 +209,7 @@ internal sealed class TwoFactorService(
 
     private TotpEnrollment View(User user, string state, byte[] secret)
     {
-        var uri = Totp.KeyUri(secret, branding.Value.ProductName, user.UserName);
+        var uri = Totp.KeyUri(secret, branding.CurrentValue.ProductName, user.UserName);
         using var data = QRCodeGenerator.GenerateQrCode(uri, QRCodeGenerator.ECCLevel.M);
         var png = new PngByteQRCode(data).GetGraphic(5);
         var text = Base32.Encode(secret);

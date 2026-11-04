@@ -2,7 +2,7 @@
 @using Microsoft.Extensions.Options
 @using ValkyrieID.Server.Configuration
 @model IndexModel
-@inject IOptions<SmtpOptions> Smtp
+@inject IOptionsMonitor<SmtpOptions> Smtp
 @{
     ViewData["Title"] = "Your account";
 }
@@ -10,7 +10,7 @@
 <p>You are signed in as <strong>@User.Identity?.Name</strong>.</p>
 <ul class="links">
     <li><a href="~/account/profile">Profile</a></li>
-    @if (Smtp.Value.Enabled)
+    @if (Smtp.CurrentValue.Enabled)
     {
         <li><a href="~/account/email">Email address</a></li>
     }

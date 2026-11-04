@@ -34,7 +34,7 @@ internal sealed class SessionManager(
     BackChannelLogoutDispatcher backChannel,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptions<SsoSessionOptions> options)
+    IOptionsMonitor<SsoSessionOptions> options)
 {
     public async Task SignInAsync(HttpContext context, User user, IReadOnlyList<string> methods, CancellationToken cancellationToken)
     {
@@ -60,7 +60,7 @@ internal sealed class SessionManager(
             IpAddress = context.Connection.RemoteIpAddress?.ToString(),
             UserAgent = Truncate(context.Request.Headers.UserAgent.ToString(), 500),
             LastActivityAt = now,
-            ExpiresAt = now + options.Value.Lifetime,
+            ExpiresAt = now + options.CurrentValue.Lifetime,
         };
         db.UserSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);

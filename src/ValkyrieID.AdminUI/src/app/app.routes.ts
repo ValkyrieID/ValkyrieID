@@ -99,6 +99,16 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/audit-log.page').then((m) => m.AuditLogPage),
       },
       {
+        path: 'settings',
+        title: 'Settings',
+        loadComponent: () => import('./pages/settings/settings.page').then((m) => m.SettingsPage),
+      },
+      {
+        path: 'settings/:section',
+        title: 'Settings',
+        loadComponent: () => import('./pages/settings/settings.page').then((m) => m.SettingsPage),
+      },
+      {
         path: '**',
         title: 'Not found',
         loadComponent: () => import('./pages/not-found.page').then((m) => m.NotFoundPage),

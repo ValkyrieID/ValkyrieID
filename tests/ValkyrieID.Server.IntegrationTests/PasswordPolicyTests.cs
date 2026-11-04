@@ -72,12 +72,21 @@ public sealed class PasswordPolicyTests
 
     private static PasswordValidator Validator(PasswordPolicyOptions options, FakeHandler? handler = null)
     {
-        var wrapped = Options.Create(options);
+        var wrapped = new FixedOptionsMonitor<PasswordPolicyOptions>(options);
         var checker = new BreachedPasswordChecker(
             new HttpClient(handler ?? new FakeHandler(_ => throw new InvalidOperationException("No request expected."))),
             wrapped,
             NullLogger<BreachedPasswordChecker>.Instance);
         return new PasswordValidator(wrapped, checker);
+    }
+
+    private sealed class FixedOptionsMonitor<T>(T value) : IOptionsMonitor<T>
+    {
+        public T CurrentValue => value;
+
+        public T Get(string? name) => value;
+
+        public IDisposable? OnChange(Action<T, string?> listener) => null;
     }
 
     private sealed class FakeHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

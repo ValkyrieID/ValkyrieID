@@ -38,7 +38,7 @@ internal sealed class TokenEndpoint(
     RefreshTokenStore refreshTokens,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptions<TokenOptions> tokenOptions)
+    IOptionsMonitor<TokenOptions> tokenOptions)
 {
     public const string Path = "/connect/token";
 
@@ -117,7 +117,7 @@ internal sealed class TokenEndpoint(
         }
 
         var audiences = resolved.Select(r => r.Resource).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-        var lifetime = client.AccessTokenLifetime ?? tokenOptions.Value.AccessTokenLifetime;
+        var lifetime = client.AccessTokenLifetime ?? tokenOptions.CurrentValue.AccessTokenLifetime;
 
         // RFC 9068 §2.2: for client credentials, sub is the client identifier.
         var token = await issuer.IssueAsync(
@@ -210,7 +210,7 @@ internal sealed class TokenEndpoint(
         var audiences = grant.Audiences.Count > 0 ? grant.Audiences : [client.ClientId];
         var subject = user.Id.ToString();
         var token = await issuer.IssueAsync(
-            new AccessTokenRequest(client.ClientId, subject, audiences, grant.Scopes, client.AccessTokenLifetime ?? tokenOptions.Value.AccessTokenLifetime),
+            new AccessTokenRequest(client.ClientId, subject, audiences, grant.Scopes, client.AccessTokenLifetime ?? tokenOptions.CurrentValue.AccessTokenLifetime, grant.AuthenticationMethods),
             cancellationToken);
 
         string? idToken = null;
@@ -226,7 +226,7 @@ internal sealed class TokenEndpoint(
                     grant.Nonce,
                     token.Token,
                     UserClaims.For(user, grant.Scopes),
-                    client.IdTokenLifetime ?? tokenOptions.Value.IdTokenLifetime),
+                    client.IdTokenLifetime ?? tokenOptions.CurrentValue.IdTokenLifetime),
                 cancellationToken);
         }
 
@@ -357,7 +357,7 @@ internal sealed class TokenEndpoint(
 
         var subject = user.Id.ToString();
         var token = await issuer.IssueAsync(
-            new AccessTokenRequest(client.ClientId, subject, audiences, scopes, client.AccessTokenLifetime ?? tokenOptions.Value.AccessTokenLifetime),
+            new AccessTokenRequest(client.ClientId, subject, audiences, scopes, client.AccessTokenLifetime ?? tokenOptions.CurrentValue.AccessTokenLifetime, current.AuthenticationMethods),
             cancellationToken);
 
         // OIDC Core §12.2: the new ID token keeps iss, sub, aud and auth_time, and SHOULD NOT contain a nonce.
@@ -374,7 +374,7 @@ internal sealed class TokenEndpoint(
                     null,
                     token.Token,
                     UserClaims.For(user, scopes),
-                    client.IdTokenLifetime ?? tokenOptions.Value.IdTokenLifetime),
+                    client.IdTokenLifetime ?? tokenOptions.CurrentValue.IdTokenLifetime),
                 cancellationToken);
         }
 

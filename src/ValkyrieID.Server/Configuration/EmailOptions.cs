@@ -60,10 +60,26 @@ public sealed class SmtpOptions
     internal TimeSpan LeaseDuration => Timeout + TimeSpan.FromSeconds(30);
 }
 
+/// <summary>What happens after sign-in when the user's email address isn't verified.</summary>
+public enum EmailVerificationAtSignIn
+{
+    /// <summary>Nothing; users can verify from the account page.</summary>
+    Off,
+
+    /// <summary>Once per sign-in, the user is offered a verification link and can continue without it.</summary>
+    Prompt,
+
+    /// <summary>The user can't sign in to applications until the address is verified.</summary>
+    Require,
+}
+
 /// <summary>Lifetimes of the one-time links sent by email.</summary>
 public sealed class EmailOptions
 {
     public const string SectionName = "Email";
+
+    /// <summary>Only applies while SMTP is configured; without it, behaves as <see cref="EmailVerificationAtSignIn.Off"/>.</summary>
+    public EmailVerificationAtSignIn VerificationAtSignIn { get; set; } = EmailVerificationAtSignIn.Off;
 
     public TimeSpan PasswordResetLifetime { get; set; } = TimeSpan.FromMinutes(30);
 
@@ -145,6 +161,11 @@ internal sealed class EmailOptionsValidator : IValidateOptions<SmtpOptions>, IVa
         if (options.ResendInterval < TimeSpan.Zero || options.ResendInterval > TimeSpan.FromHours(1))
         {
             failures.Add("Email:ResendInterval must be between 0 and 1 hour.");
+        }
+
+        if (!Enum.IsDefined(options.VerificationAtSignIn))
+        {
+            failures.Add("Email:VerificationAtSignIn must be Off, Prompt, or Require.");
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);

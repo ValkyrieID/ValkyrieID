@@ -18,7 +18,10 @@ import {
   ResourceDto,
   RoleDto,
   ScopeRequest,
+  SettingsChange,
+  SettingsSectionDto,
   SigningKeyDto,
+  SmtpTestResult,
   UpdateResourceRequest,
   UpdateScopeRequest,
   UpdateUserRequest,
@@ -117,12 +120,21 @@ export class AdminApi {
   // Signing keys
   rotateSigningKeys = () => this.post<SigningKeyDto[]>(['signing-keys', 'rotate']);
 
+  // Settings
+  updateSettings = (section: string, change: SettingsChange) =>
+    this.patch<SettingsSectionDto>(['settings', section], change);
+  sendTestEmail = () => this.post<SmtpTestResult>(['settings', 'smtp', 'test']);
+
   auditUrl(filter: AuditFilter, cursor: string | null, limit = 50): string {
     return this.url(['audit'], { ...filter, cursor, limit });
   }
 
   private post<T>(segments: readonly string[], body: unknown = null): Promise<T> {
     return firstValueFrom(this.http.post<T>(this.url(segments), body));
+  }
+
+  private patch<T>(segments: readonly string[], body: unknown): Promise<T> {
+    return firstValueFrom(this.http.patch<T>(this.url(segments), body));
   }
 
   private put<T>(segments: readonly string[], body: unknown = null): Promise<T> {

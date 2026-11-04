@@ -50,7 +50,7 @@ A running server delivers the notifications within `BackChannelLogout:PollInterv
 
 ## Admin recovery
 
-Break-glass commands for when nobody can sign in as an admin.
+Break-glass commands for when nobody can sign in as an admin. If an admin can't sign in because 2FA is required and they lost their authenticator, use `admin reset-2fa`; they set it up again at their next sign-in.
 
 | Command | Description |
 |---|---|
@@ -65,6 +65,21 @@ Break-glass commands for when nobody can sign in as an admin.
 The last enabled admin can't be disabled or lose the `admin` role, so there is always someone who can administer the server.
 
 `admin reencrypt --check` changes nothing. It exits with code `1` if any secret is still encrypted with a previous master key, and `0` otherwise.
+
+## Settings
+
+Show and change the [runtime settings](/reference/configuration#runtime-settings) stored in the database. Keys are configuration keys; sections are the first part of the key (e.g. `Tokens`) or the Admin API's section name (e.g. `passwordPolicy`).
+
+| Command | Description |
+|---|---|
+| `settings show [<section>]` | List the runtime settings with their effective value and where it comes from: `default`, `database`, or `configuration`. Secrets show only `(set)` or `(not set)`. |
+| `settings set <key> <value>` | Store a value, written as in configuration: e.g. `settings set Tokens:AccessTokenLifetime 00:15:00`, `settings set Smtp:Security Tls`. |
+| `settings set Smtp:Password` | Store the SMTP password, read like a [password](#passwords) (never as an argument). It is encrypted with the master key. |
+| `settings reset <key\|section>` | Remove stored values, so the defaults apply. |
+
+Settings set in configuration can't be changed here. Values are validated like in the Admin API. Running servers pick up the change within `Settings:ReloadInterval`.
+
+If stored settings keep the server from starting (for example after a configuration change made them invalid), fix them with `settings set` or `settings reset`: the CLI doesn't validate them on startup.
 
 ## API resources
 

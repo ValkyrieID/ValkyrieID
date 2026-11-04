@@ -153,19 +153,20 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - recovery codes
   - TOTP codes accepted within ±1 time step (30 s) to tolerate clock drift; each code can be used only once
   - admins can enforce 2FA globally or per user
+  - users with the `admin` role must use 2FA by default (`AdminApi:RequireTwoFactor`): they enroll at their next sign-in, and the Admin API only accepts access tokens whose `amr` shows a second factor (`mfa`; RFC 9470 `insufficient_user_authentication` otherwise). Admin API access tokens carry the sign-in's `amr`; tokens for other audiences don't
 - **Configurable password policy:** length, complexity, breached-password check (optional).
 - **Account lockout** after N failed attempts, for a configurable duration.
 - **Rate limiting** on login, 2FA, and token endpoints.
 - **SSO session cookie** (default 8h), shared across clients; respects `prompt` and `max_age`.
 - **Email features** (enabled only when SMTP is configured):
-  - email verification
+  - email verification, optionally prompted for or required after sign-in (`Email:VerificationAtSignIn`: off, prompt, require); required verification stops the authorization request at a verification page (`interaction_required` with `prompt=none`)
   - password reset
 - **Session management:**
   - Server-side session records (device/browser, IP, last activity).
   - Users can view and revoke their own sessions.
   - Admins can view and revoke any user's sessions (force logout).
   - Revoking a session (an explicit user or admin action, not a normal logout) triggers back-channel logout and revokes the refresh tokens issued from it.
-- **Future:** passkeys / WebAuthn.
+- **Future:** passkeys / WebAuthn. Their `amr` value must be added to the second-factor list used for 2FA requirements (`AuthenticationMethods.SecondFactor`).
 
 ## 7. User model
 
@@ -194,12 +195,12 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 - Built as a SPA and served by the same ASP.NET Core app (single container).
 - Authenticates through ValkyrieID itself as a public PKCE client (dogfooding).
-- Access requires the built-in `admin` role.
+- Access requires the built-in `admin` role and, by default, a sign-in with a second factor (§6).
 - **Manages:**
   - users, roles, groups, and claims
   - clients and API resources/scopes
   - signing keys
-  - settings and branding
+  - runtime settings and branding (§10)
 - Includes an audit log viewer.
 - Talks exclusively to the **Admin REST API**.
 - Served under `/admin` with its own CSP (`script-src 'self'`, `connect-src 'self'`, no inline scripts or styles, no framing). Tokens are kept in memory only; with no refresh tokens, it renews them by a top-level `prompt=none` redirect through the SSO session. Uses `oidc-client-ts`, plus the RFC 9207 `iss` check and ID token claim checks it lacks.
@@ -207,7 +208,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 ### 8.3 First-run setup wizard
 
-- Shown when no users exist. Creates the initial admin user. The admin UI client is seeded in phase 8, when the admin UI exists (see §14, roadmap changes).
+- Shown when no users exist. Creates the initial admin user, who then sets up 2FA before the session starts (while admins require it, §6). The admin UI client is seeded in phase 8, when the admin UI exists (see §14, roadmap changes).
 - Locks itself after completion.
 
 ### 8.4 Admin recovery (break-glass)
@@ -231,6 +232,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - it must be a valid access token from this issuer (RFC 9068) whose audience includes the built-in API resource `valkyrieid-admin`, with the scope `valkyrieid.admin`
   - its `sub` must be an existing, enabled, not locked-out user with the `admin` role, looked up in the database on every request, so losing the role or being disabled takes effect immediately even though access tokens can't be revoked
   - tokens without a user (`client_credentials`) are never accepted; automation signs in as an admin user or uses the CLI
+  - while `AdminApi:RequireTwoFactor` is on (default), the token's `amr` must show a second factor (§6)
 - **Built-in entities:** the server seeds the `valkyrieid-admin` resource and the `valkyrieid-admin-ui` public PKCE client (authorization code only, no refresh tokens, 10-minute access tokens, redirect URIs derived from the issuer). They are read-only, and their names are reserved.
 - No CORS (the admin UI is same-origin). Responses are `no-store`. Errors are RFC 9457 problem details; lists use `limit`/`offset`, the audit log a keyset cursor. Concurrent edits: last write wins.
 - Every change is audited with the actor `admin:<sub>`. Clients, resources, and users are managed through the same services as the CLI.
@@ -243,13 +245,16 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Supplied through env/config; required at startup.
   - Encrypts secrets at rest (AES-256-GCM): signing keys, TOTP secrets, SMTP password, Data Protection keys.
   - Supports key rotation (re-encrypt with a new key while the old one is still configured, using `valkyrieid admin reencrypt`).
-- **Runtime settings** (lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement):
-  - editable in the admin UI and stored in the DB
-  - **values from appsettings/env take precedence** and are shown as locked in the admin UI
+- **Runtime settings** (token and session lifetimes, email link lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement, admin 2FA requirement, email verification at sign-in, audit log retention):
+  - editable in the admin UI, the Admin API, and the CLI (`settings show|set|reset`), and stored in the DB (one row per setting; an allow-list decides which keys can be stored)
+  - **values from appsettings/env take precedence** and are shown as locked in the admin UI. The DB is the lowest-precedence configuration source, so options binding and validation are unchanged
+  - changes are validated together with the configuration before saving, audited (secrets as `(secret)`), and picked up without a restart: the writing instance at once, other instances and processes by polling a settings revision (`Settings:ReloadInterval`); invalid stored values are not applied on reload, and stop startup like any invalid configuration
+  - the SMTP password is encrypted with the master key, never returned by the API, and covered by `admin reencrypt`
+  - configuration-only: infrastructure (DB, issuer, master key, proxy), signing keys, password hashing, rate limits, clock skew, the branding directory, and the breached-password API URL (an admin-set URL would allow SSRF)
 
 ## 11. Operations
 
-- **Audit log** in the DB: logins, failures, lockouts, token issuance, admin changes. Viewable in the admin UI, with configurable retention.
+- **Audit log** in the DB: logins, failures, lockouts, token issuance, admin changes. Viewable in the admin UI, with configurable retention (default 365 days; 0 keeps entries forever).
 - **Health endpoints:** liveness and readiness (DB and Redis checks).
 - **OpenTelemetry** traces, metrics, and logs over OTLP; enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - Structured logging.
@@ -431,6 +436,7 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
      - setting to require 2FA for Admin API access (the admin's session must have used a second factor)
      - audit log retention *(planned: from §11, unscheduled)*
      - settings and branding in the Admin API and the admin UI
+     - CLI `settings` commands and an SMTP test email in the admin UI *(new)*
 9. **Multi-instance:**
    - Redis for authorization codes, rate limits, and cache
    - multi-instance integration tests
@@ -468,6 +474,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Changing the email address on the account page | 7b | 7c | An email change needs verification of the new address, which needs SMTP (7c). 7b edits names only. |
 | Prompting for or requiring email verification after sign-in | (§6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
 | `AdminUI:Enabled` / `AdminApi:Enabled` switches | (new) | 8b | Lets installations run without the admin UI or the Admin API (CLI only), decided while planning 8b instead of a separate admin deployment. |
+| CLI `settings` commands and an SMTP test email in the admin UI | (new) | 8c | The CLI can fix stored settings that keep the server from starting, and manages settings like users and clients. The test email checks SMTP settings entered in the admin UI. Decided while planning 8c. |
 
 ### Spec deviations
 

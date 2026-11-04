@@ -35,6 +35,7 @@ export class App {
     { path: '/resources', label: 'API resources', exact: false },
     { path: '/signing-keys', label: 'Signing keys', exact: false },
     { path: '/audit', label: 'Audit log', exact: false },
+    { path: '/settings', label: 'Settings', exact: false },
   ];
 
   constructor() {
@@ -67,6 +68,10 @@ export class App {
 
   protected renew(): void {
     void this.auth.signIn(this.router.url, true);
+  }
+
+  protected stepUp(): void {
+    void this.auth.signIn(this.router.url, false, true);
   }
 
   protected signOut(): void {

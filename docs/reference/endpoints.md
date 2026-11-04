@@ -114,6 +114,7 @@ If `client_id` or `redirect_uri` is missing, unknown, disabled, or doesn't match
 | `unauthorized_client` | The client may not use `authorization_code` |
 | `invalid_scope` | `scope` is missing or malformed; a scope isn't allowed for the client; an identity scope without `openid`; or, in plain OAuth requests, an unknown scope |
 | `login_required` | `prompt=none` and the user must sign in |
+| `interaction_required` | `prompt=none` and the user must first verify their email address ([`Email:VerificationAtSignIn`](/reference/configuration#email-links) `Require`) |
 | `consent_required` | `prompt=consent`; ValkyrieID has no consent screens |
 | `request_not_supported`, `request_uri_not_supported`, `registration_not_supported` | Request objects and registration aren't supported |
 
@@ -163,6 +164,8 @@ The access token is a JWT following RFC 9068:
 | `sub`, `client_id` | The client id |
 | `scope` | The granted scopes |
 | `iat`, `nbf`, `exp`, `jti` | Issue time, not-before, expiry, unique id |
+
+Access tokens for users (from the `authorization_code` and `refresh_token` grants) carry the user's `sub`. Only access tokens for the [Admin API](/reference/admin-api#authorization) (audience `valkyrieid-admin`) also carry `amr`, the sign-in methods; other resource servers don't see it.
 
 Access tokens can't be revoked before they expire; keep their lifetime short. Use `--access-token-lifetime` for a shorter window per client.
 

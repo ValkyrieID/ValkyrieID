@@ -2,7 +2,7 @@
 @using Microsoft.Extensions.Options
 @using ValkyrieID.Server.Configuration
 @using ValkyrieID.Server.Users
-@inject IOptions<SmtpOptions> Smtp
+@inject IOptionsMonitor<SmtpOptions> Smtp
 @model ProfileModel
 @{
     ViewData["Title"] = "Profile";
@@ -17,7 +17,7 @@
     <div class="field">
         <label for="email">Email address</label>
         <input id="email" type="email" value="@Model.CurrentUser?.Email" readonly aria-describedby="email-hint">
-        @if (Smtp.Value.Enabled)
+        @if (Smtp.CurrentValue.Enabled)
         {
             <p class="hint" id="email-hint"><a href="~/account/email">Change or verify your email address</a></p>
         }

@@ -565,6 +565,54 @@ table.data input {
   margin: 1rem 0;
 }
 
+/* Settings */
+
+.settings .setting {
+  margin-bottom: 1.5rem;
+}
+
+.settings .setting .hint p {
+  margin: 0.25rem 0 0;
+}
+
+.settings .setting .hint .badge {
+  margin-left: 0;
+}
+
+.settings .duration {
+  margin: 0;
+}
+
+.settings .duration .field:first-child {
+  flex: 1 1 8rem;
+}
+
+.settings .duration .field:last-child {
+  flex: 0 1 10rem;
+}
+
+.settings-list {
+  max-width: 48rem;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-list li {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--vid-surface);
+  border: 1px solid var(--vid-subtle-border);
+  border-radius: 0.25rem;
+}
+
+.settings-list a {
+  font-weight: 600;
+}
+
+.settings-list p {
+  margin: 0.25rem 0 0;
+}
+
 /* Messages */
 
 .alert {

@@ -1,0 +1,34 @@
+@page "/account/verify-required"
+@model VerifyRequiredModel
+@{
+    ViewData["Title"] = "Verify your email address";
+    var user = Model.CurrentUser;
+    var required = Model.Mode == ValkyrieID.Server.Configuration.EmailVerificationAtSignIn.Require;
+}
+<h1>Verify your email address</h1>
+@if (user?.Email is null)
+{
+    <p>Your account has no email address. @(required ? "Add one and verify it to continue." : "You can add one to your account.")</p>
+    <p><a href="~/account/email">Add an email address</a></p>
+}
+else
+{
+    <p>
+        Your email address <strong>@user.Email</strong> isn't verified yet.
+        @(required ? "Verify it to continue." : "Please verify it.")
+    </p>
+    @if (Model.VerificationSent)
+    {
+        <p role="status">We've sent a verification link to your email address. Open it, then continue here.</p>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="Send" novalidate>
+            <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl">
+            <button type="submit">Send verification link</button>
+        </form>
+    }
+}
+
+<p><a href="@Model.SafeReturnUrl">@(required ? "I've verified my email address, continue" : "Continue")</a></p>
+<p class="secondary"><a href="~/account/logout">Sign out</a></p>

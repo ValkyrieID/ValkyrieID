@@ -11,7 +11,12 @@ namespace ValkyrieID.Server.Pages;
 
 /// <summary>First-run setup wizard: creates the first admin user, then disappears (404) for good.</summary>
 [EnableRateLimiting(RateLimitPolicies.Login)]
-internal sealed class SetupModel(UserAdministration users, SessionManager sessions, IOptions<PasswordPolicyOptions> passwordPolicy) : PageModel
+internal sealed class SetupModel(
+    UserAdministration users,
+    SessionManager sessions,
+    TwoFactorService twoFactor,
+    PendingLogin pending,
+    IOptionsMonitor<PasswordPolicyOptions> passwordPolicy) : PageModel
 {
     [BindProperty]
     public string? UserName { get; set; }
@@ -27,7 +32,7 @@ internal sealed class SetupModel(UserAdministration users, SessionManager sessio
 
     public IReadOnlyList<string> Errors { get; private set; } = [];
 
-    public int MinimumPasswordLength => passwordPolicy.Value.MinimumLength;
+    public int MinimumPasswordLength => passwordPolicy.CurrentValue.MinimumLength;
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken) =>
         await users.AnyUsersAsync(cancellationToken) ? NotFound() : Page();
@@ -59,7 +64,14 @@ internal sealed class SetupModel(UserAdministration users, SessionManager sessio
                 return NotFound();
             }
 
-            await sessions.SignInAsync(HttpContext, user, ["pwd"], cancellationToken);
+            // The first user is an admin; when admins must use 2FA, the session is only created after enrollment.
+            if (await twoFactor.IsRequiredAsync(user, cancellationToken))
+            {
+                await pending.StartAsync(HttpContext, user, PendingStep.Enroll);
+                return RedirectToPage("/Account/EnrollTwoFactor", new { returnUrl = "/account" });
+            }
+
+            await sessions.SignInAsync(HttpContext, user, [AuthenticationMethods.Password], cancellationToken);
             return LocalRedirect("/account");
         }
         catch (AdministrationException ex)

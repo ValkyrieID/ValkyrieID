@@ -6,13 +6,14 @@ using ValkyrieID.Data;
 using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Email;
+using ValkyrieID.Server.Settings;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Security;
 
-internal sealed record ReencryptionReport(int SigningKeys, int DataProtectionKeys, int TotpSecrets, int QueuedEmails)
+internal sealed record ReencryptionReport(int SigningKeys, int DataProtectionKeys, int TotpSecrets, int QueuedEmails, int Settings)
 {
-    public int Total => SigningKeys + DataProtectionKeys + TotpSecrets + QueuedEmails;
+    public int Total => SigningKeys + DataProtectionKeys + TotpSecrets + QueuedEmails + Settings;
 }
 
 /// <summary>
@@ -83,6 +84,16 @@ internal sealed class MasterKeyReencryptor(ValkyrieDbContext db, SecretProtector
             }
         }
 
+        var settings = 0;
+        foreach (var row in await db.Settings.Where(s => s.EncryptedValue != null).ToListAsync(cancellationToken))
+        {
+            if (row.EncryptedValue is { } encrypted && RuntimeSettings.Find(row.Key) is { } setting && protector.RequiresReencryption(encrypted))
+            {
+                settings++;
+                row.EncryptedValue = Reencrypt(encrypted, RuntimeSettings.SecretPurpose(setting));
+            }
+        }
+
         if (transaction is not null)
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -93,7 +104,7 @@ internal sealed class MasterKeyReencryptor(ValkyrieDbContext db, SecretProtector
             db.ChangeTracker.Clear();
         }
 
-        return new ReencryptionReport(signingKeys, dataProtectionKeys, totpSecrets, queuedEmails);
+        return new ReencryptionReport(signingKeys, dataProtectionKeys, totpSecrets, queuedEmails, settings);
     }
 
     private byte[] Reencrypt(byte[] ciphertext, string purpose)

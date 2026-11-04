@@ -10,8 +10,9 @@ Until the first user exists, anyone who can reach `/setup` can create the admini
 2. Open `https://<your issuer>/setup`.
 3. Enter a username, an optional email address, and a password that meets the [password policy](/reference/configuration#passwords).
 4. Select **Create administrator**.
+5. Set up [two-factor authentication](/guide/two-factor): scan the QR code with an authenticator app, enter a code, and save the recovery codes. Administrators need it to use the admin UI ([`AdminApi:RequireTwoFactor`](/reference/configuration#admin-api-and-admin-ui)).
 
-You are signed in and redirected to `/account`. From then on, `/setup` returns `404`. The wizard can't be run again, even if every user is later disabled.
+You are then signed in and redirected to `/account`. From then on, `/setup` returns `404`. The wizard can't be run again, even if every user is later disabled.
 
 ## Without the wizard
 
@@ -22,7 +23,7 @@ You can also create the first admin from the command line. The wizard then never
 ./valkyrieid admin grant-admin admin
 ```
 
-See the [CLI reference](/reference/cli#users).
+See the [CLI reference](/reference/cli#users). The admin sets up two-factor authentication at their first sign-in.
 
 ## Signing in
 

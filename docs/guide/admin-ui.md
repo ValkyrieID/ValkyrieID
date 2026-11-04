@@ -8,8 +8,9 @@ ValkyrieID includes a web interface for administrators at `/admin`, for example 
 - API resources, their scopes, and introspection secrets
 - signing keys (status and manual rotation)
 - the audit log, with filters
+- [runtime settings](/reference/configuration#runtime-settings): token and session lifetimes, password policy, lockout, 2FA requirements, email verification, SMTP (with a test email), branding, and audit log retention
 
-Built-in entries (the admin UI client and the Admin API resource) are shown read-only.
+Built-in entries (the admin UI client and the Admin API resource) are shown read-only. So are settings set in the server's configuration, which takes precedence.
 
 ## Signing in
 
@@ -20,6 +21,8 @@ valkyrieid admin grant-admin alice
 ```
 
 The admin UI signs in through ValkyrieID itself, like any other app, with the built-in public client `valkyrieid-admin-ui` (authorization code flow with PKCE). If you are already signed in to ValkyrieID, it opens without asking again.
+
+By default, admins must sign in with [two-factor authentication](/guide/two-factor); admins who haven't set it up are asked to at sign-in. If your current session was signed in with a password only, the admin UI asks you to sign in again.
 
 - Access tokens are kept in memory only and last 10 minutes. There are no refresh tokens: when a token is about to expire, or you reload the page, the admin UI gets a new one through your ValkyrieID session, without showing a sign-in page. If the session has ended, you sign in again.
 - Removing the `admin` role or disabling the account takes effect on the next request, because the Admin API checks the user every time.

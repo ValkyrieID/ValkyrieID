@@ -1,8 +1,8 @@
 @using Microsoft.Extensions.Options
 @using ValkyrieID.Server.Configuration
-@inject IOptions<BrandingOptions> BrandingOptions
+@inject IOptionsMonitor<BrandingOptions> BrandingOptions
 @{
-    var branding = BrandingOptions.Value;
+    var branding = BrandingOptions.CurrentValue;
 }
 <!DOCTYPE html>
 <html lang="en">

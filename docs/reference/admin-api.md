@@ -1,6 +1,6 @@
 # Admin API
 
-The Admin API is a JSON API under `/api/admin` for managing users, roles, groups, custom claims, clients, API resources, signing keys, and sessions, and for reading the audit log. The admin UI uses it, and you can use it for automation.
+The Admin API is a JSON API under `/api/admin` for managing users, roles, groups, custom claims, clients, API resources, signing keys, sessions, and runtime settings, and for reading the audit log. The admin UI uses it, and you can use it for automation.
 
 The full request and response schemas are in the [OpenAPI document](/openapi/admin-api.json). A server running in the `Development` environment also serves it at `/openapi/v1.json`.
 
@@ -20,6 +20,7 @@ A request is accepted only if all of the following hold:
 2. It is a valid access token from this server (signature, `typ: at+jwt`, not expired, allowing the configured clock skew), and its audience (`aud`) includes `valkyrieid-admin`.
 3. It was granted the `valkyrieid.admin` scope.
 4. Its `sub` is a user who exists, is enabled, isn't locked out, and has the built-in `admin` role.
+5. While [`AdminApi:RequireTwoFactor`](/reference/configuration#admin-api-and-admin-ui) is on (the default), the sign-in behind the token used a second factor: its `amr` claim contains `mfa` ([RFC 8176](https://www.rfc-editor.org/rfc/rfc8176)). Access tokens for the `valkyrieid-admin` audience carry the sign-in's `amr` for this; tokens for other audiences don't.
 
 The user is looked up on **every request**. Removing the `admin` role or disabling the account takes effect immediately, even though access tokens can't be revoked before they expire. Tokens without a user, such as `client_credentials` tokens, are never accepted.
 
@@ -28,6 +29,7 @@ The user is looked up on **every request**. Removing the `admin` role or disabli
 | `401` with `WWW-Authenticate: Bearer realm="ValkyrieID"` | No token. Every path under `/api/admin` answers this way, including unknown ones. |
 | `400` with `error="invalid_request"` | The token is in the URL or the `Authorization` header is malformed. |
 | `401` with `error="invalid_token"` | The token is invalid, expired, for another audience, or its user doesn't exist or is disabled. |
+| `401` with `error="insufficient_user_authentication"` | The sign-in didn't use a second factor ([RFC 9470](https://www.rfc-editor.org/rfc/rfc9470)). Sign in again with `prompt=login`; users who haven't set up 2FA are asked to. Recorded as `admin_api.access_denied`. |
 | `403` with `error="insufficient_scope"`, `scope="valkyrieid.admin"` | The token lacks the scope. |
 | `403` | The user doesn't have the `admin` role or is locked out. Recorded in the audit log as `admin_api.access_denied`. |
 
@@ -192,6 +194,56 @@ Scope names can't be changed. A scope, or a resource with its scopes, can't be r
 | `POST /signing-keys/rotate` | Start a rotation now. |
 
 A manual rotation follows the same [lifecycle](/operations/key-rotation#lifecycle) as a scheduled one: the new key is published at once and signs tokens after `SigningKeys:PublishLead`. While a key is pending, another rotation is refused with `409`. Private keys are never returned.
+
+## Settings
+
+The [runtime settings](/reference/configuration#runtime-settings), grouped in sections: `tokens`, `session`, `passwordPolicy`, `lockout`, `twoFactor`, `adminApi`, `email`, `smtp`, `branding`, and `auditLog`.
+
+| Request | Description |
+|---|---|
+| `GET /settings` | All sections. |
+| `GET /settings/{section}` | One section. |
+| `PATCH /settings/{section}` | Change some settings of a section; the others stay as they are. Returns the section. |
+| `POST /settings/smtp/test` | Send a test email to your own address right away, with the current settings. |
+
+```json
+{
+  "name": "lockout",
+  "settings": [
+    {
+      "name": "maxFailedAttempts",
+      "key": "Lockout:MaxFailedAttempts",
+      "kind": "integer",
+      "value": 3,
+      "defaultValue": 5,
+      "locked": true,
+      "source": "configuration",
+      "isSet": null,
+      "options": null
+    }
+  ]
+}
+```
+
+- `kind` is `duration` (whole seconds), `integer`, `boolean`, `string`, `enum` or `file` (one of `options`), or `secret`.
+- `source` is `default`, `database`, or `configuration`. Settings from configuration are `locked`: changing one answers `409`.
+- Secrets are never returned: `value` is always `null`, and `isSet` says whether one is stored.
+
+A `PATCH` body maps setting names to values; `null` resets a setting to its default (for a secret: removes it). An empty string also resets text settings and secrets.
+
+```json
+{ "maxFailedAttempts": 10, "duration": 1800 }
+```
+
+The settings are validated together, with the configuration, before anything is saved; invalid values answer `400`. In addition:
+
+- `email.verificationAtSignIn` can be `Prompt` or `Require` only while SMTP is configured.
+- `branding` files must be files of the right type in `Branding:Directory`.
+- Turning `adminApi.requireTwoFactor` on answers `409` unless your own sign-in used a second factor, so you can't lock yourself out.
+
+Changes are recorded as `settings.updated`, with the old and new values of each setting (secrets as `(secret)`).
+
+The test email answers `{ "success": true, "result": "sent", "to": "admin@example.com" }`, or `success: false` with a short reason such as `authentication_failed`, `network_error`, or `smtp_550`. Details of the failure are never returned. It answers `409` without SMTP or when your account has no email address, and is rate-limited like the [email forms](/reference/configuration#rate-limits).
 
 ## Audit log
 

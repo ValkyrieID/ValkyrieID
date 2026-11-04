@@ -161,7 +161,7 @@ public abstract class AdminApiTests
         await using var factory = CreateFactory();
         await CreateAdminAsync(factory, "admin");
         var browser = factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(browser, "admin", Password)).StatusCode);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
         var token = await AdminTokenAsync(factory, browser);
 
         // A query parameter (RFC 6750 §2.3) is refused, and the SSO cookie alone grants nothing.
@@ -183,7 +183,7 @@ public abstract class AdminApiTests
         await using var factory = CreateFactory();
         var adminId = await CreateAdminAsync(factory, "admin");
         var browser = factory.CreateBrowser();
-        await Forms.LoginAsync(browser, "admin", Password);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
         var tokens = await AdminTokensAsync(factory, browser);
 
         var idToken = await GetUsersAsync(factory, tokens.GetProperty("id_token").GetString()!);
@@ -722,7 +722,7 @@ public abstract class AdminApiTests
     {
         await CreateAdminAsync(factory, "admin");
         var browser = factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(browser, "admin", Password)).StatusCode);
+        await Forms.LoginWithEnrollmentAsync(browser, "admin", Password);
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await AdminTokenAsync(factory, browser));
         return client;
@@ -753,11 +753,11 @@ public abstract class AdminApiTests
     }
 
     /// <summary>Issues an access token directly, to test tokens the authorization server wouldn't normally issue.</summary>
-    private static async Task<string> MintAsync(ValkyrieAppFactory factory, string subject, string[] audiences, string[] scopes, TimeSpan? lifetime = null)
+    private static async Task<string> MintAsync(ValkyrieAppFactory factory, string subject, string[] audiences, string[] scopes, TimeSpan? lifetime = null, string[]? amr = null)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var issuer = scope.ServiceProvider.GetRequiredService<AccessTokenIssuer>();
-        return (await issuer.IssueAsync(new AccessTokenRequest("test", subject, audiences, scopes, lifetime ?? TimeSpan.FromMinutes(5)), CancellationToken)).Token;
+        return (await issuer.IssueAsync(new AccessTokenRequest("test", subject, audiences, scopes, lifetime ?? TimeSpan.FromMinutes(5), amr ?? ["pwd", "otp", "mfa"]), CancellationToken)).Token;
     }
 
     private static async Task<Guid> CreateAdminAsync(ValkyrieAppFactory factory, string userName)
