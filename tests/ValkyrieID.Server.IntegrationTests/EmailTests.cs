@@ -573,8 +573,13 @@ public abstract partial class EmailTests
 
     private static async Task<string> GetBodyAsync(HttpClient browser, string link)
     {
-        var path = Uri.TryCreate(link, UriKind.Absolute, out var uri) ? uri.PathAndQuery : link;
-        return await (await browser.GetAsync(path, CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+        // Only http(s) links are absolute here: on Linux, Uri.TryCreate also accepts "/path" as a file:// URI.
+        var path = Uri.TryCreate(link, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri.PathAndQuery
+            : link;
+        var response = await browser.GetAsync(path, CancellationToken);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"GET {path}: {(int)response.StatusCode} {response.Headers.Location}");
+        return await response.Content.ReadAsStringAsync(CancellationToken);
     }
 
     private static async Task DeliverAsync(Server server) =>

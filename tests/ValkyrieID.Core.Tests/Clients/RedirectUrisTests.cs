@@ -13,6 +13,9 @@ public sealed class RedirectUrisTests
     [InlineData("com.example.app:/oauth2redirect", true)]
     [InlineData("http://app.example.com/callback", false)]
     [InlineData("https://app.example.com/callback#fragment", false)]
+    // On Linux, Uri.TryCreate reads these (and "/callback" below) as file:// URIs; they must still be rejected.
+    [InlineData("//evil.example/callback", false)]
+    [InlineData("file:///callback", false)]
     [InlineData("https://user@app.example.com/callback", false)]
     [InlineData("/callback", false)]
     [InlineData("myapp:/callback", false)]

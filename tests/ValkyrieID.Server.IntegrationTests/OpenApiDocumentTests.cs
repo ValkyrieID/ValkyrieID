@@ -60,13 +60,17 @@ public sealed class OpenApiDocumentTests : IDisposable
     private ValkyrieAppFactory CreateFactory(string environment) =>
         new(DatabaseProvider.Sqlite, $"Data Source={Path.Combine(_directory, $"{environment}.db")};Pooling=False") { EnvironmentName = environment };
 
-    private static string RepositoryRoot()
+    // From the test binaries, or this source file when they are built outside the repository (--artifacts-path).
+    private static string RepositoryRoot([System.Runtime.CompilerServices.CallerFilePath] string sourceFile = "")
     {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        foreach (var start in new[] { AppContext.BaseDirectory, Path.GetDirectoryName(sourceFile) ?? string.Empty })
         {
-            if (File.Exists(Path.Combine(directory.FullName, "ValkyrieID.slnx")))
+            for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)
             {
-                return directory.FullName;
+                if (File.Exists(Path.Combine(directory.FullName, "ValkyrieID.slnx")))
+                {
+                    return directory.FullName;
+                }
             }
         }
 

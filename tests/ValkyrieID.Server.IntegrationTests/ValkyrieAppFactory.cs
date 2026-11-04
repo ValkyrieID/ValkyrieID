@@ -23,6 +23,17 @@ public sealed class ValkyrieAppFactory(
 {
     public const string DefaultIssuer = "https://id.example.test";
 
+    /// <summary>
+    /// On Linux every file watcher takes an inotify instance, and the default limit (128, also on GitHub's runners) is
+    /// reached when many test servers run in parallel. Test servers don't watch appsettings files (runtime settings
+    /// come from the database), and the remaining watchers (static files, asp-append-version) poll instead.
+    /// </summary>
+    static ValkyrieAppFactory()
+    {
+        Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+        Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+    }
+
     public string MasterKey { get; } = masterKey ?? Core.Security.MasterKey.Generate().ToBase64();
 
     /// <summary>Replaces the server clock when set.</summary>
