@@ -20,4 +20,6 @@ Resource servers must fetch keys from the JWKS endpoint and select the key by th
 
 ## Multiple instances
 
-All instances share the keys in the database and reload them every `CheckInterval`. `PublishLead` must be at least `CheckInterval`, so every instance sees a new key before it is used.
+All instances share the keys in the database and reload them every `CheckInterval`. `PublishLead` must be at least `CheckInterval`, so every instance sees a new key before it is used. With [Redis](/operations/multi-instance), the instance that creates or deletes a key also notifies the others, which reload at once; the reload interval remains the fallback.
+
+Rotation runs under a lease in the database, so instances that rotate (or start) at the same moment don't create two keys. A manual rotation waits up to 10 seconds for a rotation in progress elsewhere, and answers `409` if it doesn't finish by then.

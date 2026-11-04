@@ -599,6 +599,40 @@ public abstract class AuthorizationTests
     }
 
     [Fact]
+    public async Task Replays_are_detected_after_the_code_has_expired()
+    {
+        var clock = new TestTimeProvider(DateTimeOffset.UtcNow);
+        await using var factory = CreateFactory(clock);
+        await CreateUserAsync(factory, "alice");
+        await CreatePublicClientAsync(factory, "spa");
+        var browser = factory.CreateBrowser();
+        await Forms.LoginAsync(browser, "alice", Password);
+        var (verifier, challenge) = NewPkce();
+        var code = Code(await AuthorizeAsync(browser, Params("spa", "openid", challenge)));
+        Assert.Equal(HttpStatusCode.OK, (await browser.SendAsync(CodeRequest(code, verifier, clientId: "spa"), CancellationToken)).StatusCode);
+
+        // Past the code's 60 s lifetime, but within the replay detection window (10 minutes).
+        clock.Advance(TimeSpan.FromMinutes(5));
+        var replay = await browser.SendAsync(CodeRequest(code, verifier, clientId: "spa"), CancellationToken);
+
+        await AssertErrorAsync(replay, HttpStatusCode.BadRequest, "invalid_grant");
+        await using var scope = factory.Services.CreateAsyncScope();
+        Assert.True(await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().AuditLog
+            .AnyAsync(e => e.EventType == "token.rejected" && e.Details!.Contains("code_replayed"), CancellationToken));
+    }
+
+    [Fact]
+    public async Task Overlong_codes_are_rejected_without_lookup()
+    {
+        await using var factory = CreateFactory();
+        await CreatePublicClientAsync(factory, "spa");
+
+        var response = await factory.CreateBrowser().SendAsync(CodeRequest(new string('a', 10_000), NewPkce().Verifier, clientId: "spa"), CancellationToken);
+
+        await AssertErrorAsync(response, HttpStatusCode.BadRequest, "invalid_grant");
+    }
+
+    [Fact]
     public async Task A_failed_redemption_consumes_the_code()
     {
         await using var factory = CreateFactory();

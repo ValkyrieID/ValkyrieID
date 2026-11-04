@@ -43,6 +43,7 @@ export default defineConfig({
           { text: 'Master encryption key', link: '/operations/master-key' },
           { text: 'Signing key rotation', link: '/operations/key-rotation' },
           { text: 'Reverse proxy', link: '/operations/reverse-proxy' },
+          { text: 'Multiple instances', link: '/operations/multi-instance' },
           { text: 'Observability', link: '/operations/observability' },
           { text: 'Conformance testing', link: '/operations/conformance' },
         ],

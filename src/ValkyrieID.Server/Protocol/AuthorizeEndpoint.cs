@@ -10,6 +10,7 @@ using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Authentication;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Protocol;
@@ -18,13 +19,14 @@ namespace ValkyrieID.Server.Protocol;
 /// The authorization endpoint (RFC 6749 A3.1, OIDC Core A3.1.2) for <c>response_type=code</c>. There are no
 /// consent screens: a signed-in user is sent straight back to the client.
 /// </summary>
-internal sealed class AuthorizeEndpoint(
+internal sealed partial class AuthorizeEndpoint(
     ValkyrieDbContext db,
     IAuthorizationCodeStore codes,
     AuditRecorder audit,
     TimeProvider timeProvider,
     EmailVerificationGate verificationGate,
-    IOptions<IssuerOptions> issuerOptions)
+    IOptions<IssuerOptions> issuerOptions,
+    ILogger<AuthorizeEndpoint> logger)
 {
     public const string Path = "/connect/authorize";
 
@@ -166,7 +168,17 @@ internal sealed class AuthorizeEndpoint(
             isOpenId ? Get(parameters, "nonce") : null,
             request.CodeChallenge,
             now + TokenOptions.AuthorizationCodeLifetime);
-        var code = codes.Create(grant);
+        string code;
+        try
+        {
+            code = await codes.CreateAsync(grant, cancellationToken);
+        }
+        catch (SharedStateUnavailableException ex)
+        {
+            // RFC 6749 §4.1.2.1: the redirect URI is already validated, so the error goes back to the client.
+            LogCodeStoreUnavailable(logger, ex);
+            return reply.Error(AuthorizeErrors.TemporarilyUnavailable, "The server is temporarily unable to handle the request.");
+        }
 
         // OIDC Back-Channel Logout 1.0 A2.3: remember which clients the session signed in to, to notify them at logout.
         if (!await db.UserSessionClients.AnyAsync(sc => sc.SessionId == grant.SessionId && sc.ClientId == client.ClientId, cancellationToken))
@@ -383,10 +395,14 @@ internal sealed class AuthorizeEndpoint(
     {
         public static ScopeResolution Fail(string error) => new(error, [], []);
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Authorization code could not be stored; the shared store is unavailable")]
+    private static partial void LogCodeStoreUnavailable(ILogger logger, Exception exception);
 }
 
 internal static class AuthorizeErrors
 {
+    public const string TemporarilyUnavailable = "temporarily_unavailable";
     public const string InvalidRequest = "invalid_request";
     public const string UnauthorizedClient = "unauthorized_client";
     public const string UnsupportedResponseType = "unsupported_response_type";

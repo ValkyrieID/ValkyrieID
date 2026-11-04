@@ -6,6 +6,7 @@ using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Authentication;
@@ -112,7 +113,7 @@ internal sealed class LoginService(
 }
 
 /// <summary>Limits login attempts per username or email, including ones that don't exist.</summary>
-internal sealed class LoginAttemptLimiter(IOptions<RateLimitOptions> options) : IDisposable
+internal sealed class LoginAttemptLimiter(IOptions<RateLimitOptions> options, RedisRateLimitCounter? shared = null) : IDisposable
 {
     private readonly PartitionedRateLimiter<string> _limiter = PartitionedRateLimiter.Create<string, string>(key =>
         RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
@@ -122,11 +123,19 @@ internal sealed class LoginAttemptLimiter(IOptions<RateLimitOptions> options) : 
             QueueLimit = 0,
         }));
 
-    public bool TryAcquire(string identifier)
+    public async Task<RateLimitDecision> AcquireAsync(string identifier, CancellationToken cancellationToken)
     {
         var key = UserNames.Normalize(identifier.Length > UserNames.MaxEmailLength ? identifier[..UserNames.MaxEmailLength] : identifier);
+        if (shared is not null)
+        {
+            return await shared.HitAsync("login-account:" + key, options.Value.LoginAccount, cancellationToken);
+        }
+
         using var lease = _limiter.AttemptAcquire(key);
-        return lease.IsAcquired;
+        return new RateLimitDecision(
+            lease.IsAcquired,
+            lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter) ? retryAfter : TimeSpan.Zero,
+            Unavailable: false);
     }
 
     public void Dispose() => _limiter.Dispose();

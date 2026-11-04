@@ -7,6 +7,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Security;
 using ValkyrieID.Server.Users;
 
@@ -101,6 +102,11 @@ internal static class AccountExtensions
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = (context, _) =>
             {
+                if (context.Lease.TryGetMetadata(RedisFixedWindowRateLimiter.UnavailableMetadata, out var unavailable) && unavailable)
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                }
+
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                 {
                     context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
@@ -166,7 +172,14 @@ internal static class AccountExtensions
     private static RateLimitPartition<string> FixedWindowPerIp(HttpContext context, string policy, Func<RateLimitOptions, RateLimitRule> rule)
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter($"{policy}:{ip}", _ =>
+        var partition = $"{policy}:{ip}";
+        if (context.RequestServices.GetService<RedisRateLimitCounter>() is { } counter)
+        {
+            return RateLimitPartition.Get(partition, key => new RedisFixedWindowRateLimiter(
+                counter, key, rule(context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value)));
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(partition, _ =>
         {
             var options = rule(context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value);
             return new FixedWindowRateLimiterOptions { PermitLimit = options.PermitLimit, Window = options.Window, QueueLimit = 0 };

@@ -56,6 +56,11 @@ internal static class CliApp
             await error.WriteLineAsync($"error: {ex.Message}");
             return 1;
         }
+        finally
+        {
+            // Lets running servers apply the change now rather than at their next poll.
+            await services.GetRequiredService<Redis.IClusterEvents>().FlushAsync(CancellationToken.None);
+        }
     }
 
     public const string Usage = """

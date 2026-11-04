@@ -7,6 +7,7 @@ using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Logout;
+using ValkyrieID.Server.Redis;
 
 namespace ValkyrieID.Server.Email;
 
@@ -18,7 +19,7 @@ internal sealed class EmailSignal : WakeSignal;
 /// a request that sends an email takes as long as one that doesn't, and the response time doesn't reveal whether an
 /// account exists (PROJECT.md §6). Changes are saved by the caller; afterwards call <see cref="Wake"/>.
 /// </summary>
-internal sealed class EmailQueue(ValkyrieDbContext db, SecretProtector protector, EmailSignal signal, TimeProvider timeProvider)
+internal sealed class EmailQueue(ValkyrieDbContext db, SecretProtector protector, EmailSignal signal, TimeProvider timeProvider, IClusterEvents clusterEvents)
 {
     public const string MessagePurpose = "ValkyrieID.OutboundEmail";
 
@@ -35,7 +36,11 @@ internal sealed class EmailQueue(ValkyrieDbContext db, SecretProtector protector
         });
     }
 
-    public void Wake() => signal.Notify();
+    public void Wake()
+    {
+        signal.Notify();
+        clusterEvents.Publish(ClusterEvent.Email);
+    }
 
     internal static EmailMessage Decrypt(SecretProtector protector, byte[] encrypted) =>
         JsonSerializer.Deserialize<EmailMessage>(protector.Unprotect(encrypted, MessagePurpose))

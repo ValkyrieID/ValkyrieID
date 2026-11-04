@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using ValkyrieID.Core.Coordination;
 using ValkyrieID.Core.Security;
 using ValkyrieID.Core.Tokens;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Coordination;
+using ValkyrieID.Server.Redis;
 
 namespace ValkyrieID.Server.Tokens;
 
@@ -18,12 +21,42 @@ internal sealed partial class SigningKeyRotator(
     AuditRecorder audit,
     SecretProtector protector,
     SigningKeyStore store,
+    DatabaseLease lease,
+    IClusterEvents clusterEvents,
     TimeProvider timeProvider,
     IOptions<SigningKeyOptions> keyOptions,
     IOptionsMonitor<TokenOptions> tokenOptions,
     ILogger<SigningKeyRotator> logger)
 {
-    public async Task RotateAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// The rotation lease outlives any rotation; it only matters if its holder crashes, and then delays the next
+    /// rotation by at most this long.
+    /// </summary>
+    private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Creates and removes keys as needed. Runs under a database lease, so instances rotating at the same time can't
+    /// both create a key. Returns <see langword="false"/> if another process is rotating right now.
+    /// </summary>
+    public async Task<bool> RotateAsync(CancellationToken cancellationToken)
+    {
+        if (await lease.TryAcquireAsync(Lease.SigningKeys, LeaseDuration, cancellationToken) is not { } owner)
+        {
+            return false;
+        }
+
+        try
+        {
+            await RotateUnderLeaseAsync(cancellationToken);
+            return true;
+        }
+        finally
+        {
+            await lease.ReleaseAsync(Lease.SigningKeys, owner);
+        }
+    }
+
+    private async Task RotateUnderLeaseAsync(CancellationToken cancellationToken)
     {
         var options = keyOptions.Value;
         var now = timeProvider.GetUtcNow();
@@ -63,6 +96,7 @@ internal sealed partial class SigningKeyRotator(
         {
             await db.SaveChangesAsync(cancellationToken);
             store.Invalidate();
+            clusterEvents.Publish(ClusterEvent.SigningKeys);
         }
     }
 
@@ -72,6 +106,20 @@ internal sealed partial class SigningKeyRotator(
     /// parties that cache JWKS know it before they see it (PROJECT.md §5). Refused while a newer key is pending.
     /// </summary>
     public async Task<SigningKey?> RotateNowAsync(string actor, string? ipAddress, CancellationToken cancellationToken)
+    {
+        var owner = await lease.AcquireAsync(Lease.SigningKeys, LeaseDuration, TimeSpan.FromSeconds(10), cancellationToken)
+            ?? throw Administration.AdministrationException.Conflict("Another process is rotating the signing keys; try again.");
+        try
+        {
+            return await RotateNowUnderLeaseAsync(actor, ipAddress, cancellationToken);
+        }
+        finally
+        {
+            await lease.ReleaseAsync(Lease.SigningKeys, owner);
+        }
+    }
+
+    private async Task<SigningKey?> RotateNowUnderLeaseAsync(string actor, string? ipAddress, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
         if (await db.SigningKeys.AnyAsync(k => k.ActivatesAt > now, cancellationToken))
@@ -90,6 +138,7 @@ internal sealed partial class SigningKeyRotator(
         });
         await db.SaveChangesAsync(cancellationToken);
         store.Invalidate();
+        clusterEvents.Publish(ClusterEvent.SigningKeys);
         LogKeyCreated(logger, key.Id, key.ActivatesAt);
         return key;
     }

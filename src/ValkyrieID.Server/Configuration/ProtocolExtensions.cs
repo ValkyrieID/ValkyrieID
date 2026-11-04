@@ -1,7 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
+using ValkyrieID.Server.Coordination;
 using ValkyrieID.Server.Logout;
 using ValkyrieID.Server.Protocol;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Configuration;
@@ -20,13 +24,16 @@ internal static class ProtocolExtensions
         services.AddSingleton<IValidateOptions<BackChannelLogoutOptions>, BackChannelLogoutOptionsValidator>();
 
         services.AddScoped<AuditRecorder>();
+        services.AddScoped<DatabaseLease>();
         services.AddSingleton<SigningKeyStore>();
         services.AddScoped<SigningKeyRotator>();
         services.AddHostedService<SigningKeyRotationService>();
         services.AddScoped<AccessTokenIssuer>();
         services.AddScoped<ClientAuthenticator>();
         services.AddScoped<IdTokenIssuer>();
-        services.AddSingleton<IAuthorizationCodeStore, InMemoryAuthorizationCodeStore>();
+        services.AddSingleton<IAuthorizationCodeStore>(sp => sp.GetService<RedisContext>() is { } redis
+            ? new RedisAuthorizationCodeStore(redis, sp.GetRequiredService<TimeProvider>())
+            : new InMemoryAuthorizationCodeStore(sp.GetRequiredService<TimeProvider>()));
         services.AddScoped<RefreshTokenStore>();
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddScoped<AccessTokenValidator>();
@@ -52,11 +59,28 @@ internal static class ProtocolExtensions
         return services;
     }
 
-    /// <summary>Makes sure a signing key exists before the server starts handling requests.</summary>
+    /// <summary>
+    /// Makes sure a signing key exists before the server starts handling requests. If another instance is rotating at
+    /// the same moment, waits for it instead of creating a second key.
+    /// </summary>
     public static async Task EnsureSigningKeysAsync(this IServiceProvider services, CancellationToken cancellationToken)
     {
-        await using var scope = services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<SigningKeyRotator>().RotateAsync(cancellationToken);
+        while (true)
+        {
+            await using var scope = services.CreateAsyncScope();
+            if (await scope.ServiceProvider.GetRequiredService<SigningKeyRotator>().RotateAsync(cancellationToken))
+            {
+                return;
+            }
+
+            var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow();
+            if (await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().SigningKeys.AnyAsync(k => k.ActivatesAt <= now, cancellationToken))
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+        }
     }
 
     public static IEndpointRouteBuilder MapValkyrieProtocol(this IEndpointRouteBuilder endpoints)

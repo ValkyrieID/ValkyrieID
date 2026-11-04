@@ -51,7 +51,7 @@ jobs:
           dotnet ef migrations has-pending-model-changes --project src/ValkyrieID.Data.PostgreSql --no-build --configuration Release
 
       - name: Unit and SQLite integration tests
-        run: dotnet test --no-build -c Release -- --filter-not-trait "Category=PostgreSql"
+        run: dotnet test --no-build -c Release -- --filter-not-trait "Category=PostgreSql" --filter-not-trait "Category=Redis"
 
   admin-ui:
     name: Admin UI
@@ -90,10 +90,10 @@ jobs:
           test -f publish/wwwroot/admin/index.html
 
   postgres:
-    name: PostgreSQL integration tests
+    name: PostgreSQL and Redis integration tests
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -109,5 +109,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: PostgreSQL integration tests
-        run: dotnet test --no-build -c Release --project tests/ValkyrieID.Server.IntegrationTests -- --filter-trait "Category=PostgreSql"
+      # Multi-instance tests run two servers against one PostgreSQL database and one Redis (Testcontainers).
+      - name: PostgreSQL and Redis integration tests
+        run: dotnet test --no-build -c Release --project tests/ValkyrieID.Server.IntegrationTests -- --filter-trait "Category=PostgreSql" --filter-trait "Category=Redis"

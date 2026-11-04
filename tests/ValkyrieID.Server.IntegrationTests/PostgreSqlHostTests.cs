@@ -5,7 +5,11 @@ namespace ValkyrieID.Server.IntegrationTests;
 
 public sealed class PostgreSqlFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine").Build();
+    // Every test uses databases of its own, and each keeps a few pooled connections open until they idle out, so the
+    // default limit of 100 connections is reached within one test class.
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18-alpine")
+        .WithCommand("-c", "max_connections=1000")
+        .Build();
 
     public string CreateConnectionString(string database) =>
         $"{_container.GetConnectionString()};Database={database}";

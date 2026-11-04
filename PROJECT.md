@@ -32,11 +32,15 @@ A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 
 - EF Core with two providers: **SQLite** and **PostgreSQL**, with migrations maintained for each.
 - Migrations are applied automatically on startup (opt-out setting for operators who prefer manual migration).
 - **ASP.NET Data Protection keys** are persisted in the DB (via `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore`), so restarts don't invalidate sessions or cookies. They are encrypted at rest with the master encryption key.
-- **Redis** is **required for multi-instance deployments**. It stores shared state:
-  - authorization codes
-  - rate-limit counters
-  - cache
+- **Redis** is **required for multi-instance deployments** (with PostgreSQL; SQLite is single-instance only). It holds:
+  - authorization codes, encrypted under a key derived from each code, and looked up by an ID derived from it, so Redis holds nothing usable without the code
+  - rate-limit counters, keyed by an HMAC of the client address or account name
+  - change notifications (pub/sub) that wake other instances when settings, signing keys, or the back-channel logout and email queues change; polling stays as the fallback
+- Redis holds no copies of database rows (no data cache): clients, users, sessions, and settings always come from the database, so disabling or revoking takes effect at once on every instance.
+- When Redis is configured but unavailable, the server fails closed (`503`, readiness unhealthy) instead of falling back to per-instance state.
+- A single Redis, Sentinel, and Redis Cluster are supported; a code and its replay marker share a hash slot, so redeeming is atomic in a cluster too. Replication is asynchronous: a primary failover right after a redemption can bring a code back for the rest of its 60 s (documented, accepted).
 - Single instance without Redis uses in-process equivalents.
+- Jobs that must not run twice at the same moment (signing key rotation) take a lease in the database.
 
 ## 4. Protocol support
 
@@ -129,6 +133,8 @@ Authorization responses include the `iss` parameter (RFC 9207) to prevent mix-up
 | ID token | JWT (RS256) | 5 min |
 | Refresh token | Opaque, DB-stored (hashed) | 14 days sliding, 30 days absolute |
 | Authorization code | Opaque, single-use | 60 s |
+
+A redeemed code is remembered for 10 minutes, so a replay is detected (and the refresh tokens issued from it revoked) after the code itself has expired.
 
 All lifetimes are configurable globally and per client. Token validation allows a small configurable clock skew (default 30 s).
 
@@ -248,9 +254,9 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **Runtime settings** (token and session lifetimes, email link lifetimes, branding, SMTP, password policy, lockout, 2FA enforcement, admin 2FA requirement, email verification at sign-in, audit log retention):
   - editable in the admin UI, the Admin API, and the CLI (`settings show|set|reset`), and stored in the DB (one row per setting; an allow-list decides which keys can be stored)
   - **values from appsettings/env take precedence** and are shown as locked in the admin UI. The DB is the lowest-precedence configuration source, so options binding and validation are unchanged
-  - changes are validated together with the configuration before saving, audited (secrets as `(secret)`), and picked up without a restart: the writing instance at once, other instances and processes by polling a settings revision (`Settings:ReloadInterval`); invalid stored values are not applied on reload, and stop startup like any invalid configuration
+  - changes are validated together with the configuration before saving, audited (secrets as `(secret)`), and picked up without a restart: the writing instance at once, other instances and processes when notified through Redis, and otherwise by polling a settings revision (`Settings:ReloadInterval`); invalid stored values are not applied on reload, and stop startup like any invalid configuration
   - the SMTP password is encrypted with the master key, never returned by the API, and covered by `admin reencrypt`
-  - configuration-only: infrastructure (DB, issuer, master key, proxy), signing keys, password hashing, rate limits, clock skew, the branding directory, and the breached-password API URL (an admin-set URL would allow SSRF)
+  - configuration-only: infrastructure (DB, Redis, issuer, master key, proxy), signing keys, password hashing, rate limits, clock skew, the branding directory, and the breached-password API URL (an admin-set URL would allow SSRF)
 
 ## 11. Operations
 
@@ -438,7 +444,9 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
      - settings and branding in the Admin API and the admin UI
      - CLI `settings` commands and an SMTP test email in the admin UI *(new)*
 9. **Multi-instance:**
-   - Redis for authorization codes, rate limits, and cache
+   - Redis for authorization codes, rate limits, and change notifications (pub/sub instead of a data cache)
+   - Redis readiness check; fail closed while Redis is unavailable
+   - database lease for signing key rotation *(new)*
    - multi-instance integration tests
 10. **Hardening and release:**
     - security headers review, OAuch, OWASP ZAP
@@ -475,6 +483,7 @@ Every item done earlier or later than planned is listed here, with the reason.
 | Prompting for or requiring email verification after sign-in | (§6, unscheduled) | 8 | Needs a runtime setting (off, prompt, require), which belongs with the DB-backed settings. 7c lets users verify from the account page. |
 | `AdminUI:Enabled` / `AdminApi:Enabled` switches | (new) | 8b | Lets installations run without the admin UI or the Admin API (CLI only), decided while planning 8b instead of a separate admin deployment. |
 | CLI `settings` commands and an SMTP test email in the admin UI | (new) | 8c | The CLI can fix stored settings that keep the server from starting, and manages settings like users and clients. The test email checks SMTP settings entered in the admin UI. Decided while planning 8c. |
+| Database lease for signing key rotation | (new) | 9 | Instances rotating or starting at the same moment could each create a key. Found while planning phase 9; a database lease works with and without Redis. |
 
 ### Spec deviations
 

@@ -17,6 +17,9 @@ internal sealed class OAuthError(string error, string? description, int statusCo
     public const string InvalidScope = "invalid_scope";
     public const string UnsupportedTokenType = "unsupported_token_type";
 
+    /// <summary>Used with 503 when shared state (Redis) is unavailable; the request can be retried.</summary>
+    public const string TemporarilyUnavailable = "temporarily_unavailable";
+
     public string Error { get; } = error;
 
     public static OAuthError Request(string description) => new(InvalidRequest, description);

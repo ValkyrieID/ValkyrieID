@@ -88,6 +88,16 @@ public sealed class SecretProtector
     public string UnprotectString(ReadOnlySpan<byte> protectedData, string purpose) =>
         Encoding.UTF8.GetString(Unprotect(protectedData, purpose));
 
+    /// <summary>
+    /// Derives a 256-bit key for <paramref name="purpose"/> from the current master key (HKDF-SHA256, RFC 5869). The
+    /// key changes when the master key is rotated, so only use it for data that can be lost then, e.g. keys in Redis.
+    /// </summary>
+    public byte[] DeriveKey(string purpose)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(purpose);
+        return HKDF.DeriveKey(HashAlgorithmName.SHA256, _current.Key, MasterKey.KeySizeBytes, info: Encoding.UTF8.GetBytes(purpose));
+    }
+
     /// <summary>Whether the data was encrypted with a key other than the current one and should be re-encrypted.</summary>
     public bool RequiresReencryption(ReadOnlySpan<byte> protectedData) =>
         protectedData.Length < AadHeaderSize

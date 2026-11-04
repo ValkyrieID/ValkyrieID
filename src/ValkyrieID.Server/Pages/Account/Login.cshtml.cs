@@ -13,6 +13,7 @@ internal sealed class LoginModel(
     // Deliberately the same for unknown users, wrong passwords, and disabled or locked-out accounts.
     internal const string InvalidCredentials = "Invalid username or password.";
     internal const string TooManyAttempts = "Too many sign-in attempts. Wait a few minutes and try again.";
+    internal const string Unavailable = "Signing in is temporarily unavailable. Try again in a moment.";
 
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
@@ -56,10 +57,12 @@ internal sealed class LoginModel(
             return Page();
         }
 
-        if (!limiter.TryAcquire(identifier))
+        var decision = await limiter.AcquireAsync(identifier, cancellationToken);
+        if (!decision.Allowed)
         {
-            Errors = [TooManyAttempts];
-            Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            Errors = [decision.Unavailable ? Unavailable : TooManyAttempts];
+            Response.StatusCode = decision.Unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status429TooManyRequests;
+            Response.Headers.RetryAfter = ((int)Math.Ceiling(decision.RetryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
             return Page();
         }
 

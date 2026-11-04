@@ -221,6 +221,30 @@ namespace ValkyrieID.Data.PostgreSql.Migrations
                     b.ToTable("ClientSecrets", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Coordination.Lease", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("Leases", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Name = "signing-keys"
+                        });
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Resources.ApiResource", b =>
                 {
                     b.Property<Guid>("Id")

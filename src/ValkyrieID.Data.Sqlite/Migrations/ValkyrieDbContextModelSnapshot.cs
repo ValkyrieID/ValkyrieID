@@ -213,6 +213,30 @@ namespace ValkyrieID.Data.Sqlite.Migrations
                     b.ToTable("ClientSecrets", (string)null);
                 });
 
+            modelBuilder.Entity("ValkyrieID.Core.Coordination.Lease", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("ExpiresAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("Leases", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Name = "signing-keys"
+                        });
+                });
+
             modelBuilder.Entity("ValkyrieID.Core.Resources.ApiResource", b =>
                 {
                     b.Property<Guid>("Id")

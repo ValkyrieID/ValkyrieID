@@ -3,6 +3,7 @@ using ValkyrieID.Core.Users;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Logout;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Tokens;
 using ValkyrieID.Server.Users;
 
@@ -18,7 +19,8 @@ internal sealed class SessionService(
     BackChannelLogoutQueue backChannel,
     BackChannelLogoutSignal signal,
     AuditRecorder audit,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IClusterEvents clusterEvents)
 {
     /// <summary>
     /// Ends a session, e.g. at sign-out, and queues back-channel logout notifications for its clients. Refresh tokens
@@ -70,8 +72,12 @@ internal sealed class SessionService(
         return sessions.Count;
     }
 
-    /// <summary>Delivers newly queued notifications without waiting for the worker's next poll.</summary>
-    public void WakeDeliveryWorker() => signal.Notify();
+    /// <summary>Delivers newly queued notifications without waiting for the worker's next poll, on any instance.</summary>
+    public void WakeDeliveryWorker()
+    {
+        signal.Notify();
+        clusterEvents.Publish(ClusterEvent.BackChannelLogout);
+    }
 
     /// <summary>The user's active sessions, most recently used first, with the clients that received a code in each.</summary>
     public async Task<IReadOnlyList<(UserSession Session, IReadOnlyList<string> Clients)>> ListActiveAsync(Guid userId, CancellationToken cancellationToken)

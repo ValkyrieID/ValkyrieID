@@ -7,6 +7,7 @@ using ValkyrieID.Core.Tokens;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Protocol;
@@ -29,7 +30,7 @@ internal sealed class TokenResult(TokenResponse response) : IResult
 }
 
 /// <summary>The token endpoint (RFC 6749 §3.2).</summary>
-internal sealed class TokenEndpoint(
+internal sealed partial class TokenEndpoint(
     ValkyrieDbContext db,
     ClientAuthenticator authenticator,
     AccessTokenIssuer issuer,
@@ -38,9 +39,13 @@ internal sealed class TokenEndpoint(
     RefreshTokenStore refreshTokens,
     AuditRecorder audit,
     TimeProvider timeProvider,
-    IOptionsMonitor<TokenOptions> tokenOptions)
+    IOptionsMonitor<TokenOptions> tokenOptions,
+    ILogger<TokenEndpoint> logger)
 {
     public const string Path = "/connect/token";
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Authorization code could not be redeemed; the shared store is unavailable")]
+    private static partial void LogCodeStoreUnavailable(ILogger logger, Exception exception);
 
     public async Task<IResult> HandleAsync(HttpContext context)
     {
@@ -155,7 +160,18 @@ internal sealed class TokenEndpoint(
         }
 
         // The code is consumed before any other check, so a failed attempt can't be retried with the same code.
-        var redemption = codes.Redeem(code);
+        CodeRedemption redemption;
+        try
+        {
+            redemption = await codes.RedeemAsync(code, cancellationToken);
+        }
+        catch (SharedStateUnavailableException ex)
+        {
+            // Fail closed: without the shared store, single use and replay detection can't be guaranteed.
+            LogCodeStoreUnavailable(logger, ex);
+            return new OAuthError(OAuthError.TemporarilyUnavailable, "The server is temporarily unable to handle the request.", StatusCodes.Status503ServiceUnavailable);
+        }
+
         if (redemption.Status == CodeRedemptionStatus.AlreadyRedeemed)
         {
             // RFC 6749 A4.1.2: a code used more than once MUST be denied, and tokens previously issued based on it

@@ -20,6 +20,8 @@ Forwarded headers from any other address are ignored, and without any configured
 
 `ReverseProxy:ForwardLimit` (default `1`) is the number of proxies in front of ValkyrieID. With a CDN in front of a load balancer, set it to `2` and trust both.
 
+With [several instances](/operations/multi-instance), give every instance the same trusted proxies. Rate limits are shared through Redis and keyed by client address, so an instance that trusts different proxies would count clients under other keys.
+
 Make sure the proxy **replaces** `X-Forwarded-For` with the client address (or appends to it) and sets `X-Forwarded-Proto: https`. The session cookie is `Secure`, so the server must see HTTPS requests as HTTPS.
 
 ## Path base

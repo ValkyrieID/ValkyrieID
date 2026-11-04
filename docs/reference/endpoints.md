@@ -189,7 +189,9 @@ Access tokens can't be revoked before they expire; keep their lifetime short. Us
 }
 ```
 
-A code can be redeemed once, within 60 seconds, by the client it was issued to. It is consumed by the first attempt, even a failed one. It also stops working when the user's session ends.
+A code can be redeemed once, within 60 seconds, by the client it was issued to. It is consumed by the first attempt, even a failed one. It also stops working when the user's session ends. A code used again within 10 minutes of its first use is reported as replayed: the request fails with `invalid_grant`, and the refresh tokens issued from the code are revoked.
+
+With [Redis](/operations/multi-instance) configured but unreachable, the token endpoint answers `503` with `{"error": "temporarily_unavailable"}`; the request can be retried.
 
 The access token's `sub` is the user's id and its `aud` is the API resources that own the granted API scopes, or the client id if no API scope was granted. `id_token` is included when `openid` was granted, and `refresh_token` when `offline_access` was granted.
 
@@ -275,8 +277,9 @@ Errors follow RFC 6749 §5.2:
 | `unauthorized_client` | 400 | The client may not use this grant type |
 | `unsupported_grant_type` | 400 | The grant type isn't supported |
 | `invalid_scope` | 400 | A scope is malformed, unknown, disabled, an identity scope, or not allowed for the client; or a refresh request asks for more than was granted |
+| `temporarily_unavailable` | 503 | Redis is configured but unreachable, so the code can't be redeemed safely; retry later |
 
-Requests over the [rate limit](/reference/configuration#rate-limits) get `429 Too Many Requests` with a `Retry-After` header.
+Requests over the [rate limit](/reference/configuration#rate-limits) get `429 Too Many Requests` with a `Retry-After` header (`503` with `Retry-After` while Redis is unreachable).
 
 All client authentication failures return the same response, so callers can't tell which clients exist.
 

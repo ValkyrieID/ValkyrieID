@@ -16,14 +16,20 @@ builder.AddValkyrieRuntimeSettings();
 builder.Services.AddValkyrieMasterKey(builder.Configuration);
 builder.Services.AddValkyrieDatabase(builder.Configuration);
 builder.Services.AddValkyrieDataProtection();
+builder.Services.AddValkyrieRedis(builder.Configuration);
 builder.Services.AddValkyrieProtocol(builder.Configuration);
 builder.Services.AddValkyrieReverseProxy(builder.Configuration);
 builder.Services.AddValkyrieAccounts(builder.Configuration);
 builder.Services.AddValkyrieAdministration();
 builder.Services.AddValkyrieAdminOptions(builder.Configuration);
 builder.Services.AddValkyrieAdminUi();
-builder.Services.AddHealthChecks()
+var healthChecks = builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+if (builder.Configuration.RedisEnabled())
+{
+    healthChecks.AddCheck<ValkyrieID.Server.Redis.RedisHealthCheck>("redis", tags: ["ready"]);
+}
+
 builder.AddValkyrieTelemetry();
 
 var app = builder.Build();

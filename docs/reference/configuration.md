@@ -11,7 +11,7 @@ Settings marked **runtime** in the tables below can also be changed while the se
 - **Configuration takes precedence.** A runtime setting that is set in `appsettings.json`, an environment variable, or on the command line can't be changed at runtime. The admin UI shows it as *set by configuration*, read-only. Remove it from the configuration to manage it in the admin UI.
 - **Changes are validated as a whole**, with the same rules as at startup, before anything is saved. Every change is written to the audit log (`settings.updated`) with the old and new values; secrets appear only as `(secret)`.
 - **Secrets** (the SMTP password) are encrypted with the [master key](/operations/master-key), never returned by the API, and included in `admin reencrypt`.
-- **Other instances and the CLI**: the server that makes a change applies it at once. Every instance also checks for changes every `Settings:ReloadInterval` and applies them then. If stored settings are invalid together with an instance's configuration (for example after an environment variable changed), that instance keeps its previous settings and logs an error; on startup, it refuses to start, like for any invalid configuration. The CLI can still run to fix them (`settings reset`).
+- **Other instances and the CLI**: the server that makes a change applies it at once. With [Redis](#redis), other instances are notified and apply it within moments. Every instance also checks for changes every `Settings:ReloadInterval` and applies them then (the fallback if a notification is lost, and the only way without Redis). If stored settings are invalid together with an instance's configuration (for example after an environment variable changed), that instance keeps its previous settings and logs an error; on startup, it refuses to start, like for any invalid configuration. The CLI can still run to fix them (`settings reset`).
 - **Already issued** tokens, sessions, and links keep the lifetime they were issued with.
 
 | Key | Default | Description |
@@ -32,6 +32,17 @@ PostgreSQL example:
 Database__Provider=PostgreSql
 Database__ConnectionString="Host=db;Database=valkyrieid;Username=valkyrieid;Password=..."
 ```
+
+## Redis
+
+Redis is only needed to run [more than one instance](/operations/multi-instance). Without it, ValkyrieID keeps authorization codes and rate-limit counters in memory.
+
+| Key | Default | Description |
+|---|---|---|
+| `Redis:ConnectionString` | *(none)* | A [StackExchange.Redis configuration string](https://stackexchange.github.io/StackExchange.Redis/Configuration), e.g. `redis:6379,password=...,ssl=true`; for Redis Cluster or Sentinel, list several nodes. Setting it stores authorization codes and rate-limit counters in Redis and notifies other instances of changes. Supply the password through an environment variable or secret store. |
+| `Redis:KeyPrefix` | `valkyrieid:` | Prefix for every key and channel, so several deployments can share one Redis. No whitespace or braces (braces would act as a Redis Cluster hash tag). |
+
+When Redis is configured but unreachable, the server fails closed: requests that need it get `503` (or `temporarily_unavailable` at the authorization endpoint), and [readiness](/reference/health) reports unhealthy.
 
 ## Master encryption key
 
@@ -175,7 +186,7 @@ Administrators list and revoke sessions with the [`session` commands](/reference
 |---|---|---|
 | `BackChannelLogout:RequestTimeout` | `00:00:05` | Timeout of each request to a client (1 to 60 seconds). A sign-out waits at most this long for the clients before redirecting the browser. |
 | `BackChannelLogout:RetryDelays` | `00:00:10`, `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, `408`, `429`, or `5xx`. After the last one the notification is abandoned. Set as an array, e.g. `BackChannelLogout__RetryDelays__0=00:00:15`; at most 20 entries. |
-| `BackChannelLogout:PollInterval` | `00:01:00` | How often each instance checks for pending notifications queued by another process, such as the CLI or another instance. Notifications queued by the instance itself are sent right away. |
+| `BackChannelLogout:PollInterval` | `00:01:00` | How often each instance checks for pending notifications queued by another process, such as the CLI or another instance. Notifications queued by the instance itself are sent right away; with [Redis](#redis), other instances are woken right away too. |
 
 See [Back-channel logout](/reference/endpoints#back-channel-logout).
 
@@ -193,7 +204,7 @@ Email features ([password reset, email verification, email change](/guide/email)
 | `Smtp:FromName` | `Branding:ProductName` | **Runtime.** Sender display name. |
 | `Smtp:Timeout` | `00:00:30` | Timeout of each SMTP operation (1 second to 5 minutes). |
 | `Smtp:RetryDelays` | `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, or `4xx` reply. After the last one the email is abandoned. Set as an array, e.g. `Smtp__RetryDelays__0=00:01:00`; at most 20 entries. |
-| `Smtp:PollInterval` | `00:01:00` | How often each instance checks for emails queued by another process (the CLI or another instance). |
+| `Smtp:PollInterval` | `00:01:00` | How often each instance checks for emails queued by another process (the CLI or another instance). With [Redis](#redis), instances are also woken right away. |
 
 Check the settings with **Send test email** on the admin UI's SMTP settings page, or with [`admin send-test-email`](/reference/cli#admin-recovery).
 
@@ -217,7 +228,7 @@ Check the settings with **Send test email** on the admin UI's SMTP settings page
 | `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA), and the account forms that ask for the current password, per client IP address. |
 | `RateLimits:Email:PermitLimit` / `:Window` | `5` / `00:05:00` | Submissions of the [email](/guide/email) forms (forgot password, reset password, verify email, change email) per client IP address. |
 
-Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Counters are kept in memory per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
+Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 
 ## Branding
 

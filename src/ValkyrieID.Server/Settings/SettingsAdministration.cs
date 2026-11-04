@@ -5,6 +5,7 @@ using ValkyrieID.Data;
 using ValkyrieID.Server.Administration;
 using ValkyrieID.Server.Auditing;
 using ValkyrieID.Server.Configuration;
+using ValkyrieID.Server.Redis;
 using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Settings;
@@ -18,7 +19,8 @@ internal sealed class SettingsAdministration(
     RuntimeSettingsStore store,
     SecretProtector protector,
     AuditRecorder audit,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IClusterEvents clusterEvents)
 {
     /// <summary>
     /// Sets the given settings (a <see langword="null"/> value resets one to its default) and returns what changed.
@@ -114,6 +116,7 @@ internal sealed class SettingsAdministration(
             await transaction.CommitAsync(cancellationToken);
 
             await store.LoadAsync(validate: true, cancellationToken);
+            clusterEvents.Publish(ClusterEvent.Settings);
             return result;
         }
     }

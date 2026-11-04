@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ValkyrieID.Core.Auditing;
 using ValkyrieID.Core.Clients;
+using ValkyrieID.Core.Coordination;
 using ValkyrieID.Core.Resources;
 using ValkyrieID.Core.Settings;
 using ValkyrieID.Core.Tokens;
@@ -50,6 +51,8 @@ public sealed class ValkyrieDbContext(DbContextOptions<ValkyrieDbContext> option
     public DbSet<Setting> Settings => Set<Setting>();
 
     public DbSet<SettingsRevision> SettingsRevisions => Set<SettingsRevision>();
+
+    public DbSet<Lease> Leases => Set<Lease>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
