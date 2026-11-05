@@ -8,7 +8,7 @@ namespace ValkyrieID.Server.Pages.Account;
 
 /// <summary>Second sign-in step with a one-time recovery code, for when the authenticator is unavailable.</summary>
 [EnableRateLimiting(RateLimitPolicies.TwoFactor)]
-internal sealed class RecoveryCodeModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel
+internal sealed class RecoveryCodeModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel, IReturnUrlPage
 {
     internal const string InvalidCode = "The recovery code is invalid or has already been used.";
 

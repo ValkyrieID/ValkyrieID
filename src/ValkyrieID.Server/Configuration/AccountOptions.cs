@@ -94,6 +94,9 @@ public sealed class RateLimitOptions
 
     /// <summary>Form submissions that send email or use an email link (password reset, verification, email change) per client IP address.</summary>
     public RateLimitRule Email { get; set; } = new() { PermitLimit = 5, Window = TimeSpan.FromMinutes(5) };
+
+    /// <summary>Other account form submissions (profile, sessions, sign-out) per client IP address.</summary>
+    public RateLimitRule Account { get; set; } = new() { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) };
 }
 
 public sealed class TwoFactorOptions
@@ -231,7 +234,7 @@ internal sealed class AccountOptionsValidator :
     public ValidateOptionsResult Validate(string? name, RateLimitOptions options)
     {
         List<string> failures = [];
-        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize), ("TwoFactor", options.TwoFactor), ("Email", options.Email) })
+        foreach (var (key, rule) in new[] { ("Login", options.Login), ("LoginAccount", options.LoginAccount), ("Token", options.Token), ("Authorize", options.Authorize), ("TwoFactor", options.TwoFactor), ("Email", options.Email), ("Account", options.Account) })
         {
             if (rule.PermitLimit < 1 || rule.Window <= TimeSpan.Zero)
             {

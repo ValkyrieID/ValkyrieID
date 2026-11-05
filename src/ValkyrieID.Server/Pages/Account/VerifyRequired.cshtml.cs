@@ -12,7 +12,7 @@ namespace ValkyrieID.Server.Pages.Account;
 /// </summary>
 [EnableRateLimiting(RateLimitPolicies.Email)]
 internal sealed class VerifyRequiredModel(AccountService account, EmailAccountService emailAccounts, EmailVerificationGate gate)
-    : AccountPageModel(account)
+    : AccountPageModel(account), IReturnUrlPage
 {
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }

@@ -76,6 +76,13 @@ internal sealed class ClientAdministration(
             throw new AdministrationException("The client id must be 1-200 printable ASCII characters without spaces.");
         }
 
+        // RFC 9700 §4.15.1: client_credentials tokens carry the client id as sub, and users' sub values are GUIDs, so a
+        // GUID-shaped client id could be mistaken for a user by resource servers.
+        if (ProtocolSyntax.LooksLikeSubject(clientId))
+        {
+            throw new AdministrationException("The client id must not be a GUID, so it can't be confused with a user's subject identifier.");
+        }
+
         if (clientId == BuiltIn.AdminUiClientId)
         {
             throw AdministrationException.Conflict($"The client id '{clientId}' is reserved.");

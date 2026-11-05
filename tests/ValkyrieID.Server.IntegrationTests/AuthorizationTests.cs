@@ -326,7 +326,7 @@ public abstract class AuthorizationTests
 
         var response = await browser.PostAsync("/connect/authorize", new FormUrlEncodedContent(Params("spa", "openid", challenge).Pairs), CancellationToken);
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.StartsWith(RedirectUri + "?code=", response.Headers.Location!.ToString(), StringComparison.Ordinal);
     }
 

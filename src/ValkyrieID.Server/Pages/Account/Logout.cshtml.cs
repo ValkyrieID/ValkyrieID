@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using ValkyrieID.Data;
 using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Logout;
 using ValkyrieID.Server.Protocol;
 
@@ -12,10 +14,14 @@ namespace ValkyrieID.Server.Pages.Account;
 /// Sign-out confirmation, also for RP-initiated logout requests from <see cref="EndSessionEndpoint"/>, which pass a
 /// protected <see cref="LogoutRequest"/>.
 /// </summary>
-internal sealed class LogoutModel(SessionManager sessions, LogoutRequestProtector protector, ValkyrieDbContext db) : PageModel
+[EnableRateLimiting(RateLimitPolicies.Account)]
+internal sealed class LogoutModel(SessionManager sessions, LogoutRequestProtector protector, ValkyrieDbContext db) : PageModel, IExternalFormTargetPage
 {
     [BindProperty(SupportsGet = true, Name = "request")]
     public string? LogoutRequestValue { get; set; }
+
+    /// <summary>The validated post-logout redirect the confirmation form leads to, for CSP <c>form-action</c>.</summary>
+    public string? FormTarget { get; private set; }
 
     /// <summary>The application that asked for the sign-out, if known.</summary>
     public string? ClientName { get; private set; }
@@ -30,9 +36,14 @@ internal sealed class LogoutModel(SessionManager sessions, LogoutRequestProtecto
     {
         ProtocolHeaders.NoStore(Response);
         var request = await LoadAsync(cancellationToken);
+        if (request is not null)
+        {
+            FormTarget = await RedirectLocationAsync(request, cancellationToken);
+        }
+
         if (User.Identity?.IsAuthenticated != true && request is not null)
         {
-            ReturnLocation = await RedirectLocationAsync(request, cancellationToken);
+            ReturnLocation = FormTarget;
         }
     }
 

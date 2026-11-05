@@ -40,7 +40,7 @@ internal static partial class Forms
     public static async Task<byte[]> LoginWithEnrollmentAsync(HttpClient client, string identifier, string password, TimeProvider? clock = null)
     {
         var login = await LoginAsync(client, identifier, password);
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, login.StatusCode);
         Assert.StartsWith("/account/login/enroll", login.Headers.Location?.OriginalString, StringComparison.Ordinal);
         return await CompleteEnrollmentAsync(client, clock);
     }

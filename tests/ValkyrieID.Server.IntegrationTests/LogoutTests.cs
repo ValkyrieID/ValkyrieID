@@ -74,7 +74,7 @@ public abstract class LogoutTests
         var response = await Forms.PostAsync(browser, page, []);
 
         // RP-Initiated Logout §3: the redirect happens after the clients were notified.
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal($"{PostLogoutUri}?state=s%20t%261", response.Headers.Location!.OriginalString);
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
         var requests = receiver.Requests.OrderBy(r => r.Uri.AbsoluteUri, StringComparer.Ordinal).ToList();
@@ -114,13 +114,16 @@ public abstract class LogoutTests
 
         var page = AssertLogoutPage(response);
         Assert.True(await SessionActiveAsync(factory));
-        var html = await (await browser.GetAsync(page, CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+        var pageResponse = await browser.GetAsync(page, CancellationToken);
+        // The confirmation form ends at the validated post-logout redirect URI, so CSP form-action allows its origin.
+        Assert.EndsWith("form-action 'self' https://app.example.test", pageResponse.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);
+        var html = await pageResponse.Content.ReadAsStringAsync(CancellationToken);
         Assert.Contains("<strong>Web App</strong> asks you to sign out.", html, StringComparison.Ordinal);
         Assert.DoesNotContain("invalid", html, StringComparison.Ordinal);
 
         var confirmed = await Forms.PostAsync(browser, page, []);
 
-        Assert.Equal(HttpStatusCode.Redirect, confirmed.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, confirmed.StatusCode);
         Assert.Equal($"{PostLogoutUri}?state=xyz", confirmed.Headers.Location!.OriginalString);
         Assert.False(await SessionActiveAsync(factory));
     }

@@ -38,7 +38,17 @@ internal sealed partial class BuiltInSeeder(
             db.ChangeTracker.Clear();
             await SeedOnceAsync(cancellationToken);
         }
+
+        // RFC 9700 §4.15: clients created before GUID-shaped ids were refused keep working, but are reported.
+        var clientIds = await db.Clients.AsNoTracking().Select(c => c.ClientId).ToListAsync(cancellationToken);
+        foreach (var clientId in clientIds.Where(ProtocolSyntax.LooksLikeSubject))
+        {
+            LogGuidClientId(logger, clientId);
+        }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The client id {ClientId} is a GUID and can be confused with a user's subject identifier; replace the client with one that has a different id")]
+    private static partial void LogGuidClientId(ILogger logger, string clientId);
 
     // A disabled Admin API or UI keeps its entity but disables it, so no admin tokens can be issued for it
     // (fail closed) and turning it back on restores it unchanged.

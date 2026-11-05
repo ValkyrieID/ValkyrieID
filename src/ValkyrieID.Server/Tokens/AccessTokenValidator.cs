@@ -36,6 +36,13 @@ internal sealed class AccessTokenValidator(
         return result.IsValid && result.SecurityToken is JsonWebToken jwt && IsCurrent(jwt) ? jwt : null;
     }
 
+    /// <summary>
+    /// Whether the token was issued to a client acting for itself (client_credentials: RFC 9068 §2.2 sets sub to
+    /// the client id), so it must not be taken as a user's token (RFC 9700 §4.15.1).
+    /// </summary>
+    public static bool IsClientToken(JsonWebToken jwt) =>
+        jwt.TryGetPayloadValue<string>("client_id", out var clientId) && string.Equals(clientId, jwt.Subject, StringComparison.Ordinal);
+
     private bool IsCurrent(JsonWebToken jwt)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;

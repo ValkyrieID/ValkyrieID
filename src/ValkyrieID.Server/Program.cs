@@ -19,6 +19,7 @@ builder.Services.AddValkyrieDataProtection();
 builder.Services.AddValkyrieRedis(builder.Configuration);
 builder.Services.AddValkyrieProtocol(builder.Configuration);
 builder.Services.AddValkyrieReverseProxy(builder.Configuration);
+builder.Services.AddValkyrieTransportSecurity(builder.Configuration);
 builder.Services.AddValkyrieAccounts(builder.Configuration);
 builder.Services.AddValkyrieAdministration();
 builder.Services.AddValkyrieAdminOptions(builder.Configuration);
@@ -53,6 +54,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
+
+app.UseRequireHttps();
+app.UseSeeOtherAfterPost();
 
 app.UseProtocolCors();
 if (builder.Configuration.AdminUiEnabled())

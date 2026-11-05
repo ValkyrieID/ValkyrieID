@@ -93,7 +93,7 @@ internal sealed class AdminApiAuthentication(RequestDelegate next)
         }
 
         // Tokens without a user (client_credentials: sub is the client id) are never accepted (PROJECT.md §9).
-        var user = Guid.TryParse(jwt.Subject, out var subject)
+        var user = Guid.TryParse(jwt.Subject, out var subject) && !AccessTokenValidator.IsClientToken(jwt)
             ? await db.Users.AsNoTracking()
                 .Where(u => u.Id == subject)
                 .Select(u => new { u.Id, u.UserName, u.Enabled, u.LockoutEnd, IsAdmin = u.Roles.Any(r => r.Id == Role.AdminRoleId) })

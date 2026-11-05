@@ -327,7 +327,7 @@ public abstract class AdminApiTests
         Assert.Equal($"/api/admin/users/{id}", created.Headers.Location?.OriginalString);
         Assert.Equal("Carol", carol.GetProperty("givenName").GetString());
         Assert.False(carol.TryGetProperty("passwordHash", out _));
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "carol", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "carol", Password)).StatusCode);
 
         var updated = await api.PutAsJsonAsync($"/api/admin/users/{id}", new
         {
@@ -425,7 +425,7 @@ public abstract class AdminApiTests
         var api = await AdminClientAsync(factory);
         var bobId = await CreateUserAsync(factory, "bob");
         var bob = factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(bob, "bob", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(bob, "bob", Password)).StatusCode);
 
         var sessions = await ReadJsonAsync(await api.GetAsync($"/api/admin/users/{bobId}/sessions", CancellationToken));
         Assert.Equal(1, sessions.GetArrayLength());
@@ -437,7 +437,7 @@ public abstract class AdminApiTests
         const string newPassword = "another correct horse battery";
         Assert.Equal(HttpStatusCode.BadRequest, (await api.PostAsJsonAsync($"/api/admin/users/{bobId}/password", new { password = "short" }, CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await api.PostAsJsonAsync($"/api/admin/users/{bobId}/password", new { password = newPassword }, CancellationToken)).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "bob", newPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "bob", newPassword)).StatusCode);
 
         var disabled = await ReadJsonAsync(await api.PostAsync($"/api/admin/users/{bobId}/disable", null, CancellationToken));
         Assert.False(disabled.GetProperty("enabled").GetBoolean());

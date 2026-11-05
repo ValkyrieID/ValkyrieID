@@ -38,7 +38,7 @@ internal static class ProtocolPages
 
         html.Append("<button type=\"submit\">Continue</button>\n</form>\n");
         html.Append("<script nonce=\"").Append(nonce).Append("\">document.forms[0].submit();</script>\n");
-        return new HtmlPage(StatusCodes.Status200OK, "Continue", nonce, html.ToString());
+        return new HtmlPage(StatusCodes.Status200OK, "Continue", nonce, html.ToString(), action);
     }
 
     /// <summary>A redirect that must not be cached, since it carries protocol parameters.</summary>
@@ -55,7 +55,7 @@ internal static class ProtocolPages
         }
     }
 
-    private sealed class HtmlPage(int statusCode, string title, string? scriptNonce, string body) : IResult
+    private sealed class HtmlPage(int statusCode, string title, string? scriptNonce, string body, string? formTarget = null) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)
         {
@@ -66,7 +66,9 @@ internal static class ProtocolPages
             ProtocolHeaders.NoStore(response);
             if (scriptNonce is not null)
             {
-                response.Headers.ContentSecurityPolicy = $"{Csp}; script-src 'nonce-{scriptNonce}'";
+                // The form posts only to the validated redirect URI (OAuth 2.0 Form Post Response Mode §2).
+                var formAction = SecurityHeadersExtensions.FormActionSource(formTarget) is { } source ? $"form-action {source}" : "form-action 'none'";
+                response.Headers.ContentSecurityPolicy = $"{Csp}; script-src 'nonce-{scriptNonce}'; {formAction}";
             }
 
             var encoder = HtmlEncoder.Default;

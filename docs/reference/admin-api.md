@@ -33,7 +33,7 @@ The user is looked up on **every request**. Removing the `admin` role or disabli
 | `403` with `error="insufficient_scope"`, `scope="valkyrieid.admin"` | The token lacks the scope. |
 | `403` | The user doesn't have the `admin` role or is locked out. Recorded in the audit log as `admin_api.access_denied`. |
 
-The API sends no CORS headers, so other websites can't call it from a browser. Responses are never cached (`Cache-Control: no-store`).
+The API sends no CORS headers, so other websites can't call it from a browser. Responses are never cached (`Cache-Control: no-store`), and carry `Cross-Origin-Resource-Policy: same-origin` and `Cross-Origin-Opener-Policy: same-origin`.
 
 ### Getting a token
 

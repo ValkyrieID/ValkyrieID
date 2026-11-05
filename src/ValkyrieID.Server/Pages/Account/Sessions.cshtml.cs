@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ValkyrieID.Core.Users;
 using ValkyrieID.Server.Authentication;
+using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Pages.Account;
 
 /// <summary>Lists the user's active sessions and revokes them (with back-channel logout and their refresh tokens).</summary>
+[EnableRateLimiting(RateLimitPolicies.Account)]
 internal sealed class SessionsModel(AccountService account, SessionManager sessionManager) : AccountPageModel(account)
 {
     [BindProperty]

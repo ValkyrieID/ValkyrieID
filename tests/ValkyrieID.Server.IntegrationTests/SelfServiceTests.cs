@@ -60,7 +60,7 @@ public abstract partial class SelfServiceTests
         var user = await db.Users.SingleAsync(CancellationToken);
         Assert.Null(user.DisplayName);
         Assert.Equal(2, await db.UserSessions.CountAsync(s => s.RevokedAt == null, CancellationToken));
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
     }
 
     // Profile
@@ -119,7 +119,7 @@ public abstract partial class SelfServiceTests
         Assert.Equal(HttpStatusCode.OK, (await current.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await other.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
@@ -167,7 +167,7 @@ public abstract partial class SelfServiceTests
         Assert.Contains("don&#x27;t match", await mismatch.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
         Assert.Contains("alert", await weak.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
         Assert.Contains("must be different", await same.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public abstract partial class SelfServiceTests
         var old = factory.CreateBrowser();
         await Forms.LoginAsync(old, "alice", Password);
         Assert.Equal(HttpStatusCode.OK, (await Forms.PostAsync(old, "/account/login/recovery", new() { ["Code"] = oldCodes[0] })).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.PostAsync(old, "/account/login/recovery", new() { ["Code"] = newCodes[0] })).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.PostAsync(old, "/account/login/recovery", new() { ["Code"] = newCodes[0] })).StatusCode);
 
         await using var scope = factory.Services.CreateAsyncScope();
         Assert.True(await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().AuditLog
@@ -377,7 +377,7 @@ public abstract partial class SelfServiceTests
 
         var response = await Forms.PostAsync(browser, "/account/sessions?handler=Revoke", new() { ["SessionId"] = sid });
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
     }
 
@@ -415,7 +415,7 @@ public abstract partial class SelfServiceTests
     private static async Task<HttpClient> SignInAsync(ValkyrieAppFactory factory, string userName)
     {
         var browser = factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
         return browser;
     }
 
@@ -429,7 +429,7 @@ public abstract partial class SelfServiceTests
 
         var browser = await SignInAsync(factory, userName);
         var verified = await Forms.PostAsync(browser, "/account/login/2fa?returnUrl=%2Faccount", new() { ["Code"] = code });
-        Assert.Equal(HttpStatusCode.Redirect, verified.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, verified.StatusCode);
         return browser;
     }
 

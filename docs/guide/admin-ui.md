@@ -30,7 +30,7 @@ By default, admins must sign in with [two-factor authentication](/guide/two-fact
 
 ## Security
 
-- The admin UI is served by the same server, on the same origin as the Admin API. The API sends no CORS headers, so no other website can call it.
+- The admin UI is served by the same server, on the same origin as the Admin API. The API sends no CORS headers, so no other website can call it. Both send `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy: same-origin`, so other sites can't keep a handle on an admin window or load its responses.
 - Its pages have their own Content Security Policy: scripts, styles, and API calls are only allowed from the server itself, with no inline scripts or styles, and the pages can't be framed.
 - The access token is only sent to `/api/admin` and never stored in the browser.
 

@@ -8,7 +8,7 @@ namespace ValkyrieID.Server.Pages.Account;
 
 [EnableRateLimiting(RateLimitPolicies.Login)]
 internal sealed class LoginModel(
-    LoginService login, SessionManager sessions, LoginAttemptLimiter limiter, TwoFactorService twoFactor, PendingLogin pending) : PageModel
+    LoginService login, SessionManager sessions, LoginAttemptLimiter limiter, TwoFactorService twoFactor, PendingLogin pending) : PageModel, IReturnUrlPage
 {
     // Deliberately the same for unknown users, wrong passwords, and disabled or locked-out accounts.
     internal const string InvalidCredentials = "Invalid username or password.";

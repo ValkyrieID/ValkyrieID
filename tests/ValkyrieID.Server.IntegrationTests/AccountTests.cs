@@ -34,7 +34,7 @@ public abstract class AccountTests
         });
 
         // The first user is an admin, and admins must use 2FA by default: the session starts after enrollment.
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal("/account/login/enroll?returnUrl=%2Faccount", response.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
         await Forms.CompleteEnrollmentAsync(browser);
@@ -111,7 +111,7 @@ public abstract class AccountTests
 
         var response = await Forms.LoginAsync(browser, identifier, Password);
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal("/account", response.Headers.Location?.OriginalString);
         var account = await browser.GetAsync("/account", CancellationToken);
         Assert.Equal(HttpStatusCode.OK, account.StatusCode);
@@ -188,7 +188,7 @@ public abstract class AccountTests
         Assert.Equal(HttpStatusCode.OK, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
 
         clock.Advance(TimeSpan.FromMinutes(1));
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
@@ -206,7 +206,7 @@ public abstract class AccountTests
 
         Assert.Equal(0, (await factory.RunCliAsync("admin", "unlock", "alice")).ExitCode);
 
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
     }
 
     [Theory]
@@ -222,7 +222,7 @@ public abstract class AccountTests
 
         var response = await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password, returnUrl);
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal(expected, response.Headers.Location?.OriginalString);
     }
 
@@ -361,7 +361,7 @@ public abstract class AccountTests
 
         var response = await Forms.PostAsync(browser, "/account/logout", []);
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
@@ -424,7 +424,7 @@ public abstract class AccountTests
         Assert.Equal(HttpStatusCode.Redirect, (await alice.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await bob.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", "a brand new password")).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", "a brand new password")).StatusCode);
     }
 
     // CLI
@@ -504,7 +504,7 @@ public abstract class AccountTests
                 .ExecuteUpdateAsync(s => s.SetProperty(u => u.PasswordHash, oldHash), CancellationToken);
         }
 
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(factory.CreateBrowser(), "alice", Password)).StatusCode);
         Assert.StartsWith("$argon2id$v=19$m=19456,t=2,p=1$", await PasswordHashAsync(factory), StringComparison.Ordinal);
     }
 

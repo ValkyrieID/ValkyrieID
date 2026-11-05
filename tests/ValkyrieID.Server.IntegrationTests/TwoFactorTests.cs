@@ -31,7 +31,7 @@ public abstract partial class TwoFactorTests
         var browser = factory.CreateBrowser();
         var login = await Forms.LoginAsync(browser, "alice", Password);
 
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, login.StatusCode);
         Assert.Equal("/account/login/2fa?returnUrl=%2Faccount", login.Headers.Location?.OriginalString);
         Assert.DoesNotContain(login.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-valkyrie.session=", StringComparison.Ordinal));
         Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
@@ -39,7 +39,7 @@ public abstract partial class TwoFactorTests
         clock.Advance(Totp.Step);
         var verify = await PostCodeAsync(browser, CurrentCode(secret, clock));
 
-        Assert.Equal(HttpStatusCode.Redirect, verify.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, verify.StatusCode);
         Assert.Equal("/account", verify.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(["pwd", "otp", "mfa"], await LatestSessionMethodsAsync(factory));
@@ -104,7 +104,7 @@ public abstract partial class TwoFactorTests
 
         var first = factory.CreateBrowser();
         await Forms.LoginAsync(first, "alice", Password);
-        Assert.Equal(HttpStatusCode.Redirect, (await PostCodeAsync(first, code)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await PostCodeAsync(first, code)).StatusCode);
 
         var second = factory.CreateBrowser();
         await Forms.LoginAsync(second, "alice", Password);
@@ -132,11 +132,11 @@ public abstract partial class TwoFactorTests
         await Forms.LoginAsync(browser, "alice", Password);
         Assert.Equal(HttpStatusCode.OK, (await PostCodeAsync(browser, Totp.Compute(secret, step - 2))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await PostCodeAsync(browser, Totp.Compute(secret, step + 2))).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await PostCodeAsync(browser, Totp.Compute(secret, step - 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await PostCodeAsync(browser, Totp.Compute(secret, step - 1))).StatusCode);
 
         var late = factory.CreateBrowser();
         await Forms.LoginAsync(late, "alice", Password);
-        Assert.Equal(HttpStatusCode.Redirect, (await PostCodeAsync(late, Totp.Compute(secret, step + 1))).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await PostCodeAsync(late, Totp.Compute(secret, step + 1))).StatusCode);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public abstract partial class TwoFactorTests
         await Forms.LoginAsync(browser, "alice", Password);
         var used = await Forms.PostAsync(browser, "/account/login/recovery?returnUrl=%2Faccount", new() { ["Code"] = recoveryCodes[0].ToLowerInvariant() });
 
-        Assert.Equal(HttpStatusCode.Redirect, used.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, used.StatusCode);
         Assert.Equal(["pwd", "mfa"], await LatestSessionMethodsAsync(factory));
 
         var again = factory.CreateBrowser();
@@ -237,7 +237,7 @@ public abstract partial class TwoFactorTests
         Assert.Equal(HttpStatusCode.OK, reused.StatusCode);
         Assert.Contains(RecoveryCodeModel.InvalidCode.Replace("'", "&#x27;", StringComparison.Ordinal), await reused.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
 
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.PostAsync(again, "/account/login/recovery", new() { ["Code"] = recoveryCodes[1] })).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.PostAsync(again, "/account/login/recovery", new() { ["Code"] = recoveryCodes[1] })).StatusCode);
     }
 
     // Enforcement
@@ -252,7 +252,7 @@ public abstract partial class TwoFactorTests
 
         var login = await Forms.LoginAsync(browser, "alice", Password, "/connect/authorize?client_id=x");
 
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, login.StatusCode);
         Assert.StartsWith("/account/login/enroll?returnUrl=", login.Headers.Location?.OriginalString, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.Redirect, (await browser.GetAsync("/account", CancellationToken)).StatusCode);
 
@@ -333,7 +333,7 @@ public abstract partial class TwoFactorTests
     private static async Task<(byte[] Secret, IReadOnlyList<string> RecoveryCodes)> EnrollAsync(ValkyrieAppFactory factory, TestTimeProvider clock, string userName)
     {
         var browser = factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
         var (state, secret) = await StartEnrollmentAsync(browser);
 
         var response = await PostEnrollmentAsync(browser, state, CurrentCode(secret, clock), Password);

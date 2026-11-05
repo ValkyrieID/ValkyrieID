@@ -115,6 +115,13 @@ internal sealed partial class AuthorizeEndpoint(
         }
 
         var isOpenId = scopeResult.Scopes.Contains(IdentityScopes.OpenId);
+
+        // RFC 9700 §2.1.1: without PKCE, only an OpenID Connect nonce protects against code injection, so clients
+        // allowed to skip PKCE may only do so in OpenID Connect requests (PROJECT.md, Spec deviations).
+        if (!isOpenId && request.CodeChallenge is null)
+        {
+            return reply.Error(AuthorizeErrors.InvalidRequest, "A code_challenge with code_challenge_method=S256 is required for requests without the openid scope.");
+        }
         var now = timeProvider.GetUtcNow();
         var user = context.User;
         var sessionId = user.FindFirstValue(SessionClaims.SessionId);

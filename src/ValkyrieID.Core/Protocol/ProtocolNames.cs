@@ -36,6 +36,12 @@ public static class ProtocolSyntax
     public static bool IsValidClientId(string value) =>
         value.Length is > 0 and <= 200 && value.All(c => c is > '\x20' and <= '\x7E');
 
+    /// <summary>
+    /// Whether <paramref name="value"/> parses as a GUID in any format, i.e. could be mistaken for a user's
+    /// <c>sub</c> (RFC 9700 §4.15).
+    /// </summary>
+    public static bool LooksLikeSubject(string value) => Guid.TryParse(value, out _);
+
     /// <summary>Resource names become the <c>aud</c> claim; restricted to the same characters as scopes.</summary>
     public static bool IsValidResourceName(string value) => value.Length <= 200 && IsValidScopeToken(value);
 }

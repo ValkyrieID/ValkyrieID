@@ -40,7 +40,7 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
             return new BearerChallenge(StatusCodes.Status403Forbidden, "insufficient_scope", "The access token was not issued with the openid scope.");
         }
 
-        var user = Guid.TryParse(jwt.Subject, out var subject)
+        var user = Guid.TryParse(jwt.Subject, out var subject) && !AccessTokenValidator.IsClientToken(jwt)
             ? await db.Users.AsNoTracking()
                 .Include(u => u.Roles).Include(u => u.Groups).Include(u => u.Claims).AsSplitQuery()
                 .SingleOrDefaultAsync(u => u.Id == subject, cancellationToken)

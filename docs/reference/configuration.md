@@ -61,6 +61,18 @@ The server fails to start if `MasterKey:Current` is missing or invalid. See [Mas
 
 The issuer is published in discovery and in the `iss` claim. Every endpoint URL is derived from it. It is never derived from request headers, so set it to the URL clients use, including when running behind a reverse proxy.
 
+While the issuer is `https`, requests that don't arrive over HTTPS are refused with `400`, except the [health endpoints](/reference/health). Behind a TLS-terminating proxy, configure it as a [trusted proxy](#reverse-proxy).
+
+## HSTS
+
+| Key | Default | Description |
+|---|---|---|
+| `Hsts:MaxAge` | `365.00:00:00` | `max-age` of the `Strict-Transport-Security` header. |
+| `Hsts:IncludeSubDomains` | `false` | Add `includeSubDomains`. Only enable it when every subdomain of the issuer's host serves HTTPS. |
+| `Hsts:Preload` | `false` | Add `preload`, for submission to the browsers' preload lists. Requires `Hsts:IncludeSubDomains` and a `MaxAge` of at least 365 days. |
+
+The header is sent on HTTPS responses outside the `Development` environment, and not for `localhost`.
+
 ## Reverse proxy
 
 | Key | Default | Description |
@@ -227,8 +239,9 @@ Check the settings with **Send test email** on the admin UI's SMTP settings page
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
 | `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA), and the account forms that ask for the current password, per client IP address. |
 | `RateLimits:Email:PermitLimit` / `:Window` | `5` / `00:05:00` | Submissions of the [email](/guide/email) forms (forgot password, reset password, verify email, change email) per client IP address. |
+| `RateLimits:Account:PermitLimit` / `:Window` | `30` / `00:01:00` | Other account form submissions (profile, sessions, sign-out) per client IP address. |
 
-Rejected requests get `429 Too Many Requests` with a `Retry-After` header. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
+Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 clients are counted per `/64` prefix, since a single client usually has a whole `/64` to choose addresses from. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 
 ## Branding
 

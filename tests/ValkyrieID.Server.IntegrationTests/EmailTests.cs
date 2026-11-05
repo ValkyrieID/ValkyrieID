@@ -171,7 +171,7 @@ public abstract partial class EmailTests
         Assert.Equal(HttpStatusCode.Redirect, (await first.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await second.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", Password)).StatusCode);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
 
         await using var scope = server.Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
@@ -201,7 +201,7 @@ public abstract partial class EmailTests
 
         Assert.Contains("invalid or has expired", await replay.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
         Assert.Contains("invalid or has expired", await GetBodyAsync(server.Factory.CreateBrowser(), link), StringComparison.Ordinal);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", NewPassword)).StatusCode);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public abstract partial class EmailTests
 
         var expired = await PostFormAsync(browser, link, page, new() { ["NewPassword"] = NewPassword, ["ConfirmPassword"] = NewPassword });
         Assert.Contains("invalid or has expired", await expired.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", Password)).StatusCode);
     }
 
     [Theory]
@@ -297,7 +297,7 @@ public abstract partial class EmailTests
         await PostResetAsync(server.Factory.CreateBrowser(), link, NewPassword);
         var login = await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", NewPassword);
 
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, login.StatusCode);
         Assert.StartsWith("/account/login/2fa", login.Headers.Location?.OriginalString, StringComparison.Ordinal);
     }
 
@@ -383,7 +383,7 @@ public abstract partial class EmailTests
         Assert.Contains("has been changed", await confirmed.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
         Assert.Equal("alice@new.example", await EmailAsync(server, "alice"));
         Assert.True(await EmailVerifiedAsync(server));
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice@new.example", Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice@new.example", Password)).StatusCode);
 
         // The old address is told, without a link and with the new address masked.
         await DeliverAsync(server);
@@ -532,7 +532,7 @@ public abstract partial class EmailTests
     private static async Task<HttpClient> SignInAsync(Server server, string userName)
     {
         var browser = server.Factory.CreateBrowser();
-        Assert.Equal(HttpStatusCode.Redirect, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(browser, userName, Password)).StatusCode);
         return browser;
     }
 

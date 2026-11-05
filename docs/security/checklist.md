@@ -1,0 +1,110 @@
+# Security checklist
+
+This page maps the attacks in the [OAuth 2.0 Security Best Current Practice (RFC 9700)](https://www.rfc-editor.org/rfc/rfc9700) §4 and the [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html) §16 security considerations to ValkyrieID's mitigations and the tests that cover them. It was written during the phase 10a security review (November 2026) and is kept up to date with the code.
+
+- **Code** paths are relative to `src/ValkyrieID.Server` unless they start with `Core/` (`src/ValkyrieID.Core`).
+- **Tests** are in `tests/ValkyrieID.Server.IntegrationTests` and run over HTTP against SQLite and PostgreSQL. `Core/` tests are unit tests in `tests/ValkyrieID.Core.Tests`.
+- **Status:** ✅ mitigated · ➖ not applicable · ⚠️ accepted [spec deviation](#accepted-deviations).
+
+## RFC 9700 §4: attacks and mitigations
+
+| § | Attack | Mitigation | Tests | Status |
+|---|---|---|---|---|
+| 4.1 | Insufficient redirect URI validation | Exact, case-sensitive string matching; only `http://127.0.0.1` / `http://[::1]` match on any port (RFC 8252 7.3). `localhost` gets no port exception. Registration only allows `https`, loopback `http`, and private-use schemes, without fragments or user info (also RFC 9700 2.6). `Core/Clients/RedirectUris.Matches`, `IsValid`; `Protocol/AuthorizeEndpoint.HandleAsync` | `AuthorizationTests.Unknown_clients_and_unregistered_redirect_uris_are_never_redirected_to`, `Loopback_redirect_uris_match_on_any_port`, `Redirect_uri_query_components_are_kept`; `Core/RedirectUrisTests` | ✅ |
+| 4.2 | Credential leakage via Referer | `Referrer-Policy: no-referrer` on every response; the login and authorization pages load no third-party resources (CSP `default-src 'none'`, only `'self'` styles and images). `Configuration/AccountExtensions.SecurityHeadersExtensions` | `AccountTests.Login_pages_send_security_headers`, `SecurityTests.Error_pages_and_json_responses_have_a_strict_csp` | ✅ |
+| 4.3 | Credential leakage via browser history | Codes are single-use with a 60 s lifetime and replay detection; `form_post` response mode supported; access tokens are never accepted in the query string. `Tokens/AuthorizationCodeStore`, `Protocol/UserInfoEndpoint.ReadTokenAsync`, `AdminApi/AdminApiAuthentication` | `AuthorizationTests.Authorization_codes_are_single_use`, `Form_post_response_mode_renders_an_auto_submitting_form`, `Userinfo_rejects_missing_invalid_and_wrong_tokens`; `AdminApiTests.Tokens_are_only_accepted_in_the_authorization_header` | ✅ |
+| 4.4 | Mix-up | `iss` in every authorization response, including errors and `form_post` (RFC 9207), advertised with `authorization_response_iss_parameter_supported`. `Protocol/AuthorizationReply` | `AuthorizationTests.Confidential_client_gets_access_and_id_tokens_and_userinfo`, `Prompt_none_without_a_session_returns_login_required` (and every error redirect via `AssertRedirectError`) | ✅ |
+| 4.5 | Authorization code injection | PKCE `S256` (required for public clients and by default for confidential ones); codes bound to client, redirect URI, and session; `nonce` copied into the ID token. A client allowed to skip PKCE may only do so in OpenID Connect requests (with `nonce` as the alternative, 4.5.3.2). `Protocol/AuthorizeEndpoint.Validate`, `HandleAsync`; `Protocol/TokenEndpoint.AuthorizationCodeAsync` | `AuthorizationTests.Pkce_verifier_must_match_the_challenge`, `Codes_are_bound_to_the_redirect_uri_and_client`, `Public_clients_must_use_pkce`; `SecurityTests.Clients_without_pkce_must_use_it_for_requests_without_openid` | ✅ (⚠️ PKCE can be turned off per confidential client) |
+| 4.6 | Access token injection | Only `response_type=code`; no tokens in the authorization response. Client-side check otherwise. | `AuthorizationTests.Invalid_authorization_requests_are_redirected_with_an_error` | ✅ |
+| 4.7 | CSRF | Against the client: `state` returned unchanged, PKCE, `nonce`. Against ValkyrieID's own forms: anti-forgery tokens on every Razor form; session cookie `SameSite=Lax`, 2FA state cookie `SameSite=Strict`; the Admin API only accepts bearer tokens in the `Authorization` header. | `AccountTests.Login_without_an_anti_forgery_token_is_rejected`; `SelfServiceTests.Posts_without_an_antiforgery_token_are_rejected`; `SecurityTests.The_logout_confirmation_needs_an_antiforgery_token`; `LogoutTests.A_tampered_logout_request_is_ignored` | ✅ |
+| 4.8 | PKCE downgrade | A `code_verifier` for a code issued without `code_challenge` is rejected; `code_challenge_method` without a challenge and `plain` are rejected. `Protocol/TokenEndpoint.AuthorizationCodeAsync`, `Protocol/AuthorizeEndpoint.Validate` | `AuthorizationTests.Confidential_clients_may_skip_pkce_only_when_allowed_and_cannot_downgrade`, `Invalid_authorization_requests_are_redirected_with_an_error` | ✅ |
+| 4.9 | Access token leakage at the resource server | Audience-restricted access tokens: `aud` is the API resources owning the granted scopes (or the client). ValkyrieID's own resource servers check it: the Admin API requires `valkyrieid-admin`; introspection only answers callers in the token's audience. `Tokens/AccessTokenIssuer`, `AdminApi/AdminApiAuthentication`, `Protocol/IntrospectionEndpoint` | `AdminApiTests.Id_tokens_tokens_for_other_audiences_and_tokens_without_the_scope_are_rejected`; `RefreshTokenTests.Api_resources_introspect_access_tokens_issued_for_them`, `Clients_introspect_their_own_refresh_and_access_tokens` | ✅ |
+| 4.10 | Misuse of stolen access tokens | Audience restriction (above) and short lifetimes (30 min default). Sender-constrained tokens (DPoP) are planned for phase 11b. | as 4.9 | ⚠️ RFC 9700 §2.2.1 |
+| 4.11 | Open redirection | Authorization errors only go to a registered redirect URI of an enabled client; otherwise an error page. Clients are registered by administrators only (no dynamic registration), so registered URIs are trusted (4.11.2). `returnUrl` on sign-in pages must be local (`Url.IsLocalUrl`). `post_logout_redirect_uri` must match a registered URI exactly. | `AuthorizationTests.Unknown_clients_and_unregistered_redirect_uris_are_never_redirected_to`; `AccountTests.Return_url_must_be_local`; `LogoutTests.Unregistered_or_unidentified_post_logout_redirect_uris_are_never_used`; `AdminUiTests.The_admin_path_without_a_slash_redirects` | ✅ |
+| 4.12 | 307 redirect | Every redirect answering a `POST` is `303 See Other`, never 302 or 307. `Configuration/TransportSecurityExtensions.UseSeeOtherAfterPost` | `SecurityTests.Credential_posts_are_answered_with_303`; `LogoutTests.Post_requests_are_repeated_as_a_get_so_the_session_cookie_is_sent`; the sign-in tests in `AccountTests` and `TwoFactorTests` | ✅ |
+| 4.13 | TLS-terminating reverse proxies | Forwarded headers only from configured proxies or networks; the issuer never comes from headers. Requests that don't arrive over HTTPS are refused. The proxy must sanitize headers and the proxy link must be private (deployment, [Reverse proxy](/operations/reverse-proxy)). `Configuration/ReverseProxyExtensions`, `TransportSecurityExtensions.UseRequireHttps` | `RefreshTokenTests.Forwarded_headers_are_applied_only_from_trusted_proxies`, `Forwarded_headers_are_ignored_without_configured_proxies`; `ProtocolTests.Discovery_uses_the_configured_issuer_even_with_spoofed_host_headers`; `SecurityTests.Plain_http_requests_are_refused_while_the_issuer_is_https` | ✅ |
+| 4.14 | Refresh token protection | Only with `offline_access` allowed by an administrator; bound to client, scopes, and audiences; rotation on every use with family revocation on reuse; sliding and absolute expiry; revoked on code replay, password change, user or client disable, and session revocation. Stored as hashes. `Tokens/RefreshTokenStore`, `Protocol/TokenEndpoint.RefreshTokenAsync` | `RefreshTokenTests.Reusing_a_rotated_refresh_token_revokes_the_whole_family`, `Refresh_tokens_are_bound_to_their_client`, `Refresh_tokens_expire_after_the_sliding_lifetime`, `Rotation_never_extends_a_family_beyond_its_absolute_lifetime`, `Refresh_tokens_are_revoked_on_password_change_and_disable`, `Replaying_an_authorization_code_revokes_its_refresh_tokens` | ✅ |
+| 4.15 | Client impersonating resource owner | Users' `sub` is a GUID; GUID-shaped client ids are refused, so a `client_credentials` token's `sub` (the client id) can't equal a user's. Userinfo and the Admin API also refuse tokens whose `sub` equals their `client_id`. Clients registered before this check are reported at startup. `Administration/ClientAdministration.CreateAsync`, `Core/Protocol/ProtocolSyntax.LooksLikeSubject`, `Tokens/AccessTokenValidator.IsClientToken` | `SecurityTests.Guid_shaped_client_ids_are_refused`, `Tokens_whose_subject_is_their_client_are_not_treated_as_user_tokens`; `AuthorizationTests.Userinfo_rejects_client_credentials_tokens_and_disabled_users` | ✅ |
+| 4.16 | Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY` on every response, including the authorization endpoint, login and error pages, and the admin UI. Per-client framing origins aren't offered. | `AccountTests.Login_pages_send_security_headers`; `AdminUiTests.The_admin_ui_has_its_own_strict_csp`; `SecurityTests.Error_pages_and_json_responses_have_a_strict_csp` | ⚠️ RFC 9700 §4.16 |
+| 4.17 | In-browser communication flows | No `web_message` response mode or `postMessage`. The admin UI uses top-level redirects only. | n/a | ➖ |
+
+## OpenID Connect Core §16
+
+| § | Threat | Mitigation | Tests | Status |
+|---|---|---|---|---|
+| 16.1 | Request disclosure | TLS required (16.17). No request objects. | `SecurityTests.Plain_http_requests_are_refused_while_the_issuer_is_https` | ✅ |
+| 16.2 | Server masquerading | TLS; the issuer comes only from `Issuer:Url`, and `iss` is in every response and token. | `ProtocolTests.Discovery_uses_the_configured_issuer_even_with_spoofed_host_headers` | ✅ |
+| 16.3 | Token manufacture or modification | All tokens are RS256-signed; validators accept only RS256 with this server's keys, the configured issuer, and `typ: at+jwt` for access tokens; `alg: none` is rejected. `Tokens/AccessTokenValidator`, `Tokens/IdTokenHintValidator` | `SecurityTests.Tokens_with_another_issuer_type_or_no_signature_are_rejected`; `AuthorizationTests.Userinfo_rejects_missing_invalid_and_wrong_tokens` | ✅ |
+| 16.4 | Access token disclosure | Only in token responses (`no-store`), never in URLs. | `AuthorizationTests.Confidential_client_gets_access_and_id_tokens_and_userinfo` | ✅ |
+| 16.5 | Server response disclosure | Code flow only; codes need client authentication or PKCE. | as RFC 9700 4.5 | ✅ |
+| 16.6 | Server response repudiation | Signed ID tokens and access tokens. | as 16.3 | ✅ |
+| 16.7 | Request repudiation | No signed requests (16.20); audit log of code issuance and token requests. `Auditing/AuditRecorder` | `AuthorizationTests.Confidential_client_gets_access_and_id_tokens_and_userinfo` | ➖ |
+| 16.8 | Access token redirect | Audience-restricted access tokens (RFC 9700 4.9). | as RFC 9700 4.9 | ✅ |
+| 16.9 | Token reuse | `jti`, `iat`, `exp` in every token; short lifetimes; ID tokens carry `aud` and `nonce`. | `ProtocolTests.Client_credentials_with_basic_auth_issues_a_valid_rfc9068_access_token` | ✅ |
+| 16.10 | Eavesdropping or leaking codes | Single-use codes, 60 s, bound to client and PKCE; replay revokes the refresh tokens issued from the code. | `AuthorizationTests.Authorization_codes_are_single_use`, `Authorization_codes_expire_after_60_seconds`, `Replays_are_detected_after_the_code_has_expired` | ✅ |
+| 16.11 | Token substitution | `at_hash` in ID tokens; `sid`, `sub`, `aud` checked on `id_token_hint`. | `AuthorizationTests.Confidential_client_gets_access_and_id_tokens_and_userinfo`; `LogoutTests` | ✅ |
+| 16.12 | Timing attack | `CryptographicOperations.FixedTimeEquals` for secrets, PKCE, TOTP, recovery codes, email tokens, and security stamps; secret hashes are computed even for unknown clients; a dummy Argon2id verification for unknown users. `Core/Security/SecretHasher`, `PasswordHasher`, `Totp`, `Core/Protocol/Pkce` | `AccountTests.Wrong_password_and_unknown_user_get_the_same_response`; `Core/PasswordHasherTests.Dummy_verification_does_not_throw` | ✅ (see [residual risks](#residual-risks)) |
+| 16.13 | Other crypto-related attacks | RSA ≥ 2048-bit keys, rotated; AES-256-GCM for secrets at rest; Argon2id for passwords; SHA-256 for high-entropy secrets; `RandomNumberGenerator` for every secret value. | `Core/SecretProtectorTests`, `Core/PasswordHasherTests`, `Core/MasterKeyTests` | ✅ |
+| 16.14 | Signing and encryption order | No encrypted tokens. | n/a | ➖ |
+| 16.15 | Issuer identifier | Fixed `Issuer:Url`, `https` only (loopback `http` for development). | `ProtocolTests.Discovery_uses_the_configured_issuer_even_with_spoofed_host_headers` | ✅ |
+| 16.16 | Implicit flow threats | No implicit or hybrid flows (`response_type=code` only). | `AuthorizationTests.Invalid_authorization_requests_are_redirected_with_an_error` | ➖ |
+| 16.17 | TLS requirements | Requests not received over HTTPS are refused while the issuer is `https`; HSTS (one year by default); `Secure` cookies. `Configuration/TransportSecurityExtensions` | `SecurityTests.Plain_http_requests_are_refused_while_the_issuer_is_https`, `Token_requests_over_plain_http_are_refused_before_the_client_is_authenticated`, `Hsts_lasts_a_year_by_default` | ✅ |
+| 16.18 | Token lifetimes | Access 30 min, ID 5 min, refresh 14 days sliding / 30 days absolute, codes 60 s; configurable. | `RefreshTokenTests` lifetime tests; `AuthorizationTests.Authorization_codes_expire_after_60_seconds` | ✅ |
+| 16.19 | Symmetric key entropy | No HMAC-signed tokens; client secrets are 256-bit and server-generated. | `Core/SecretHasherTests` | ✅ |
+| 16.20, 16.21 | Signed and encrypted requests | Request objects aren't supported (`request_not_supported`). | `AuthorizationTests.Invalid_authorization_requests_are_redirected_with_an_error` | ➖ |
+| 16.22 | HTTP 307 redirects | As RFC 9700 4.12. | `SecurityTests.Credential_posts_are_answered_with_303` | ✅ |
+| 16.23 | Custom URI schemes on iOS | Clients' choice; private-use schemes must use reverse domain notation (RFC 8252 7.1). | `Core/RedirectUrisTests` | ➖ |
+
+## Headers, cookies, and CORS
+
+| Surface | Headers |
+|---|---|
+| Every response | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`; HSTS on HTTPS outside Development |
+| Login and account pages, error pages, JSON | CSP `default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, plus the origin of a validated redirect URI on sign-in and sign-out pages (`Configuration/PageSecurityFilter`). Pages are `no-store`. |
+| `form_post` responses | Same, plus a per-response script nonce and `form-action` limited to the redirect URI's origin |
+| Admin UI (`/admin`) | `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'` |
+| Admin UI and Admin API | `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`. Not on the login and protocol pages, where COOP would break relying parties' popup sign-in. |
+| Token, userinfo, introspection, revocation, Admin API, authorization redirects | `Cache-Control: no-store`, `Pragma: no-cache`, on success and errors |
+
+Tests: `AccountTests.Login_pages_send_security_headers`, `AdminUiTests.The_admin_ui_has_its_own_strict_csp`, `SecurityTests.Login_pages_allow_form_posts_only_to_self_and_a_registered_redirect_uri`, `Form_post_responses_post_only_to_the_redirect_uri`, `Logout_pages_allow_only_a_registered_post_logout_redirect_uri`, `Pages_and_protocol_responses_are_not_cached`, `Userinfo_and_admin_api_errors_are_not_cached`, `Hsts_subdomains_and_preload_are_opt_in_and_validated`, `Only_the_admin_surfaces_are_cross_origin_isolated`.
+
+| Cookie | Attributes | Lifetime | Tests |
+|---|---|---|---|
+| `__Host-valkyrie.session` (SSO session) | `Secure`, `HttpOnly`, `SameSite=Lax` (sent on the relying party's top-level redirect), `Path=/`, no `Domain` | Browser session; the ticket and the server-side session expire after `Session:Lifetime` (8 h), not renewed | `AccountTests.Session_cookie_is_secure_http_only_and_same_site_lax`, `Sessions_expire_after_the_configured_lifetime` |
+| `__Host-valkyrie.pending` (password verified, waiting for 2FA) | `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` | Browser session; ticket expires after a few minutes | `SecurityTests.Antiforgery_and_pending_login_cookies_are_host_only_secure_and_http_only` |
+| `__Host-valkyrie.af` (anti-forgery) | `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` | Browser session | same |
+| `__Host-valkyrie.verify-prompted` (email verification offered) | `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`; holds only the session id | Browser session | `SecurityTests.The_verification_prompt_cookie_is_host_only_secure_and_http_only` |
+
+Data Protection keys are stored in the database, encrypted with the master key; they set no cookie of their own.
+
+CORS: discovery and JWKS allow any origin without credentials; the token, userinfo, and revocation endpoints allow only origins registered on an enabled client; the authorization endpoint (RFC 9700 2.6), introspection, the login pages, and the Admin API send no CORS headers. Tests: `AuthorizationTests.Cors_allows_registered_origins_on_token_and_userinfo_and_any_origin_on_metadata`, `RefreshTokenTests.Public_clients_can_revoke_from_a_registered_origin`, `AdminApiTests.The_api_sends_no_cors_headers`, `SecurityTests.Endpoints_not_called_by_browser_clients_send_no_cors_headers`.
+
+## Other checks
+
+| Check | Result | Tests |
+|---|---|---|
+| No secrets, tokens, or codes in logs or audit details | Log messages take no token, code, secret, or URL arguments; audit details hold reasons and ids only (secret ids, never secrets; SMTP password as `(secret)`). Request URLs stay out of logs at the default `Microsoft.AspNetCore: Warning` level, and OpenTelemetry redacts query values (see [Observability](/operations/observability)). | `SecurityTests.Logs_never_contain_passwords_secrets_codes_or_tokens` (every log message, structured value, and exception over sign-in, code, refresh, reuse, replay, introspection, revocation, and logout); `AuthorizationTests.Confidential_client_gets_access_and_id_tokens_and_userinfo`; `ProtocolTests.Wrong_secret_is_rejected_and_audited_without_the_secret`; `SettingsTests.The_smtp_password_is_encrypted_and_never_returned_or_audited`; `MultiInstanceTests.Redis_holds_no_codes_or_readable_grants` |
+| Constant-time comparisons | All secret comparisons use `FixedTimeEquals`; lookups by hash are followed by a constant-time comparison. | 16.12 |
+| `RandomNumberGenerator` | Used for codes, refresh tokens, secrets, `jti`, `sid`, security stamps, email tokens, recovery codes, TOTP secrets, CSP nonces, and keys. No `System.Random`. | n/a (code review) |
+| Issuer never from the request | Discovery, tokens, `iss`, email links, and the admin UI use `Issuer:Url`. | `ProtocolTests.Discovery_uses_the_configured_issuer_even_with_spoofed_host_headers`; `EmailTests.Reset_links_use_the_issuer_and_not_the_request_host` |
+| Forwarded headers only from trusted proxies | Ignored unless `ReverseProxy:KnownProxies` / `KnownNetworks` are set. | as RFC 9700 4.13 |
+| Rate limits | Login (per IP and per account), 2FA, email, other account forms, token, userinfo, introspection, revocation, authorization, end session. IPv6 clients are counted per `/64`. | `AccountTests.Login_submissions_are_rate_limited_per_ip`, `..._per_account_even_for_unknown_users`, `Token_endpoint_is_rate_limited_per_ip`; `EmailTests.Reset_requests_are_rate_limited`; `SelfServiceTests.Password_changes_are_rate_limited`; `SecurityTests.Introspection_and_revocation_share_the_token_endpoint_limit`, `Authorization_requests_are_rate_limited`, `Two_factor_code_submissions_are_rate_limited`, `Other_account_form_posts_are_rate_limited`; `RateLimitPartitionTests` |
+| No user or client enumeration | One message for unknown users, wrong passwords, disabled and locked accounts; generic reset and email-change responses; `invalid_client` for every client authentication failure. | `AccountTests.Wrong_password_and_unknown_user_get_the_same_response`; `EmailTests.Requesting_a_reset_looks_the_same_for_known_and_unknown_accounts`; `ProtocolTests.Unknown_client_is_rejected`, `Wrong_secret_is_rejected_and_audited_without_the_secret`; `RefreshTokenTests.Introspection_requires_authentication` |
+| Redirects only to validated URIs, also on errors | See RFC 9700 4.1 and 4.11. | as above |
+
+## Accepted deviations
+
+These are recorded in the `PROJECT.md` "Spec deviations" table and are not gaps:
+
+- **RFC 9700 §2.2.1 / §4.10.1:** no sender-constrained access tokens (DPoP) in v0.1.0; planned for phase 11b.
+- **RFC 9700 §2.5:** no asymmetric client authentication (`private_key_jwt`) in v0.1.0; planned for phase 11a.
+- **RFC 9700 §2.1.1:** PKCE can be turned off per confidential client, for OpenID Connect requests only.
+- **RFC 9700 §4.16:** no per-client allowed framing origins; ValkyrieID never allows framing.
+- **RFC 7009 §2 and §2.1:** access tokens can't be revoked.
+
+## Residual risks
+
+- **Timing:** a wrong password for an existing account does a few more database writes (failure count, lockout) than one for an unknown account, and a reset request for an eligible account stores a token and queues an email. The differences are a few milliseconds against the Argon2id verification and network noise, and the per-IP and per-account rate limits bound the number of samples.
+- **Revocation:** revoking another client's refresh token returns `unauthorized_client`, which tells the caller (who already holds the token) that it is valid. RFC 7009 2.1 allows this.
+- **`sub` values** are version 7 GUIDs, which reveal when the account was created.
+- **`XForwardedPrefix`:** if an operator adds it to `ReverseProxy:ForwardedHeaders`, the path base comes from the (trusted) proxy.

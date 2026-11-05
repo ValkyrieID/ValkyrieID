@@ -20,6 +20,7 @@ internal static class RateLimitPolicies
     public const string Authorize = "authorize";
     public const string TwoFactor = "two-factor";
     public const string Email = "email";
+    public const string Account = "account";
 }
 
 internal static class AccountExtensions
@@ -95,7 +96,7 @@ internal static class AccountExtensions
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         });
         services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
-        services.AddRazorPages();
+        services.AddRazorPages().AddMvcOptions(options => options.Filters.Add<PageSecurityFilter>());
 
         services.AddRateLimiter(options =>
         {
@@ -126,6 +127,9 @@ internal static class AccountExtensions
                 : RateLimitPartition.GetNoLimiter(string.Empty));
             options.AddPolicy(RateLimitPolicies.Email, context => HttpMethods.IsPost(context.Request.Method)
                 ? FixedWindowPerIp(context, RateLimitPolicies.Email, o => o.Email)
+                : RateLimitPartition.GetNoLimiter(string.Empty));
+            options.AddPolicy(RateLimitPolicies.Account, context => HttpMethods.IsPost(context.Request.Method)
+                ? FixedWindowPerIp(context, RateLimitPolicies.Account, o => o.Account)
                 : RateLimitPartition.GetNoLimiter(string.Empty));
         });
 
@@ -171,7 +175,7 @@ internal static class AccountExtensions
 
     private static RateLimitPartition<string> FixedWindowPerIp(HttpContext context, string policy, Func<RateLimitOptions, RateLimitRule> rule)
     {
-        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = ClientPartition(context.Connection.RemoteIpAddress);
         var partition = $"{policy}:{ip}";
         if (context.RequestServices.GetService<RedisRateLimitCounter>() is { } counter)
         {
@@ -184,6 +188,32 @@ internal static class AccountExtensions
             var options = rule(context.RequestServices.GetRequiredService<IOptions<RateLimitOptions>>().Value);
             return new FixedWindowRateLimiterOptions { PermitLimit = options.PermitLimit, Window = options.Window, QueueLimit = 0 };
         });
+    }
+
+    /// <summary>
+    /// The rate-limit partition of a client address. IPv6 clients usually get a whole /64, so they are grouped by
+    /// that prefix; otherwise rotating addresses within it would bypass the limits. IPv4-mapped addresses count as IPv4.
+    /// </summary>
+    internal static string ClientPartition(System.Net.IPAddress? address)
+    {
+        if (address is null)
+        {
+            return "unknown";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6)
+        {
+            return address.ToString();
+        }
+
+        var bytes = address.GetAddressBytes();
+        bytes.AsSpan(8).Clear();
+        return new System.Net.IPAddress(bytes) + "/64";
     }
 
     private static void AddOptions<T>(IServiceCollection services, IConfiguration configuration, string section)
@@ -245,10 +275,32 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
 
 internal static class SecurityHeadersExtensions
 {
-    // form-action is left out on purpose: browsers apply it to redirects after a form post, which would block
-    // redirects back to relying parties after login.
-    private const string ContentSecurityPolicy =
+    private const string BasePolicy =
         "default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'";
+
+    // Browsers apply form-action to the redirects after a form post too; pages whose forms end at a relying party
+    // add that origin (PageSecurityFilter, ProtocolPages.FormPost).
+    private const string ContentSecurityPolicy = BasePolicy + "; form-action 'self'";
+
+    /// <summary>The login pages' policy, with <paramref name="formTarget"/>'s origin allowed as a form target.</summary>
+    public static string PagePolicy(string? formTarget) =>
+        FormActionSource(formTarget) is { } source ? $"{ContentSecurityPolicy} {source}" : ContentSecurityPolicy;
+
+    /// <summary>
+    /// A CSP source expression for a validated redirect URI: its origin (<c>https://host:port</c>), or for a
+    /// private-use scheme (RFC 8252 §7.1) the scheme (<c>com.example.app:</c>).
+    /// </summary>
+    public static string? FormActionSource(string? uri)
+    {
+        if (uri is null || !Uri.TryCreate(uri, UriKind.Absolute, out var parsed) || uri.StartsWith('/'))
+        {
+            return null;
+        }
+
+        var source = parsed.Scheme is "https" or "http" ? parsed.GetLeftPart(UriPartial.Authority) : parsed.Scheme + ":";
+        // Validated URIs can't contain these, but a CSP header must never be extended with another directive.
+        return source.Any(c => c is ';' or ',' or ' ' or '\'' or < '\x21' or > '\x7E') ? null : source;
+    }
 
     // The admin UI (PROJECT.md §8.2) additionally runs its own scripts and calls the same-origin Admin API and token
     // endpoint. Still no inline scripts or styles, nothing from other origins, and no framing.
@@ -265,6 +317,17 @@ internal static class SecurityHeadersExtensions
         headers.XFrameOptions = "DENY";
         headers.XContentTypeOptions = "nosniff";
         headers["Referrer-Policy"] = "no-referrer";
+
+        // The admin UI and the Admin API are only used same-origin, without popups: isolate their browsing context
+        // group and keep other sites from loading their responses. Not on the protocol and login pages, where COOP
+        // would break relying parties' popup sign-in.
+        if (context.Request.Path.StartsWithSegments(Administration.BuiltIn.AdminUiPath, StringComparison.OrdinalIgnoreCase)
+            || context.Request.Path.StartsWithSegments(AdminApi.AdminApiAuthentication.PathPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            headers["Cross-Origin-Opener-Policy"] = "same-origin";
+            headers["Cross-Origin-Resource-Policy"] = "same-origin";
+        }
+
         return next(context);
     });
 }

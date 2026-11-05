@@ -48,7 +48,7 @@ A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 
 
 | Grant | Notes |
 |---|---|
-| `authorization_code` | PKCE (`S256`) **required** for public clients; optional per confidential client (per-client setting) |
+| `authorization_code` | PKCE (`S256`) **required** for public clients; optional per confidential client (per-client setting), and then only in OpenID Connect requests (`nonce` protects those) |
 | `client_credentials` | Server-to-server; confidential clients only |
 | `refresh_token` | See token section |
 
@@ -79,6 +79,7 @@ Authorization responses include the `iss` parameter (RFC 9207) to prevent mix-up
 - **Redirect URIs:**
   - Exact string matching; no wildcards or partial matching.
   - Exception for native/CLI apps (RFC 8252): loopback redirects (`http://127.0.0.1` / `http://[::1]`) match on any port.
+- **Client ids** can't be GUIDs, so a `client_credentials` token (whose `sub` is the client id) can't be mistaken for a user's (RFC 9700 §4.15). Userinfo and the Admin API also refuse tokens whose `sub` equals their `client_id`.
 - Per-client configuration includes:
   - redirect URIs and post-logout redirect URIs
   - allowed grants and allowed scopes
@@ -270,9 +271,14 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Forwarded headers (`X-Forwarded-For`, `-Proto`, `-Host`) with configurable trusted proxies.
   - Public issuer URL configured explicitly (never derived from the request).
   - Optional path base (e.g. `/auth`).
+- **Transport security:** while the issuer is `https`, requests that didn't arrive over HTTPS are refused (`400`, no redirect), except the health endpoints (RFC 6749 §3.1, §3.2). Behind a TLS-terminating proxy, the proxy must be trusted. HSTS with a one-year `max-age` by default (`Hsts:*`, configuration-only).
 - **Security headers:**
   - HSTS, Content-Security-Policy, `X-Frame-Options: DENY` / `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`.
-  - Cookies are `Secure` and `HttpOnly`, with an appropriate `SameSite` setting.
+  - CSP `form-action 'self'`; sign-in and sign-out pages add the origin of a validated redirect URI, because browsers apply `form-action` to the redirects after a form post.
+  - Pages and protocol responses are `no-store`; redirects answering a `POST` are `303` (RFC 9700 §4.12).
+  - The admin UI and the Admin API add `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin` (not the login and protocol pages, where COOP would break popup sign-in).
+  - Cookies are `Secure`, `HttpOnly`, and `__Host-` prefixed, with an appropriate `SameSite` setting.
+  - The checklist of RFC 9700 §4 and OIDC Core §16 mitigations is kept in `docs/security/checklist.md`.
 - **CI: GitHub Actions**, kept within the free tier (public repo: free standard runners; private: 2,000 min/month):
   - **On every push / PR** (fast, Linux runners only):
     - locked-mode restore
@@ -529,7 +535,8 @@ Every approved deviation from a SHOULD / RECOMMENDED requirement is listed here.
 |---|---|---|---|---|
 | RFC 7009 §2 | SHOULD | Access tokens can't be revoked; the revocation endpoint answers `unsupported_token_type` for them. | Access tokens are self-contained JWTs (RFC 9068) that resource servers validate without calling ValkyrieID. Their short lifetime (30 min default) limits the risk (§5). | 2026-10-29 |
 | RFC 7009 §2.1 | SHOULD | Revoking a refresh token doesn't invalidate access tokens issued from the same grant. | Same reason: access tokens aren't tracked server-side. They expire within their lifetime. | 2026-10-29 |
-| RFC 9700 §2.1.1 | RECOMMENDED | An administrator can turn PKCE off for a confidential client (`--no-pkce`). On by default; always required for public clients. | Some confidential clients (and the conformance plans) don't send PKCE. OIDC `nonce` is the spec's alternative protection against code injection for those clients. | 2026-10-29 |
+| RFC 9700 §2.1.1 | RECOMMENDED | An administrator can turn PKCE off for a confidential client (`--no-pkce`), for OpenID Connect requests only. On by default; always required for public clients and for requests without `openid`. | Some confidential clients (and the conformance plans) don't send PKCE. OIDC `nonce` is the spec's alternative protection against code injection for those clients. | 2026-10-29 |
 | OIDC Discovery §3 | RECOMMENDED | No `registration_endpoint`. | Dynamic client registration is a non-goal (§2). | 2026-10-29 |
 | RFC 9700 §2.5 | RECOMMENDED | No asymmetric client authentication (`private_key_jwt`, mTLS) in v0.1.0. | Client secrets are 256-bit, server-generated, stored hashed, compared in constant time, can expire, and rotate without downtime. The target clients mostly use secrets. Planned after v0.1.0 (§14, 11a). | 2026-11-05 |
 | RFC 9700 §2.2.1 | SHOULD | Access tokens aren't sender-constrained (no DPoP or mTLS) in v0.1.0. | Access tokens are short-lived; refresh tokens rotate with reuse detection, which meets the §2.2.2 MUST for public clients. Common resource servers (ASP.NET Core JwtBearer, oauth2-proxy, Grafana) can't check DPoP proofs. Planned after v0.1.0 (§14, 11b). | 2026-11-05 |
+| RFC 9700 §4.16 | SHOULD | Administrators can't configure allowed framing origins per client; every response sends `frame-ancestors 'none'` and `X-Frame-Options: DENY`. | Stricter than the spec: nothing can frame the login pages. Silent renew in iframes is broken by third-party cookie blocking anyway; clients use top-level `prompt=none` redirects (as the admin UI does) or refresh tokens. | 2026-11-05 |

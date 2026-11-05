@@ -41,12 +41,16 @@ Every response carries these headers:
 
 | Header | Value |
 |---|---|
-| `Content-Security-Policy` | `default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'` |
+| `Content-Security-Policy` | `default-src 'none'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'` |
 | `X-Frame-Options` | `DENY` |
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `no-referrer` |
 
-`Strict-Transport-Security` is added to HTTPS responses outside the `Development` environment.
+`Strict-Transport-Security` is added to HTTPS responses outside the `Development` environment (see [HSTS](/reference/configuration#hsts)). Requests that don't arrive over HTTPS are refused with `400` while the issuer is `https`.
+
+Browsers apply `form-action` to the redirects that follow a form post too. Sign-in pages whose `returnUrl` is an authorization request add the origin of its redirect URI, but only when that URI is registered for the enabled client; the sign-out confirmation adds the origin of a validated `post_logout_redirect_uri`. A `form_post` response allows only its redirect URI's origin. The admin UI under `/admin` has [its own policy](/guide/admin-ui).
+
+Pages are sent with `Cache-Control: no-store`. A redirect answering a form `POST` (sign-in, 2FA, password forms, authorization and sign-out requests) uses `303 See Other`, so the browser never re-sends the form, and the credentials in it, to the next address (RFC 9700 4.12).
 
 ## Discovery
 
@@ -83,7 +87,7 @@ Starts a sign-in with the authorization code flow. Parameters come from the quer
 | `client_id` | yes | A registered, enabled client allowed to use `authorization_code`. |
 | `redirect_uri` | yes | Must match a registered redirect URI exactly (any port for `http://127.0.0.1` and `http://[::1]`). |
 | `scope` | yes | Space-separated. Include `openid` for OpenID Connect; without it the request is plain OAuth 2.0 and returns only an access token. In OpenID Connect requests, scopes the server doesn't know (e.g. `address`) are ignored; scopes that exist but aren't allowed for the client are rejected. `offline_access` requests a refresh token; see [Refresh tokens](#refresh-token-grant). |
-| `code_challenge`, `code_challenge_method` | public clients, and confidential clients unless created with `--no-pkce` | PKCE (RFC 7636). Only `S256`. |
+| `code_challenge`, `code_challenge_method` | public clients, and confidential clients unless created with `--no-pkce`; always for requests without `openid` | PKCE (RFC 7636). Only `S256`. A client created with `--no-pkce` may only skip it in OpenID Connect requests, where `nonce` protects against code injection instead (RFC 9700 2.1.1). |
 | `state` | recommended | Returned unchanged. |
 | `nonce` | recommended | Copied into the ID token. |
 | `response_mode` | no | `query` (default) or `form_post`. |

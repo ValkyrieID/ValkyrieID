@@ -12,7 +12,7 @@ namespace ValkyrieID.Server.Pages.Account;
 /// a code confirms the new authenticator.
 /// </summary>
 [EnableRateLimiting(RateLimitPolicies.TwoFactor)]
-internal sealed class EnrollTwoFactorModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel
+internal sealed class EnrollTwoFactorModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel, IReturnUrlPage
 {
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }

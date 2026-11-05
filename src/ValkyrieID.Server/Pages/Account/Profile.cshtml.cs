@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Pages.Account;
 
 /// <summary>Edits the user's names. The email address is changed on its own page, since that needs verification.</summary>
+[EnableRateLimiting(RateLimitPolicies.Account)]
 internal sealed class ProfileModel(AccountService account) : AccountPageModel(account)
 {
     [BindProperty]

@@ -8,7 +8,7 @@ namespace ValkyrieID.Server.Pages.Account;
 
 /// <summary>Second sign-in step for users with 2FA: a code from their authenticator app.</summary>
 [EnableRateLimiting(RateLimitPolicies.TwoFactor)]
-internal sealed class TwoFactorModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel
+internal sealed class TwoFactorModel(LoginService login, SessionManager sessions, TwoFactorService twoFactor, PendingLogin pending) : PageModel, IReturnUrlPage
 {
     internal const string InvalidCode = "The code is invalid or has already been used.";
 

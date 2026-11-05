@@ -48,6 +48,10 @@ export default defineConfig({
           { text: 'Conformance testing', link: '/operations/conformance' },
         ],
       },
+      {
+        text: 'Security',
+        items: [{ text: 'Security checklist', link: '/security/checklist' }],
+      },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/ValkyrieID/valkyrieid' }],
     search: { provider: 'local' },

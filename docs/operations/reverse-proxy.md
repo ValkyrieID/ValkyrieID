@@ -24,6 +24,12 @@ With [several instances](/operations/multi-instance), give every instance the sa
 
 Make sure the proxy **replaces** `X-Forwarded-For` with the client address (or appends to it) and sets `X-Forwarded-Proto: https`. The session cookie is `Secure`, so the server must see HTTPS requests as HTTPS.
 
+::: warning HTTPS is required
+While `Issuer:Url` is `https`, ValkyrieID refuses every request that didn't arrive over HTTPS with `400` (OAuth 2.0 requires TLS for the authorization and token endpoints, RFC 6749 3.1 and 3.2). Requests aren't redirected, because their credentials or codes have already crossed the network. Only the [health endpoints](/reference/health) answer over plain HTTP. Behind a TLS-terminating proxy, the proxy must therefore be a trusted proxy that sends `X-Forwarded-Proto: https`; otherwise every request is refused. Keep the connection between the proxy and ValkyrieID on a private network (RFC 9700 4.13).
+:::
+
+The `Strict-Transport-Security` header is sent on HTTPS responses (see [HSTS](/reference/configuration#hsts)).
+
 ## Path base
 
 If ValkyrieID is served under a path such as `https://example.com/auth`:

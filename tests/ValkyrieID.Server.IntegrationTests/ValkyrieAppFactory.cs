@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ValkyrieID.Data;
 using ValkyrieID.Server.AdminUi;
 using ValkyrieID.Server.Cli;
@@ -22,6 +23,15 @@ public sealed class ValkyrieAppFactory(
     : WebApplicationFactory<Program>
 {
     public const string DefaultIssuer = "https://id.example.test";
+
+    /// <summary>
+    /// A client for https://localhost: the server refuses plain-http requests while the issuer is https (RFC 6749
+    /// §3.1, §3.2).
+    /// </summary>
+    public new HttpClient CreateClient() => CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+    /// <summary>A client for plain http, to test that such requests are refused.</summary>
+    public HttpClient CreateHttpClient() => base.CreateClient();
 
     /// <summary>
     /// On Linux every file watcher takes an inotify instance, and the default limit (128, also on GitHub's runners) is
@@ -62,6 +72,12 @@ public sealed class ValkyrieAppFactory(
 
     /// <summary>Serves the admin UI from this directory instead of the build output in wwwroot/admin.</summary>
     public string? AdminUiDirectory { get; init; }
+
+    /// <summary>
+    /// Receives every formatted log message (with exception details) at the configured levels, plus Trace for
+    /// ValkyrieID's own categories.
+    /// </summary>
+    public System.Collections.Concurrent.ConcurrentQueue<string>? CapturedLogs { get; init; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -115,6 +131,33 @@ public sealed class ValkyrieAppFactory(
         {
             builder.ConfigureTestServices(services => services.AddSingleton(new AdminUiFiles(new PhysicalFileProvider(adminUi))));
         }
+
+        if (CapturedLogs is { } logs)
+        {
+            builder.UseSetting("Logging:LogLevel:ValkyrieID", "Trace");
+            builder.ConfigureTestServices(services => services.AddSingleton<ILoggerProvider>(new CapturingLoggerProvider(logs)));
+        }
+    }
+
+    private sealed class CapturingLoggerProvider(System.Collections.Concurrent.ConcurrentQueue<string> logs) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, logs);
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class CapturingLogger(string category, System.Collections.Concurrent.ConcurrentQueue<string> logs) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            // The structured values too, in case a template doesn't render one of them.
+            logs.Enqueue($"{logLevel} {category}: {formatter(state, exception)} {exception} {(state is IEnumerable<KeyValuePair<string, object?>> values ? string.Join(' ', values.Select(v => $"{v.Key}={v.Value}")) : null)}");
     }
 
     private static void RemoveHostedService<T>(IServiceCollection services)
