@@ -14,6 +14,15 @@ Until the first user exists, anyone who can reach `/setup` can create the admini
 
 You are then signed in and redirected to `/account`. From then on, `/setup` returns `404`. The wizard can't be run again, even if every user is later disabled.
 
+## Log messages on the first start
+
+When the database is new, ValkyrieID creates the schema (`Applying 12 pending database migration(s)`). Two messages from EF Core look alarming but are expected:
+
+- **PostgreSQL:** an `Error` from `Microsoft.EntityFrameworkCore.Database.Command`, `Failed executing DbCommand ... FROM "__EFMigrationsHistory"`. EF Core reads the migrations table before it exists, then creates it.
+- **SQLite:** a `Warning` (event `20410`) that `PRAGMA foreign_keys = 0` from migration `RefreshTokens` can't run in a transaction. SQLite requires this outside a transaction to rebuild a table; it only matters if the process is killed during that migration on the very first start. In that case, delete the database file and start again.
+
+Neither appears on later starts. If the server reports `/health/ready` as healthy, the migrations succeeded.
+
 ## Without the wizard
 
 You can also create the first admin from the command line. The wizard then never appears:

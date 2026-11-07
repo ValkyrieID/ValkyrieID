@@ -6,8 +6,20 @@ ValkyrieID is under active development. This page describes what works today.
 
 ## Requirements
 
+- [Docker](/guide/docker), or
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) to build from source
 - SQLite (built in) or PostgreSQL
+
+## Run with Docker
+
+```sh
+docker build -t ghcr.io/valkyrieid/valkyrieid .
+docker run -d -p 127.0.0.1:8080:8080 -v valkyrieid-data:/data \
+  -e Issuer__Url=http://localhost:8080 -e MasterKey__Current="$(openssl rand -base64 32)" \
+  ghcr.io/valkyrieid/valkyrieid
+```
+
+See [Docker](/guide/docker) for production setups with a reverse proxy and PostgreSQL.
 
 ## Run from source
 

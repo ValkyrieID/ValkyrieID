@@ -287,7 +287,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
     - unit tests and SQLite integration tests
     - Angular tests, `prettier --check`, and lint; a `dotnet publish` that includes the admin UI
   - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers).
-  - **On release tags / manual trigger only:** Docker image build and publish, OpenID conformance suite, OWASP ZAP scan.
+  - **On release tags / manual trigger only:** Docker image build (amd64 and arm64) and footprint check, image publish, OpenID conformance suite, OWASP ZAP scan.
   - **Nightly:** OpenID conformance suite (all plans), to catch regressions between releases.
   - **Cost controls:**
     - Linux runners only (Windows/macOS minutes cost 2×/10× on private repos).
@@ -311,12 +311,13 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - The server repo's README stays short (what it is, quick start) and links to the docs site.
   - Changes to configuration or behavior include the matching docs update in the same PR.
 - **Deployment:**
-  - small chiseled Docker image, running as non-root, with a health check through `valkyrieid healthcheck` (the image has no shell or curl)
+  - small chiseled Docker image (`aspnet:10.0-noble-chiseled-extra`, framework-dependent, amd64 and arm64), running as non-root, with a health check through `valkyrieid healthcheck` (the image has no shell or curl)
   - plain `dotnet publish` output
-- **Footprint targets** (measured in CI on release builds):
-  - Docker image < 120 MB
+- **Footprint targets** (measured in CI on release builds and manual runs, `footprint/measure.*`):
+  - Docker image < 210 MB
   - Idle memory < 150 MB
-  - Startup to ready < 2 s (SQLite)
+  - Startup to ready < 4 s (SQLite, fresh volume, timed from `docker start`)
+  - Revised in phase 10b (2026-11-07) from < 120 MB and < 2 s: the chiseled ASP.NET Core base alone is 124 MB, and 163 MB with ICU and time zone data (`-extra`), kept for culture-aware formatting and time zones. ReadyToRun met the 2 s startup target but added about 30 MB; the image stays JIT-only (180 MB, 2.5–3.0 s, ~100 MB idle when measured).
 - **Backups:** documented backup and restore procedures for SQLite (online backup / file copy while stopped) and PostgreSQL (`pg_dump`). Backups must be paired with the master encryption key, since secrets in the DB are unreadable without it.
 
 ## 12. Development conventions
@@ -463,7 +464,7 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
       - RFC 9700 §4 / OIDC Core §16 checklist with tests
     - **10b: container and footprint**
       - small chiseled, non-root Docker image (admin UI included, amd64 and arm64), health check through `valkyrieid healthcheck`
-      - footprint targets measured in CI
+      - footprint targets measured in CI (targets revised, see §11)
     - **10c: accessibility pass** (WCAG 2.2 AA): automated axe checks (Playwright) and a manual pass
     - **10d: conformance and security scanning**
       - run the OpenID conformance plans: Basic OP, Config OP *(deferred: from phase 4)*, RP-Initiated Logout, Back-Channel Logout *(deferred: from phase 6)*

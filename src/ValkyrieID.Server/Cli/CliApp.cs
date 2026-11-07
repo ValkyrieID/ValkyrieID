@@ -66,6 +66,9 @@ internal static class CliApp
     public const string Usage = """
         Usage: valkyrieid <command> [arguments]
 
+        Container health check (exits 0 when the running server is healthy):
+          healthcheck [--ready|--live] [--url <http-url>] [--timeout <seconds>]
+
         Users (<user> is a username or email address):
           user create <username> [--email <email>] [--name <display name>]
           user list

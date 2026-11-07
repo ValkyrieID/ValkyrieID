@@ -6,6 +6,12 @@ using ValkyrieID.Server.Cli;
 using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Protocol;
 
+// The container health check runs without building the host (no master key, database, or migrations).
+if (HealthCheckCommand.IsCommand(args))
+{
+    return await HealthCheckCommand.RunAsync(HealthCheckCommand.LoadConfiguration(), args, Console.Out, Console.Error);
+}
+
 // Maintenance commands (e.g. `valkyrieid client create ...`) take their own arguments; configuration then
 // comes from appsettings.json and environment variables only.
 var isCli = CliApp.IsCommand(args);

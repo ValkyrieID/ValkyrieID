@@ -9,8 +9,15 @@ A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET.
 ## Quick start
 
 ```sh
+docker build -t valkyrieid .
+docker run -p 127.0.0.1:8080:8080 -v valkyrieid-data:/data \
+  -e Issuer__Url=http://localhost:8080 -e MasterKey__Current="$(openssl rand -base64 32)" valkyrieid
+```
+
+Then open http://localhost:8080/setup. See [Docker](https://valkyrieid.liesel.dev/guide/docker) for production setups, or run from source:
+
+```sh
 dotnet run --project src/ValkyrieID.Server
-curl http://localhost:5102/health/ready
 ```
 
 ## Documentation

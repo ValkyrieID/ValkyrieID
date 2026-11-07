@@ -18,6 +18,7 @@ export default defineConfig({
         text: 'Guide',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Docker', link: '/guide/docker' },
           { text: 'First run', link: '/guide/first-run' },
           { text: 'Protect an API', link: '/guide/protect-an-api' },
           { text: 'Sign in users', link: '/guide/sign-in-users' },

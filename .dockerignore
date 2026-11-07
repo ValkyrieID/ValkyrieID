@@ -1,0 +1,29 @@
+# Allow-list: only what the image build needs enters the build context.
+*
+!global.json
+!Directory.Build.props
+!Directory.Packages.props
+!.editorconfig
+!src/
+
+# Build output, dependencies, and caches
+**/bin/
+**/obj/
+**/node_modules/
+**/.angular/
+src/ValkyrieID.Server/wwwroot/admin/
+**/TestResults/
+
+# Local data and secrets
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/.env
+**/.env.*
+**/*.pfx
+**/*.p12
+**/*.pem
+**/*.key
+**/secrets.json
+**/appsettings.*.local.json
+**/launchSettings.json

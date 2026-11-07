@@ -1,0 +1,51 @@
+name: Container
+
+# Builds the container image for amd64 and arm64 and checks the footprint targets (PROJECT.md §11). Runs on release
+# tags and manual triggers only, to stay within the free tier. Publishing to ghcr.io is part of the release workflow.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  footprint:
+    name: Image build and footprint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # QEMU only runs the arm64 final stage (file copies); the Node and SDK stages run natively.
+      - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build for amd64 and arm64
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Load the amd64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: valkyrieid:footprint
+          cache-from: type=gha
+
+      - name: Measure the footprint
+        run: sh footprint/measure.sh --image valkyrieid:footprint --skip-build

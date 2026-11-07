@@ -3,8 +3,10 @@
 The `valkyrieid` binary runs maintenance commands against the configured database without starting the web server. Configuration comes from `appsettings.json` and environment variables, as for the server, but not from command-line arguments. Pending migrations are applied first when `Database:AutoMigrate` is enabled.
 
 ```sh
-# Docker
-docker run --rm -e MasterKey__Current=... -e Issuer__Url=... -v valkyrieid-data:/app/data \
+# Docker (a running container already has the configuration)
+docker exec -it valkyrieid dotnet /app/valkyrieid.dll client list
+# or a one-off container on the same volume
+docker run --rm -e MasterKey__Current=... -e Issuer__Url=... -v valkyrieid-data:/data \
   ghcr.io/valkyrieid/valkyrieid client list
 
 # dotnet publish output
@@ -159,3 +161,11 @@ A client can have several active secrets, so you can rotate without downtime:
 3. `client list` to find the old secret's id, then `client remove-secret billing <secret-id>`.
 
 Alternatively, give each secret an expiry with `--expires-days`.
+
+## Health check
+
+| Command | Description |
+|---|---|
+| `healthcheck [--ready\|--live] [--url <url>] [--timeout <seconds>]` | Call `/health/ready` (default) or `/health/live` of the server running on this machine over loopback; exit with `0` when it answers `200`, `1` otherwise. |
+
+Unlike the other commands, `healthcheck` doesn't open the database or need the master key; it only reads the listening address (`ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_URLS`, or `Kestrel:Endpoints`) and `ReverseProxy:PathBase`. It is the [container health check](/guide/docker#health-check).
