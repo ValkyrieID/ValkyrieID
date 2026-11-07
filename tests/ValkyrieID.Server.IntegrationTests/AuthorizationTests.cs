@@ -378,10 +378,8 @@ public abstract class AuthorizationTests
         AssertRedirectError(location, "invalid_request");
     }
 
-    [Theory]
-    [InlineData("consent")]
-    [InlineData("login consent")]
-    public async Task Prompt_consent_is_refused_because_there_is_no_consent_screen(string prompt)
+    [Fact]
+    public async Task Prompt_consent_is_accepted_because_the_administrator_approved_the_scopes()
     {
         await using var factory = CreateFactory();
         await CreateUserAsync(factory, "alice");
@@ -390,10 +388,27 @@ public abstract class AuthorizationTests
         await Forms.LoginAsync(browser, "alice", Password);
         var (_, challenge) = NewPkce();
 
-        var location = await AuthorizeAsync(browser, Params("spa", "openid", challenge) with { Prompt = prompt });
+        var location = await AuthorizeAsync(browser, Params("spa", "openid", challenge) with { Prompt = "consent" });
 
-        // OIDC Core §3.1.2.1: if the OP can't obtain consent it MUST return an error, typically consent_required.
-        AssertRedirectError(location, "consent_required");
+        // OIDC Core §11: clients request offline_access with prompt=consent. There is no consent screen; the admin's
+        // approval of the client's scopes is the consent (regression: the conformance suite's oidcc-refresh-token
+        // test got consent_required).
+        Assert.False(string.IsNullOrEmpty(Code(location)));
+    }
+
+    [Fact]
+    public async Task Prompt_consent_does_not_grant_scopes_the_client_is_not_allowed()
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        await CreatePublicClientAsync(factory, "spa");
+        var browser = factory.CreateBrowser();
+        await Forms.LoginAsync(browser, "alice", Password);
+        var (_, challenge) = NewPkce();
+
+        var location = await AuthorizeAsync(browser, Params("spa", "openid email", challenge) with { Prompt = "consent" });
+
+        AssertRedirectError(location, "invalid_scope");
     }
 
     [Theory]

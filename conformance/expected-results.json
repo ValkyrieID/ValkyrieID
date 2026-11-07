@@ -1,0 +1,157 @@
+{
+  "description": "Every allowed non-PASSED result of the conformance plans, with its reason. run-plans.py fails on any result that isn't listed here, and on listed results that no longer happen. WARNING entries list the allowed warning conditions; any other warning fails the run. See docs/conformance/results.md.",
+  "results": [
+    {
+      "plan": "*",
+      "module": "oidcc-scope-profile",
+      "result": "WARNING",
+      "conditions": [{ "condition": "VerifyScopesReturnedInUserInfoClaims" }],
+      "reason": "ValkyrieID stores only some profile claims (name, given_name, family_name, preferred_username, updated_at); the others (e.g. birthdate, gender, picture) are never returned. OIDC Core §5.4 only asks for claims that are available."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-scope-email",
+      "result": "WARNING",
+      "conditions": [{ "condition": "EnsureIdTokenDoesNotContainEmailForScopeEmail" }],
+      "reason": "The claims of the profile and email scopes are also put in the ID token, for clients that only read the ID token (ASP.NET Core AddOpenIdConnect by default, oauth2-proxy, Grafana). OIDC Core §5.4 returns them from UserInfo when an access token is issued; not a MUST."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-alternate-happy-flow",
+      "result": "WARNING",
+      "conditions": [{ "condition": "EnsureIdTokenDoesNotContainEmailForScopeEmail" }],
+      "reason": "Same as oidcc-scope-email: scope claims are also in the ID token."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-ensure-request-with-acr-values-succeeds",
+      "result": "WARNING",
+      "conditions": [{ "condition": "ValidateIdTokenACRClaimAgainstAcrValuesRequest" }],
+      "reason": "ValkyrieID defines no authentication context classes and reports the methods used in amr (RFC 8176). acr_values requests acr as a voluntary claim (OIDC Core §3.1.2.1), and acr is OPTIONAL (§2)."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-codereuse-30seconds",
+      "result": "WARNING",
+      "conditions": [{ "condition": "EnsureHttpStatusCodeIs4xx" }],
+      "reason": "On authorization code reuse the refresh tokens issued from the code are revoked, but the self-contained access token stays valid until it expires. Approved deviation from RFC 6749 §4.1.2 (PROJECT.md, Spec deviations)."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-claims-essential",
+      "result": "WARNING",
+      "conditions": [{ "condition": "EnsureUserInfoContainsName" }],
+      "reason": "The claims request parameter isn't supported (claims_parameter_supported is false in discovery), so name isn't returned without the profile scope."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-prompt-login",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the second sign-in page."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-max-age-1",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the second sign-in page."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-ensure-registered-redirect-uri",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the error page: ValkyrieID never redirects to an unregistered redirect URI (RFC 6749 §4.1.2.1)."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-ensure-request-object-with-redirect-uri",
+      "result": "REVIEW",
+      "reason": "Request objects aren't supported, so the request has no redirect URI and ValkyrieID shows its error page; needs a person to check the uploaded screenshot."
+    },
+    {
+      "plan": "oidcc-formpost-basic-certification-test-plan",
+      "module": "oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported",
+      "variant": { "response_mode": "form_post" },
+      "result": "FAILED",
+      "conditions": [
+        { "condition": "CheckCallbackHttpMethodIsPost", "expected": "failure" },
+        { "condition": "CheckCallbackContentTypeIsFormUrlEncoded", "expected": "failure" },
+        { "condition": "RejectErrorInUrlQuery", "expected": "failure" },
+        { "condition": "ValidateIssIfPresentInAuthorizationResponse", "expected": "failure" },
+        { "condition": "CheckDiscEndpointRequestParameterSupported" }
+      ],
+      "reason": "Form Post Basic only (release tags). The suite sends response_mode=form_post and state only inside the request object. Request objects aren't supported, so ValkyrieID answers request_not_supported (OIDC Core §6.1) with the default query response mode: it doesn't read response_mode from the unsupported, unverified request object. The same test is SKIPPED in Basic OP, where the response mode is the default. Approved 2026-11-07."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-scope-address",
+      "result": "SKIPPED",
+      "reason": "The address scope isn't supported (not in scopes_supported)."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-scope-phone",
+      "result": "SKIPPED",
+      "reason": "The phone scope isn't supported (not in scopes_supported)."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-scope-all",
+      "result": "SKIPPED",
+      "reason": "The address and phone scopes aren't supported."
+    },
+    {
+      "plan": "*",
+      "module": "oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported",
+      "result": "SKIPPED",
+      "reason": "Request objects aren't supported (request_parameter_supported is false in discovery)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-bad-post-logout-redirect-uri",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot: the user is asked to sign out, told the application's request was invalid, and not redirected (RP-Initiated Logout §3)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-query-added-to-post-logout-redirect-uri",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot: the modified post-logout redirect URI doesn't match exactly, so there is no redirect (RP-Initiated Logout §3)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-modified-id-token-hint",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot: the invalid id_token_hint isn't used and there is no redirect (RP-Initiated Logout §4)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-bad-id-token-hint",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot: the id_token_hint for another client isn't used and there is no redirect (RP-Initiated Logout §2, §4)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-no-id-token-hint",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot: without id_token_hint or client_id the post-logout redirect URI can't be validated, so there is no redirect (RP-Initiated Logout §3)."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-no-params",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the signed-out page."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-no-post-logout-redirect-uri",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the signed-out page."
+    },
+    {
+      "plan": "oidcc-rp-initiated-logout-certification-test-plan",
+      "module": "oidcc-rp-initiated-logout-only-state",
+      "result": "REVIEW",
+      "reason": "Needs a person to check the uploaded screenshot of the signed-out page."
+    }
+  ]
+}

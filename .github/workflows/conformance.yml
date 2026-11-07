@@ -1,0 +1,56 @@
+name: Conformance
+
+# Runs the OpenID conformance suite against ValkyrieID in Docker (conformance/run.sh, PROJECT.md §13): nightly and
+# on manual runs the four target plans, on release tags also the client_secret_post and form_post variants. The
+# results and logs are uploaded as an artifact; publish them with docs/conformance/results.md.
+on:
+  push:
+    tags: ['v*']
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Also run the client_secret_post and form_post variants
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: OpenID conformance suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run the plans
+        run: |
+          if [ "${{ startsWith(github.ref, 'refs/tags/') || inputs.full }}" = "true" ]; then
+            bash conformance/run.sh --full
+          else
+            bash conformance/run.sh
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f conformance/out/results/summary.md ]; then
+            { echo "## OpenID conformance suite (${{ github.sha }})"; echo; cat conformance/out/results/summary.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The zips are the suite's signed exports; the plan configurations with client secrets stay out of the artifact.
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: conformance-${{ github.sha }}
+          path: |
+            conformance/out/results/
+          retention-days: 30

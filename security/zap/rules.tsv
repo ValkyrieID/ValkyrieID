@@ -1,0 +1,9 @@
+# ZAP alert triage: <plugin id> TAB <IGNORE|WARN|FAIL> TAB <reason>. check_alerts.py fails on Medium and High alerts
+# that aren't listed here, and on any alert listed as FAIL. Explained in docs/security/zap.md.
+10062	IGNORE	False positive: digits in the random W3C traceId of problem+json error responses (e.g. 401 from the Admin API) look like a card number. No personal data is returned.
+10015	IGNORE	Informational. Admin API and page responses are Cache-Control: no-store (RFC 6749 §5.1 for tokens); ZAP asks to re-examine them, nothing to change.
+10049	IGNORE	Informational. Static assets (CSS, icons) are cacheable on purpose; protocol responses and pages are no-store.
+10104	IGNORE	Informational. The user agent fuzzer found no difference in responses.
+100000	IGNORE	Informational. 4xx responses to the scanner's malformed or unauthenticated requests are expected.
+10031	IGNORE	Informational. The ReturnUrl hidden field echoes the request's return URL, HTML-encoded by Razor; it is only followed when it is a local URL (open redirect check).
+10112	IGNORE	Informational. ZAP identified the session cookie; it is __Host- prefixed, Secure, HttpOnly, SameSite=Lax.

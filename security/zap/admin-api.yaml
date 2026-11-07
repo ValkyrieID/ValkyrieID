@@ -1,0 +1,42 @@
+# ZAP automation plan: authenticated active scan of the Admin API, from its OpenAPI document. admin-token.js adds an
+# admin access token (from admin_token.py) to every request. See docs/security/zap.md.
+env:
+  contexts:
+    - name: admin-api
+      urls:
+        - https://valkyrieid.localtest.me:9443/api/admin
+      includePaths:
+        - 'https://valkyrieid\.localtest\.me:9443/api/admin.*'
+  parameters:
+    failOnError: true
+    progressToStdout: true
+
+jobs:
+  - type: script
+    parameters:
+      action: add
+      type: httpsender
+      engine: 'ECMAScript : Graal.js'
+      name: admin-token
+      file: /zap/wrk/admin-token.js
+  - type: openapi
+    parameters:
+      apiFile: /zap/wrk/out/admin-api.json
+      targetUrl: https://valkyrieid.localtest.me:9443
+      context: admin-api
+  - type: passiveScan-wait
+  - type: activeScan
+    parameters:
+      context: admin-api
+      maxScanDurationInMins: 60
+  - type: passiveScan-wait
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/out
+      reportFile: admin-api-auth.json
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/out
+      reportFile: admin-api-auth.html

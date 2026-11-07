@@ -1,0 +1,47 @@
+# ZAP automation plan: full active scan of the sign-in and account pages (Razor Pages), unauthenticated. ZAP treats
+# __RequestVerificationToken as the anti-CSRF token (set on the command line by run.sh), so it fetches a fresh token
+# for every attack on a form. See docs/security/zap.md.
+env:
+  contexts:
+    - name: login-pages
+      urls:
+        - https://valkyrieid.localtest.me:9443/account/login
+      includePaths:
+        - 'https://valkyrieid\.localtest\.me:9443/account.*'
+        - 'https://valkyrieid\.localtest\.me:9443/connect/(authorize|endsession).*'
+  parameters:
+    failOnError: true
+    progressToStdout: true
+
+jobs:
+  - type: requestor
+    parameters:
+      user: ''
+    requests:
+      # A real authorization request, so the sign-in form carries a valid ReturnUrl.
+      - url: https://valkyrieid.localtest.me:9443/connect/authorize?client_id=valkyrieid-admin-ui&redirect_uri=https%3A%2F%2Fvalkyrieid.localtest.me%3A9443%2Fadmin%2Fcallback&response_type=code&scope=openid&state=zap&nonce=zap&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256
+        method: GET
+      - url: https://valkyrieid.localtest.me:9443/account/forgot-password
+        method: GET
+      - url: https://valkyrieid.localtest.me:9443/account/logout
+        method: GET
+  - type: spider
+    parameters:
+      context: login-pages
+      maxDuration: 5
+  - type: passiveScan-wait
+  - type: activeScan
+    parameters:
+      context: login-pages
+      maxScanDurationInMins: 60
+  - type: passiveScan-wait
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/out
+      reportFile: login-pages.json
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/out
+      reportFile: login-pages.html

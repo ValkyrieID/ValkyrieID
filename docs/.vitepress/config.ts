@@ -47,6 +47,7 @@ export default defineConfig({
           { text: 'Multiple instances', link: '/operations/multi-instance' },
           { text: 'Observability', link: '/operations/observability' },
           { text: 'Conformance testing', link: '/operations/conformance' },
+      { text: 'Conformance results', link: '/conformance/results' },
         ],
       },
       {
@@ -54,6 +55,7 @@ export default defineConfig({
         items: [
           { text: 'Security checklist', link: '/security/checklist' },
           { text: 'OAuch results', link: '/security/oauch' },
+      { text: 'OWASP ZAP results', link: '/security/zap' },
         ],
       },
       {

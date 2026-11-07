@@ -276,13 +276,12 @@ internal sealed partial class AuthorizeEndpoint(
             return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "prompt=none can't be combined with other values.");
         }
 
-        // OIDC Core A3.1.2.1: with prompt=consent the OP "SHOULD prompt the End-User for consent ... If it cannot
-        // obtain consent, it MUST return an error, typically consent_required". There is no consent screen, so the
-        // value isn't advertised in discovery and is always refused.
-        if (prompt.Contains("consent"))
-        {
-            return AuthorizationRequest.Fail(AuthorizeErrors.ConsentRequired, "Consent screens are not supported.");
-        }
+        // OIDC Core §3.1.2.1: with prompt=consent the OP "SHOULD prompt the End-User for consent ... If it cannot
+        // obtain consent, it MUST return an error, typically consent_required". There is no consent screen: the
+        // consent is the administrator's approval of the client's scopes (requests for other scopes are refused),
+        // the same approval OIDC Core §11 needs for offline_access, which clients must request with prompt=consent. So
+        // the value is accepted without a screen (a SHOULD deviation, PROJECT.md "Spec deviations") and isn't
+        // advertised in discovery.
 
         long? maxAge = null;
         if (Get(parameters, "max_age") is { } maxAgeValue)

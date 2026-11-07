@@ -91,7 +91,7 @@ Starts a sign-in with the authorization code flow. Parameters come from the quer
 | `state` | recommended | Returned unchanged. |
 | `nonce` | recommended | Copied into the ID token. |
 | `response_mode` | no | `query` (default) or `form_post`. |
-| `prompt` | no | `none`: never show the login page, return `login_required` instead. `login` or `select_account`: always ask the user to sign in again. `consent`: refused with `consent_required`, because there are no consent screens. `none` can't be combined with other values. |
+| `prompt` | no | `none`: never show the login page, return `login_required` instead. `login` or `select_account`: always ask the user to sign in again. `consent`: accepted, but there are no consent screens: an administrator allowing the client its scopes is the consent (OpenID Connect Core §11 asks clients to send it with `offline_access`). `none` can't be combined with other values. |
 | `max_age` | no | Seconds since the last sign-in after which the user must sign in again. |
 | `login_hint` | no | Pre-fills the username on the login page. |
 | `display`, `ui_locales`, `claims_locales`, `acr_values`, `id_token_hint` | no | Accepted and ignored. |
@@ -119,7 +119,6 @@ If `client_id` or `redirect_uri` is missing, unknown, disabled, or doesn't match
 | `invalid_scope` | `scope` is missing or malformed; a scope isn't allowed for the client; an identity scope without `openid`; or, in plain OAuth requests, an unknown scope |
 | `login_required` | `prompt=none` and the user must sign in |
 | `interaction_required` | `prompt=none` and the user must first verify their email address ([`Email:VerificationAtSignIn`](/reference/configuration#email-links) `Require`) |
-| `consent_required` | `prompt=consent`; ValkyrieID has no consent screens |
 | `request_not_supported`, `request_uri_not_supported`, `registration_not_supported` | Request objects and registration aren't supported |
 
 ## Token endpoint

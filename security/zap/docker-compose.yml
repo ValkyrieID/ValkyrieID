@@ -1,0 +1,68 @@
+# OWASP ZAP scans of a throwaway ValkyrieID. Use run.sh or run.ps1 instead of starting it directly; see
+# docs/security/zap.md.
+#
+# ValkyrieID serves TLS from Kestrel at https://valkyrieid.localtest.me:9443 with a certificate from a throwaway CA
+# (the same certs.sh as the conformance setup). The ZAP container reaches it through the network alias, and trusts
+# the CA in admin_token.py.
+name: valkyrieid-zap
+
+services:
+  certs:
+    image: docker.io/library/alpine:3.22
+    volumes:
+      - certs:/certs
+      - ../../conformance/certs.sh:/certs.sh:ro
+    command: ['sh', '/certs.sh']
+
+  valkyrieid:
+    image: ${VALKYRIEID_IMAGE:-valkyrieid:zap}
+    environment:
+      Issuer__Url: https://valkyrieid.localtest.me:9443
+      # Set by run.sh / run.ps1; the server refuses to start without it.
+      MasterKey__Current: ${VALKYRIEID_MASTER_KEY:-}
+      Kestrel__Endpoints__Http__Url: http://+:8080
+      Kestrel__Endpoints__Https__Url: https://+:9443
+      Kestrel__Endpoints__Https__Certificate__Path: /certs/valkyrieid.crt
+      Kestrel__Endpoints__Https__Certificate__KeyPath: /certs/valkyrieid.key
+      # The active scans send thousands of requests from one address. Raised through configuration only; the
+      # defaults are unchanged.
+      RateLimits__Login__PermitLimit: '100000'
+      RateLimits__LoginAccount__PermitLimit: '100000'
+      RateLimits__Token__PermitLimit: '100000'
+      RateLimits__Authorize__PermitLimit: '100000'
+      RateLimits__TwoFactor__PermitLimit: '100000'
+      RateLimits__Email__PermitLimit: '100000'
+      RateLimits__Account__PermitLimit: '100000'
+    ports:
+      - '127.0.0.1:9443:9443'
+    volumes:
+      - certs:/certs:ro
+    networks:
+      default:
+        aliases:
+          - valkyrieid.localtest.me
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'dotnet', '/app/valkyrieid.dll', 'healthcheck']
+      interval: 5s
+      timeout: 10s
+      start_period: 60s
+      retries: 12
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: [zap]
+    user: root
+    environment:
+      ADMIN_PASSWORD: ${ZAP_ADMIN_PASSWORD:-}
+    volumes:
+      - .:/zap/wrk
+      - certs:/certs:ro
+    depends_on:
+      valkyrieid:
+        condition: service_healthy
+
+volumes:
+  certs:

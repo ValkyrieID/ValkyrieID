@@ -1,0 +1,47 @@
+name: ZAP
+
+# OWASP ZAP scans of a throwaway ValkyrieID (security/zap/run.sh, PROJECT.md §13): baseline, Admin API (OpenAPI),
+# a full active scan of the sign-in pages, and an authenticated Admin API scan. Fails on Medium or High alerts that
+# aren't triaged in security/zap/rules.tsv. Release tags and manual runs only (the active scans take a while).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    name: OWASP ZAP scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Scan
+        run: bash security/zap/run.sh
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f security/zap/out/summary.md ]; then
+            { echo "## OWASP ZAP (${{ github.sha }})"; echo; cat security/zap/out/summary.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: zap-${{ github.sha }}
+          path: |
+            security/zap/out/*.html
+            security/zap/out/*.json
+            security/zap/out/*.md
+            security/zap/out/*.log
+            !security/zap/out/admin-token-state.json
+          retention-days: 30

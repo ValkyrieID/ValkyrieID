@@ -1,0 +1,130 @@
+# Runs the OpenID Foundation conformance suite and ValkyrieID side by side, for CI and local runs. Use run.sh or
+# run.ps1 instead of starting it directly; see docs/operations/conformance.md.
+#
+# - The suite is reached at https://localhost.emobix.co.uk:8443 (nginx), ValkyrieID at
+#   https://valkyrieid.localtest.me:9443 (TLS served by Kestrel). Both names resolve to 127.0.0.1 on the host, and to
+#   the containers through the network aliases below, so the same URLs work from the host and from the containers.
+# - Both certificates come from a throwaway CA created by the certs service. ValkyrieID trusts it for back-channel
+#   logout requests to the suite (SSL_CERT_FILE).
+# - Everything is ephemeral: no data survives `docker compose down -v`.
+name: valkyrieid-conformance
+
+services:
+  certs:
+    image: docker.io/library/alpine:3.22
+    volumes:
+      - certs:/certs
+      - ./certs.sh:/certs.sh:ro
+    command: ['sh', '/certs.sh']
+
+  mongodb:
+    image: docker.io/library/mongo:6.0.13
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 500k
+        max-file: '5'
+
+  server:
+    image: registry.gitlab.com/openid/conformance-suite:${SUITE_VERSION:-release-v5.3.4}
+    environment:
+      BASE_URL: https://localhost.emobix.co.uk:8443
+      BASE_MTLS_URL: https://localhost.emobix.co.uk:8444
+      MONGODB_HOST: mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      # Placeholders: the suite's own sign-in providers aren't used in dev mode, but must be set.
+      OIDC_GOOGLE_CLIENTID: google-client
+      OIDC_GOOGLE_SECRET: google-secret
+      OIDC_GITLAB_CLIENTID: gitlab-client
+      OIDC_GITLAB_SECRET: gitlab-secret
+    depends_on:
+      - mongodb
+    logging: *logging
+
+  nginx:
+    image: registry.gitlab.com/openid/conformance-suite/nginx:${SUITE_VERSION:-release-v5.3.4}
+    # Replaces the image's self-signed certificate with one from the test CA, which ValkyrieID trusts.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        cp /certs/nginx.crt /etc/ssl/certs/nginx-selfsigned.crt &&
+        cp /certs/nginx.key /etc/ssl/private/nginx-selfsigned.key &&
+        exec nginx -g 'daemon off;'
+    ports:
+      - '127.0.0.1:8443:8443'
+    volumes:
+      - certs:/certs:ro
+    networks:
+      default:
+        aliases:
+          - localhost.emobix.co.uk
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      server:
+        condition: service_started
+    logging: *logging
+
+  valkyrieid:
+    image: ${VALKYRIEID_IMAGE:-valkyrieid:conformance}
+    environment:
+      Issuer__Url: https://valkyrieid.localtest.me:9443
+      # Set by run.sh / run.ps1; the server refuses to start without it.
+      MasterKey__Current: ${VALKYRIEID_MASTER_KEY:-}
+      # Plain http only for the container health check; everything else is refused over http.
+      Kestrel__Endpoints__Http__Url: http://+:8080
+      Kestrel__Endpoints__Https__Url: https://+:9443
+      Kestrel__Endpoints__Https__Certificate__Path: /certs/valkyrieid.crt
+      Kestrel__Endpoints__Https__Certificate__KeyPath: /certs/valkyrieid.key
+      SSL_CERT_FILE: /certs/ca.crt
+      # The suite signs in, refreshes, and calls the token endpoint far more often than a person, all from one
+      # address. Raised through configuration only; the defaults are unchanged.
+      RateLimits__Login__PermitLimit: '10000'
+      RateLimits__LoginAccount__PermitLimit: '10000'
+      RateLimits__Token__PermitLimit: '10000'
+      RateLimits__Authorize__PermitLimit: '10000'
+      RateLimits__Account__PermitLimit: '10000'
+      # The logout plans wait for the logout token; deliver right away and retry quickly.
+      BackChannelLogout__PollInterval: '00:00:05'
+    ports:
+      - '127.0.0.1:9443:9443'
+    volumes:
+      - certs:/certs:ro
+    networks:
+      default:
+        aliases:
+          - valkyrieid.localtest.me
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'dotnet', '/app/valkyrieid.dll', 'healthcheck']
+      interval: 5s
+      timeout: 10s
+      start_period: 60s
+      retries: 12
+    logging: *logging
+
+  # Runs the plans with the suite's scripts/run-test-plan.py (started by run.sh / run.ps1).
+  runner:
+    image: docker.io/library/python:3.13
+    profiles: [runner]
+    working_dir: /work
+    environment:
+      SUITE_VERSION: ${SUITE_VERSION:-release-v5.3.4}
+      PLANS: ${PLANS:-default}
+      GITHUB_ACTIONS: ${GITHUB_ACTIONS:-}
+    volumes:
+      - .:/work
+      - suite:/suite
+    command: ['python', '/work/run-plans.py']
+    depends_on:
+      nginx:
+        condition: service_started
+      valkyrieid:
+        condition: service_healthy
+
+volumes:
+  certs:
+  suite:

@@ -92,7 +92,7 @@ Authorization responses include the `iss` parameter (RFC 9207) to prevent mix-up
 ### 4.4 OIDC Core mandatory features (§15.1)
 
 - ID tokens signed with RS256.
-- `prompt` parameter (`none`, `login`, `select_account`). `prompt=consent` is refused with `consent_required` and not advertised, because there are no consent screens (§3.1.2.1).
+- `prompt` parameter (`none`, `login`, `select_account`). There are no consent screens: `prompt=consent` is accepted without one, because the administrator's approval of the client's scopes is the consent (as for `offline_access`, which clients request with `prompt=consent`, §11), and isn't advertised (§3.1.2.1; changed in 10d, see Spec deviations).
 - `display` parameter accepted (may be ignored).
 - `ui_locales` and `claims_locales` accepted (may be ignored).
 - `max_age` and the `auth_time` claim.
@@ -289,7 +289,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
     - Angular tests, `prettier --check`, and lint; a `dotnet publish` that includes the admin UI
   - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers), and the accessibility checks (Playwright and axe against the published server, Chromium only).
   - **On release tags / manual trigger only:** Docker image build (amd64 and arm64) and footprint check, image publish, OpenID conformance suite, OWASP ZAP scan.
-  - **Nightly:** OpenID conformance suite (all plans), to catch regressions between releases.
+  - **Nightly:** OpenID conformance suite (the four target plans; release tags also run the `client_secret_post` and form_post variants), to catch regressions between releases.
   - **Cost controls:**
     - Linux runners only (Windows/macOS minutes cost 2×/10× on private repos).
     - NuGet and npm caching.
@@ -370,13 +370,17 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Back-Channel Logout
 
   A release requires every plan to pass with no failures; each warning is either fixed or documented with its reason. Results are published in the docs as "passes the OpenID conformance suite", never as "OpenID Certified" (see §2).
+  - Setup (`conformance/`): one Docker Compose file for CI and local runs (Docker, or Podman behind the Docker CLI) with the suite's prebuilt images (pinned release), MongoDB, and the ValkyrieID image. ValkyrieID serves TLS from Kestrel at `https://valkyrieid.localtest.me:9443`; the suite's nginx is `localhost.emobix.co.uk:8443`; both certificates come from a throwaway CA, which ValkyrieID trusts through `SSL_CERT_FILE` for back-channel logout. Rate limits are raised through configuration only.
+  - Plans run unattended with the suite's `scripts/run-test-plan.py`, with browser automation (sign-in form, sign-out confirmation, screenshots) in the plan configuration. Basic OP, Config OP, RP-Initiated Logout, and Back-Channel Logout with `client_secret_basic`; release tags add `client_secret_post` and Form Post Basic.
+  - `conformance/expected-results.json` lists every allowed non-pass result with its reason; anything else, or a listed result that no longer happens, fails the run.
+  - CI (`.github/workflows/conformance.yml`): release tags, nightly, manual. Published in `docs/conformance/results.md` with the commit SHA and suite version; the exported logs of the latest run are kept under `docs/public/conformance/<date>/`.
 - **OAuch** (oauch.io): OAuth 2.0 security best-practice testing (RFC 9700). Covers PKCE downgrade, redirect URI manipulation, code replay, and refresh token rotation.
 - **Client compatibility tests** against real client libraries and apps:
   - ASP.NET Core `AddOpenIdConnect` / `AddJwtBearer`
   - oidc-client-ts / angular-auth-oidc-client (via the admin UI)
   - oauth2-proxy
   - Grafana generic OAuth
-- **Security scanning** with OWASP ZAP: baseline and API scans, a full active scan of the login pages, and an authenticated scan of the Admin API.
+- **Security scanning** with OWASP ZAP (`security/zap/`): baseline and API scans (the Admin API's OpenAPI document), a full active scan of the login pages (with `__RequestVerificationToken` as the anti-CSRF token), and an authenticated scan of the Admin API. The admin token comes from `security/zap/admin_token.py` (standard library only), which signs in for real (password, TOTP enrollment, authorization code with PKCE as `valkyrieid-admin-ui`); a ZAP httpsender script renews it before the 10-minute expiry. Alerts are triaged in `security/zap/rules.tsv` and `docs/security/zap.md`; CI (`.github/workflows/zap.yml`, release tags and manual runs) fails on Medium or High alerts that aren't triaged.
 
 ## 14. Roadmap
 
@@ -537,6 +541,7 @@ Every approved deviation from a SHOULD / RECOMMENDED requirement is listed here.
 
 | Spec section | Level | Deviation | Reason | Date |
 |---|---|---|---|---|
+| OIDC Core §3.1.2.1 | SHOULD | `prompt=consent` doesn't show a consent screen; the request continues as without it. | There are no consent screens (§2). The administrator's approval of the client's scopes is the consent, as for `offline_access` (§4.5); clients must send `prompt=consent` with `offline_access` (OIDC Core §11), so refusing it made refresh tokens unreachable for spec-following clients. Found by the conformance suite (`oidcc-refresh-token`, 10d). | 2026-11-07 |
 | RFC 7009 §2 | SHOULD | Access tokens can't be revoked; the revocation endpoint answers `unsupported_token_type` for them. | Access tokens are self-contained JWTs (RFC 9068) that resource servers validate without calling ValkyrieID. Their short lifetime (30 min default) limits the risk (§5). | 2026-10-29 |
 | RFC 7009 §2.1 | SHOULD | Revoking a refresh token doesn't invalidate access tokens issued from the same grant. | Same reason: access tokens aren't tracked server-side. They expire within their lifetime. | 2026-10-29 |
 | RFC 6749 §4.1.2 | SHOULD | When an authorization code is replayed, the refresh tokens issued from it are revoked, but its access tokens stay valid until they expire. | The spec asks to revoke tokens issued from the code "when possible"; self-contained access tokens can't be revoked (see the RFC 7009 rows). The replay is denied, audited, and the refresh token family revoked. Found by OAuch (10d). | 2026-11-07 |

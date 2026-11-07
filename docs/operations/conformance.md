@@ -1,79 +1,70 @@
 # Conformance testing
 
-ValkyrieID targets the OpenID Foundation [conformance suite](https://openid.net/certification/about-conformance-suite/) plans **Basic OP**, **Config OP**, **RP-Initiated Logout**, and **Back-Channel Logout**. This page describes how to run them against a ValkyrieID instance.
+ValkyrieID is tested with the OpenID Foundation [conformance suite](https://openid.net/certification/about-conformance-suite/) plans **Basic OP**, **Config OP**, **RP-Initiated Logout**, and **Back-Channel Logout**. The suite runs next to ValkyrieID in Docker, both in CI and on your machine, and every plan runs unattended. The latest results are published on [Conformance results](/conformance/results).
 
-## What you need
+## Run it in Docker
 
-- A ValkyrieID instance reachable by the suite over HTTPS with a certificate the suite trusts, and with `Issuer__Url` set to that public URL.
-  - With the **hosted suite** at <https://www.certification.openid.net>, the instance must be reachable from the internet, e.g. a test deployment or a tunnel to your machine.
-  - With a **local suite**, the instance must be reachable from the suite's Docker containers.
-- The same configuration as the server (`Database__*`, `MasterKey__Current`, `Issuer__Url`) in the shell where you run the setup script, so it writes to the instance's database.
-
-Use a dedicated database. The setup creates a test user and four clients.
-
-## 1. Register the test user and clients
+You need Docker (or Podman behind the Docker CLI) with Compose; Python isn't needed on the host. From the repository root:
 
 ```sh
-# Hosted suite
-conformance/setup.sh https://www.certification.openid.net valkyrieid
-
-# Local suite
-conformance/setup.sh https://localhost.emobix.co.uk:8443 valkyrieid
+conformance/run.sh            # the four plans
+conformance/run.sh --full     # also client_secret_post and form_post (release tags)
 ```
 
-On Windows use `conformance/setup.ps1 -Suite <url> -Alias <alias>`.
+On Windows use `conformance/run.ps1` (`-Full`, `-Image`, `-Keep`). The script:
 
-The script:
+1. builds the ValkyrieID image from your checkout (or uses `--image <image>`);
+2. starts `conformance/docker-compose.yml`: the suite (`registry.gitlab.com/openid/conformance-suite:release-v5.3.4`, its nginx, and MongoDB) and ValkyrieID;
+3. registers the test user and clients with `conformance/setup.sh --docker`;
+4. runs the plans with the suite's `scripts/run-test-plan.py` (`conformance/run-plans.py`), including browser automation that signs in and confirms the sign-out;
+5. checks the results against `conformance/expected-results.json`, and removes the containers (keep them with `--keep`).
 
-- creates the user `conformance` with a random password, and prints it;
-- creates the confidential clients `conformance-1` and `conformance-2` with the redirect URI `<suite>/test/a/<alias>/callback` and the scopes `openid profile email roles groups`;
-- creates the confidential clients `conformance-logout-1` and `conformance-logout-2` for the logout plans, which also have the post-logout redirect URI `<suite>/test/a/<alias>/post_logout_redirect` and the back-channel logout URI `<suite>/test/a/<alias>/backchannel_logout`;
-- writes the plan configurations to `conformance/out/`: `basic-op.json`, `config-op.json`, `rp-initiated-logout.json`, and `backchannel-logout.json`.
+The run fails if a test fails, or if a warning, review, or skipped result isn't listed in `expected-results.json` with its reason, or if a listed result no longer happens.
 
-The clients are created with `--no-pkce` because the plans don't send PKCE parameters, and with `--allow-secret-post` so the plans can be repeated with `client_secret_post`. `conformance/out/` contains client secrets and is ignored by git. Delete it, and the clients (`client delete conformance-1`), when you're done.
+Results are written to `conformance/out/results/`: one zip per plan (the suite's signed export with the full test logs), `summary.md`, and the ValkyrieID and suite logs. `conformance/out/` also holds the client secrets and the test user's password of the throwaway instance, and is ignored by git.
 
-## 2. Run the plans
+### How the setup works
 
-1. Open the suite and choose **Create a new test plan**.
-2. Select **OpenID Connect Core: Basic Certification Profile Authorization server test** with:
-   - Server metadata location: `discovery`
-   - Client registration type: `static_client`
-   - Client authentication type: `client_secret_basic` (repeat with `client_secret_post`)
-   - Response mode: `default` (repeat with `form_post` if you want to cover it)
-3. Paste `conformance/out/basic-op.json` into the configuration JSON and create the plan.
-4. Run each test. When the suite opens the login page, sign in as `conformance`.
-5. Create a second plan, **OpenID Connect Core: Config Certification Profile Authorization server test**, with `conformance/out/config-op.json`.
-6. Create a plan **OpenID Connect Core: RP-Initiated Logout Certification Profile Authorization server test** with the same options as Basic OP and `conformance/out/rp-initiated-logout.json`.
-7. Create a plan **OpenID Connect Core: Back-Channel RP-Initiated Logout Certification Profile Authorization server test** with `conformance/out/backchannel-logout.json`. The suite must be reachable from ValkyrieID, because ValkyrieID posts logout tokens to the suite's back-channel logout URI.
+- The suite is at `https://localhost.emobix.co.uk:8443` and ValkyrieID at `https://valkyrieid.localtest.me:9443`, with TLS served by Kestrel. Both names resolve to `127.0.0.1` on your machine and to the containers through network aliases, so the same URLs work from the browser automation, from ValkyrieID's back-channel logout requests, and from your browser while the containers run.
+- A one-off container creates a throwaway CA and the certificates for both names, and deletes the CA key. ValkyrieID trusts the CA through `SSL_CERT_FILE` for its back-channel logout requests to the suite.
+- The rate limits are raised through environment variables, because the suite signs in far more often than a person; everything else runs with the defaults.
+- Nothing is kept: the database, keys, and certificates are removed with the containers.
 
-When a logout test shows the ValkyrieID sign-out confirmation page, confirm it. ValkyrieID always asks a signed-in user before signing them out, even with a valid `id_token_hint`.
+## Run against the hosted suite
 
-## Running the suite locally
+You can also run the plans by hand on the hosted suite at <https://www.certification.openid.net>, against a ValkyrieID instance that is reachable from the internet over HTTPS with a trusted certificate.
 
-The suite isn't published as a container image; build it from source:
+1. In a shell with the server's configuration (`Database__*`, `MasterKey__Current`, `Issuer__Url` set to its public URL), run `conformance/setup.sh https://www.certification.openid.net valkyrieid` (on Windows `conformance/setup.ps1 -Suite <url> -Alias <alias>`). Use a dedicated database.
+2. Create the plans in the suite with the configuration files from `conformance/out/`:
 
-```sh
-git clone https://gitlab.com/openid/conformance-suite.git
-cd conformance-suite
-mvn clean package           # or the dockerized Maven build described in the suite's README
-docker compose up
-```
+| Plan | Configuration | Variants |
+|---|---|---|
+| OpenID Connect Core: Basic Certification Profile Authorization server test | `basic-op.json` | `discovery`, `static_client` |
+| OpenID Connect Core: Config Certification Profile Authorization server test | `config-op.json` | |
+| OpenID Connect Core: RP-Initiated Logout Certification Profile Authorization server test | `rp-initiated-logout.json` | `code`, `static_client` |
+| OpenID Connect Core: Back-Channel RP-Initiated Logout Certification Profile Authorization server test | `backchannel-logout.json` | `code`, `static_client` |
 
-The suite is then available at <https://localhost.emobix.co.uk:8443> (the host name resolves to `127.0.0.1`). Its server container must reach ValkyrieID at the issuer URL, and must trust its certificate.
+3. Run each test. Sign in as `conformance` with the password the script printed, and confirm the sign-out when ValkyrieID asks. Upload screenshots where the suite asks for them.
+
+The setup creates:
+
+- the user `conformance`, with a random password;
+- the confidential clients `conformance-1` and `conformance-2` with the redirect URI `<suite>/test/a/<alias>/callback` and the scopes `openid profile email roles groups offline_access`;
+- `conformance-rp-logout-1` and `-2` for the RP-Initiated Logout plan, which also have the post-logout redirect URI `<suite>/test/a/<alias>/post_logout_redirect`;
+- `conformance-logout-1` and `-2` for the Back-Channel Logout plan, which also have the back-channel logout URI `<suite>/test/a/<alias>/backchannel_logout`. Only these get a back-channel logout URI, because the other plans fail when they receive an unexpected logout token.
+
+The clients are created with `--no-pkce` because the plans don't send PKCE parameters, and with `--allow-secret-post` for the `client_secret_post` tests. Delete the clients (`client delete conformance-1`) and `conformance/out/` when you're done.
 
 ## Expected results
 
-Some tests are skipped or produce warnings by design, because ValkyrieID advertises in discovery that it doesn't support the feature:
+Some results aren't a pass by design. Each one is listed with its reason in `conformance/expected-results.json` and on [Conformance results](/conformance/results):
 
-- request objects (`request`, `request_uri`): `request_parameter_supported` and `request_uri_parameter_supported` are `false`;
-- the `claims` request parameter: `claims_parameter_supported` is `false`;
-- the `address` and `phone` scopes, which aren't in `scopes_supported` and are ignored when requested;
-- front-channel logout and session management (`check_session_iframe`), which aren't supported.
+- **Skipped:** request objects (`request_parameter_supported` is `false`) and the `address` and `phone` scopes, which aren't supported.
+- **Review:** tests that upload a screenshot for a person to check: the second sign-in page (`prompt=login`, `max_age`), the error page for an unregistered redirect URI, and the sign-out pages. ValkyrieID always asks a signed-in user before signing them out, and shows that the application's request was invalid when it doesn't redirect back.
+- **Warnings:** profile claims that aren't stored, scope claims also in the ID token, no `acr` claim, access tokens that stay valid after a code is reused, and the `claims` parameter, which isn't supported.
 
-The test clients are allowed `offline_access` and the `refresh_token` grant, so the refresh token tests run.
-
-Any other failure is a bug. Report it with the test log exported from the suite.
+Any other result is a bug. Report it with the test log from the results zip.
 
 ## Certification status
 
-ValkyrieID isn't officially [OpenID Certified](https://openid.net/certification/), because certification requires a paid OpenID Foundation membership. Instead, every release must pass all four plans with no failures, and the results are published here. Published results describe ValkyrieID as passing the OpenID conformance suite, not as "OpenID Certified".
+ValkyrieID isn't officially [OpenID Certified](https://openid.net/certification/), because certification requires a paid OpenID Foundation membership. Instead, every release must pass all four plans with no failures, and the results are published. Published results describe ValkyrieID as passing the OpenID conformance suite, not as "OpenID Certified".
