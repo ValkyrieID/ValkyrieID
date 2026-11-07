@@ -19,7 +19,7 @@ import {
 } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
 import { ProblemComponent } from '../../shared/problem.component';
-import { Notifier } from '../../shared/util';
+import { Notifier, valueOf } from '../../shared/util';
 import {
   DURATION_UNITS,
   DurationUnit,
@@ -69,7 +69,7 @@ export class SettingsPage {
     SettingsSectionDto | undefined,
     Record<string, SettingValue>
   >({
-    source: () => this.data.value(),
+    source: () => valueOf(this.data),
     computation: () => ({}),
   });
   /** The unit each duration is shown in. */
@@ -77,7 +77,7 @@ export class SettingsPage {
     SettingsSectionDto | undefined,
     Record<string, DurationUnit>
   >({
-    source: () => this.data.value(),
+    source: () => valueOf(this.data),
     computation: (section) =>
       Object.fromEntries(
         (section?.settings ?? [])

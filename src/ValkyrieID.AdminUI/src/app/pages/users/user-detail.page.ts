@@ -16,7 +16,7 @@ import { GroupDto, Page, RoleDto, SessionDto, UserDetail } from '../../api/model
 import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { ProblemComponent } from '../../shared/problem.component';
-import { Notifier, optional } from '../../shared/util';
+import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
   selector: 'app-user-detail-page',
@@ -49,12 +49,12 @@ export class UserDetailPage {
   );
 
   // Profile form, reset whenever the user is (re)loaded.
-  protected readonly userName = linkedSignal(() => this.user.value()?.userName ?? '');
-  protected readonly email = linkedSignal(() => this.user.value()?.email ?? '');
-  protected readonly emailVerified = linkedSignal(() => this.user.value()?.emailVerified ?? false);
-  protected readonly displayName = linkedSignal(() => this.user.value()?.displayName ?? '');
-  protected readonly givenName = linkedSignal(() => this.user.value()?.givenName ?? '');
-  protected readonly familyName = linkedSignal(() => this.user.value()?.familyName ?? '');
+  protected readonly userName = linkedSignal(() => valueOf(this.user)?.userName ?? '');
+  protected readonly email = linkedSignal(() => valueOf(this.user)?.email ?? '');
+  protected readonly emailVerified = linkedSignal(() => valueOf(this.user)?.emailVerified ?? false);
+  protected readonly displayName = linkedSignal(() => valueOf(this.user)?.displayName ?? '');
+  protected readonly givenName = linkedSignal(() => valueOf(this.user)?.givenName ?? '');
+  protected readonly familyName = linkedSignal(() => valueOf(this.user)?.familyName ?? '');
 
   protected readonly newPassword = signal('');
   protected readonly roleToAdd = signal('');
@@ -63,12 +63,12 @@ export class UserDetailPage {
   protected readonly claimValue = signal('');
 
   protected readonly availableRoles = computed(() => {
-    const assigned = new Set(this.user.value()?.roles.map((r) => r.id));
-    return this.allRoles.value()?.items.filter((r) => !assigned.has(r.id)) ?? [];
+    const assigned = new Set(valueOf(this.user)?.roles.map((r) => r.id));
+    return valueOf(this.allRoles)?.items.filter((r) => !assigned.has(r.id)) ?? [];
   });
   protected readonly availableGroups = computed(() => {
-    const assigned = new Set(this.user.value()?.groups.map((g) => g.id));
-    return this.allGroups.value()?.items.filter((g) => !assigned.has(g.id)) ?? [];
+    const assigned = new Set(valueOf(this.user)?.groups.map((g) => g.id));
+    return valueOf(this.allGroups)?.items.filter((g) => !assigned.has(g.id)) ?? [];
   });
 
   protected saveProfile(): Promise<void> {
@@ -165,7 +165,7 @@ export class UserDetailPage {
   }
 
   protected async deleteUser(): Promise<void> {
-    const name = this.user.value()?.userName ?? '';
+    const name = valueOf(this.user)?.userName ?? '';
     if (await this.run(() => this.api.deleteUser(this.id()), `User ${name} was deleted.`)) {
       await this.router.navigate(['/users']);
     }

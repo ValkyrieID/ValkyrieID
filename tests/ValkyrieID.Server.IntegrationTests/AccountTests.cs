@@ -155,6 +155,33 @@ public abstract class AccountTests
     }
 
     [Fact]
+    public async Task Sign_in_errors_get_the_focus_and_are_linked_to_the_fields()
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+
+        var response = await Forms.LoginAsync(factory.CreateBrowser(), "alice", "wrong password!");
+        var page = await response.Content.ReadAsStringAsync(CancellationToken);
+
+        // WCAG 3.3.1 and 4.1.3, without JavaScript: the summary is announced and focused on load.
+        Assert.Contains("""<div class="alert" role="alert" id="errors" tabindex="-1" autofocus>""", page, StringComparison.Ordinal);
+        Assert.Contains("""aria-invalid="true" aria-describedby="errors">""", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sign_in_fields_work_with_password_managers()
+    {
+        await using var factory = CreateFactory();
+        var page = await (await factory.CreateBrowser().GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        // WCAG 3.3.8: no cognitive test; password managers can fill the fields, and pasting isn't blocked.
+        Assert.Contains("""autocomplete="username""", page, StringComparison.Ordinal);
+        Assert.Contains("""autocomplete="current-password""", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("onpaste", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("captcha", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Disabled_users_cannot_log_in()
     {
         await using var factory = CreateFactory();

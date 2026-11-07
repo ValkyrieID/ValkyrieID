@@ -112,3 +112,50 @@ jobs:
       # Multi-instance tests run two servers against one PostgreSQL database and one Redis (Testcontainers).
       - name: PostgreSQL and Redis integration tests
         run: dotnet test --no-build -c Release --project tests/ValkyrieID.Server.IntegrationTests -- --filter-trait "Category=PostgreSql" --filter-trait "Category=Redis"
+
+  accessibility:
+    name: Accessibility (axe, WCAG 2.2 AA)
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests/ValkyrieID.A11yTests
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            tests/ValkyrieID.A11yTests/package-lock.json
+            src/ValkyrieID.AdminUI/package-lock.json
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - run: npm ci
+      - name: Verify formatting
+        run: npm run format:check
+      - run: npm run lint
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Publishes the server with the admin UI, runs it on SQLite with seeded data, and checks every page with axe.
+      - name: Accessibility tests
+        run: npm test
+
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: accessibility-report
+          path: |
+            tests/ValkyrieID.A11yTests/playwright-report
+            tests/ValkyrieID.A11yTests/test-results
+          retention-days: 7

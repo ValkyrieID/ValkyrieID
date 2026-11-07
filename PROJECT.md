@@ -231,6 +231,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 ### 8.5 Accessibility
 
 - Login pages and admin UI target **WCAG 2.2 AA** (keyboard navigation, labels, contrast, screen reader support).
+- Checked automatically with axe (Playwright, `tests/ValkyrieID.A11yTests`) on every page and state, with the default and a custom branding, against a published server on SQLite; a manual pass is recorded in `docs/accessibility/checklist.md`. Operators are responsible for the contrast of custom branding (documented requirements).
 
 ## 9. Admin REST API
 
@@ -286,7 +287,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
     - `dotnet format --verify-no-changes`, `prettier --check`, lint
     - unit tests and SQLite integration tests
     - Angular tests, `prettier --check`, and lint; a `dotnet publish` that includes the admin UI
-  - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers).
+  - **On PRs to `main`:** add PostgreSQL and Redis integration tests (Testcontainers), and the accessibility checks (Playwright and axe against the published server, Chromium only).
   - **On release tags / manual trigger only:** Docker image build (amd64 and arm64) and footprint check, image publish, OpenID conformance suite, OWASP ZAP scan.
   - **Nightly:** OpenID conformance suite (all plans), to catch regressions between releases.
   - **Cost controls:**
@@ -361,6 +362,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 
 - xUnit unit tests and integration tests (`WebApplicationFactory`, against both SQLite and PostgreSQL).
 - Angular unit tests.
+- **Accessibility checks** (`tests/ValkyrieID.A11yTests`, Playwright with `@axe-core/playwright`): every login page and admin UI route and state, with the default and a custom branding; fails on WCAG 2.2 A/AA violations, reflow at 320 CSS px, motion with reduced motion, hidden focus, and CSP violations.
 - **OpenID Foundation Conformance Suite**, self-hosted in Docker for CI and local runs; optionally the hosted suite, run manually against a publicly reachable deployment. Target plans:
   - Basic OP
   - Config OP
@@ -465,7 +467,7 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
     - **10b: container and footprint**
       - small chiseled, non-root Docker image (admin UI included, amd64 and arm64), health check through `valkyrieid healthcheck`
       - footprint targets measured in CI (targets revised, see §11)
-    - **10c: accessibility pass** (WCAG 2.2 AA): automated axe checks (Playwright) and a manual pass
+    - **10c: accessibility pass** (WCAG 2.2 AA): automated axe checks (Playwright) and a manual pass (checklist in `docs/accessibility/checklist.md`)
     - **10d: conformance and security scanning**
       - run the OpenID conformance plans: Basic OP, Config OP *(deferred: from phase 4)*, RP-Initiated Logout, Back-Channel Logout *(deferred: from phase 6)*
         - all plans must pass with no failures; warnings fixed or documented

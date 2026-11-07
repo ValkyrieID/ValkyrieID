@@ -41,6 +41,8 @@ docker run --rm -v "$PWD:/src" -w /src mcr.microsoft.com/dotnet/sdk:10.0 \
 
 The admin UI (Angular) is in [`src/ValkyrieID.AdminUI`](src/ValkyrieID.AdminUI); see the [admin UI guide](https://valkyrieid.liesel.dev/guide/admin-ui#building-from-source).
 
+Accessibility checks (Playwright and axe, WCAG 2.2 AA) are in [`tests/ValkyrieID.A11yTests`](tests/ValkyrieID.A11yTests): `npm ci`, `npx playwright install chromium`, `npm test`. See [Accessibility](https://valkyrieid.liesel.dev/accessibility/#running-the-checks).
+
 The specification and roadmap are in [`PROJECT.md`](PROJECT.md).
 
 ## License

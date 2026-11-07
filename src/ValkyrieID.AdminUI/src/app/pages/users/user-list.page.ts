@@ -24,7 +24,7 @@ import { ProblemComponent } from '../../shared/problem.component';
       <button type="submit">Search</button>
     </form>
     <app-problem [problem]="problem()" />
-    @if (users.value(); as page) {
+    @if (users.hasValue() ? users.value() : undefined; as page) {
       @if (page.items.length === 0) {
         <p>No users found.</p>
       } @else {

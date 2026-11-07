@@ -23,7 +23,7 @@ import { ProblemComponent } from '../../shared/problem.component';
       <button type="submit">Search</button>
     </form>
     <app-problem [problem]="problem()" />
-    @if (clients.value(); as page) {
+    @if (clients.hasValue() ? clients.value() : undefined; as page) {
       @if (page.items.length === 0) {
         <p>No clients found.</p>
       } @else {

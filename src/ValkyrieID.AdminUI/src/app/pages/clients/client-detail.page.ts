@@ -24,8 +24,11 @@ import { ClientFormComponent, settingsOf } from './client-form.component';
   ],
   template: `
     <p><a routerLink="/clients">Clients</a></p>
+    @if (loadProblem()) {
+      <h1>Client</h1>
+    }
     <app-problem [problem]="loadProblem()" />
-    @if (client.value(); as c) {
+    @if (client.hasValue() ? client.value() : undefined; as c) {
       <div class="page-header">
         <h1>{{ c.displayName ?? c.clientId }}</h1>
         @if (!c.builtIn) {

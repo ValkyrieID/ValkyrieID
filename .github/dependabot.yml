@@ -24,6 +24,14 @@ updates:
       admin-ui-minor-patch:
         update-types: [minor, patch]
 
+  - package-ecosystem: npm
+    directory: /tests/ValkyrieID.A11yTests
+    schedule:
+      interval: weekly
+    groups:
+      a11y-tests-minor-patch:
+        update-types: [minor, patch]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

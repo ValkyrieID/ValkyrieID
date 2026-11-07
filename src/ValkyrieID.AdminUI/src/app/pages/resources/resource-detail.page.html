@@ -1,6 +1,9 @@
 <p><a routerLink="/resources">API resources</a></p>
+@if (loadProblem()) {
+  <h1>API resource</h1>
+}
 <app-problem [problem]="loadProblem()" />
-@if (resource.value(); as r) {
+@if (resource.hasValue() ? resource.value() : undefined; as r) {
   <div class="page-header">
     <h1>{{ r.displayName ?? r.name }}</h1>
     @if (!r.builtIn) {

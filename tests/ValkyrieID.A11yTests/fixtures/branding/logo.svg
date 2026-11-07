@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="64" viewBox="0 0 240 64">
+  <rect x="4" y="8" width="48" height="48" rx="10" fill="#0f6b5c"/>
+  <path d="M16 40 28 18l12 22z" fill="#fdfcf7"/>
+  <text x="64" y="42" font-family="system-ui, sans-serif" font-size="26" font-weight="700" fill="#22262e">Example Corp</text>
+</svg>

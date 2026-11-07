@@ -1,6 +1,9 @@
 <p><a routerLink="/users">Users</a></p>
+@if (loadProblem()) {
+  <h1>User</h1>
+}
 <app-problem [problem]="loadProblem()" />
-@if (user.value(); as u) {
+@if (user.hasValue() ? user.value() : undefined; as u) {
   <h1>{{ u.userName }}</h1>
   <p class="muted">
     User id <code>{{ u.id }}</code> · created {{ u.createdAt | date: 'medium' }}
@@ -314,7 +317,7 @@
 
   <section id="sessions" aria-labelledby="sessions-title">
     <h2 id="sessions-title">Sessions</h2>
-    @if (sessions.value(); as list) {
+    @if (sessions.hasValue() ? sessions.value() : undefined; as list) {
       @if (list.length === 0) {
         <p>No active sessions.</p>
       } @else {

@@ -259,7 +259,7 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 
 
 Colors must be hex (`#1f4fd1`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
 
-The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-error`, `--vid-error-background` and `--vid-border`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA).
+The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-error`, `--vid-error-background` and `--vid-border`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA). The primary color needs 4.5:1 against both white (button text) and the surface color (links); see [Accessibility: Branding](/accessibility/#branding) for every variable's requirement.
 
 ## Audit log
 

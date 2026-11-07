@@ -1,4 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, Resource, signal } from '@angular/core';
+
+/**
+ * The resource's value, or `undefined` while there is none. Unlike `value()`, it doesn't throw when the request
+ * failed, so error states can still render (and show the error).
+ */
+export function valueOf<T>(resource: Resource<T>): T | undefined {
+  return resource.hasValue() ? resource.value() : undefined;
+}
 
 /** Short status messages ("Saved.") announced through the shell's polite live region (WCAG 4.1.3). */
 @Injectable({ providedIn: 'root' })

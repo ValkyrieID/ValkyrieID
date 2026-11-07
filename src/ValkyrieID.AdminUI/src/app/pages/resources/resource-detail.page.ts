@@ -17,7 +17,7 @@ import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { ProblemComponent } from '../../shared/problem.component';
 import { SecretsComponent } from '../../shared/secrets.component';
-import { Notifier, optional } from '../../shared/util';
+import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
   selector: 'app-resource-detail-page',
@@ -48,13 +48,13 @@ export class ResourceDetailPage {
   protected readonly problem = signal<Problem | null>(null);
   protected readonly createdSecret = signal<CreatedSecret | null>(null);
 
-  protected readonly displayName = linkedSignal(() => this.resource.value()?.displayName ?? '');
+  protected readonly displayName = linkedSignal(() => valueOf(this.resource)?.displayName ?? '');
   protected readonly allowClientSecretPost = linkedSignal(
-    () => this.resource.value()?.allowClientSecretPost ?? false,
+    () => valueOf(this.resource)?.allowClientSecretPost ?? false,
   );
   /** Scope descriptions being edited, by scope id. */
   protected readonly descriptions = linkedSignal(
-    () => new Map((this.resource.value()?.scopes ?? []).map((s) => [s.id, s.description ?? ''])),
+    () => new Map((valueOf(this.resource)?.scopes ?? []).map((s) => [s.id, s.description ?? ''])),
   );
   protected readonly scopeName = signal('');
   protected readonly scopeDescription = signal('');

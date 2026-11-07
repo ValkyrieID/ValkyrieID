@@ -336,6 +336,12 @@ public abstract partial class SelfServiceTests
         Assert.Equal((await SessionIdsAsync(factory, "alice")).Order(), ids.Order());
         Assert.DoesNotContain((await SessionIdsAsync(factory, "bob")).Single(), page, StringComparison.Ordinal);
         Assert.Contains("(this session)", page, StringComparison.Ordinal);
+        // WCAG 2.4.6: each "Sign out" button is described by its session's device.
+        foreach (var id in ids)
+        {
+            Assert.Contains($"""<strong id="session-{id}">""", page, StringComparison.Ordinal);
+            Assert.Contains($"""aria-describedby="session-{id}">""", page, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

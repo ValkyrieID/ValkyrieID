@@ -29,7 +29,7 @@ import { Notifier } from '../shared/util';
       they signed. Private keys never leave the server.
     </p>
     <app-problem [problem]="problem()" />
-    @if (keys.value(); as list) {
+    @if (keys.hasValue() ? keys.value() : undefined; as list) {
       <div class="table-wrap">
         <table class="data">
           <thead>

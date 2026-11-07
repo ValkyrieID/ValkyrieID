@@ -4,7 +4,7 @@
   <p>{{ meta().description }}</p>
   <app-problem [problem]="loadProblem() ?? problem()" />
 
-  @if (data.value(); as loaded) {
+  @if (data.hasValue() ? data.value() : undefined; as loaded) {
     <form class="form settings" (submit)="save($event)" novalidate>
       @for (s of loaded.settings; track s.name) {
         <div class="setting" [class.locked]="s.locked">

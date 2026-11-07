@@ -13,9 +13,10 @@
 <ul class="sessions">
     @foreach (var session in Model.Sessions)
     {
+        var nameId = $"session-{session.Id}";
         <li>
             <p>
-                <strong>@(session.UserAgent ?? "Unknown device")</strong>
+                <strong id="@nameId">@(session.UserAgent ?? "Unknown device")</strong>
                 @if (Model.IsCurrent(session))
                 {
                     <span> (this session)</span>
@@ -31,7 +32,8 @@
             </dl>
             <form method="post" asp-page-handler="Revoke">
                 <input type="hidden" name="SessionId" value="@session.Id">
-                <button type="submit">@(Model.IsCurrent(session) ? "Sign out" : "Sign out this session")</button>
+                @* The buttons all have the same name; the description tells them apart (WCAG 2.4.6). *@
+                <button type="submit" aria-describedby="@nameId">@(Model.IsCurrent(session) ? "Sign out" : "Sign out this session")</button>
             </form>
         </li>
     }

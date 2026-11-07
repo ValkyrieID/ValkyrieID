@@ -15,7 +15,7 @@ import { GroupDto, RoleDto } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
 import { ProblemComponent } from '../../shared/problem.component';
-import { Notifier, optional } from '../../shared/util';
+import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
   selector: 'app-named-detail-page',
@@ -25,8 +25,11 @@ import { Notifier, optional } from '../../shared/util';
     <p>
       <a [routerLink]="['/' + kind()]">{{ kind() === 'roles' ? 'Roles' : 'Groups' }}</a>
     </p>
+    @if (loadProblem()) {
+      <h1>{{ kind() === 'roles' ? 'Role' : 'Group' }}</h1>
+    }
     <app-problem [problem]="loadProblem()" />
-    @if (item.value(); as current) {
+    @if (item.hasValue() ? item.value() : undefined; as current) {
       <h1>{{ current.name }}</h1>
       <p class="muted">{{ current.members }} members</p>
       <app-problem [problem]="problem()" />
@@ -100,7 +103,7 @@ export class NamedDetailPage {
     this.item.error() ? toProblem(this.item.error()) : null,
   );
   protected readonly builtIn = computed(() => {
-    const value = this.item.value();
+    const value = valueOf(this.item);
     return !!value && 'builtIn' in value && value.builtIn;
   });
   protected readonly deleteMessage = computed(() =>
@@ -109,8 +112,8 @@ export class NamedDetailPage {
       : "Members are removed from the group. This can't be undone.",
   );
 
-  protected readonly name = linkedSignal(() => this.item.value()?.name ?? '');
-  protected readonly description = linkedSignal(() => this.item.value()?.description ?? '');
+  protected readonly name = linkedSignal(() => valueOf(this.item)?.name ?? '');
+  protected readonly description = linkedSignal(() => valueOf(this.item)?.description ?? '');
   protected readonly busy = signal(false);
   protected readonly problem = signal<Problem | null>(null);
 

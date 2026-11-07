@@ -53,6 +53,13 @@ export default defineConfig({
         text: 'Security',
         items: [{ text: 'Security checklist', link: '/security/checklist' }],
       },
+      {
+        text: 'Accessibility',
+        items: [
+          { text: 'Accessibility', link: '/accessibility/' },
+          { text: 'Accessibility checklist', link: '/accessibility/checklist' },
+        ],
+      },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/ValkyrieID/valkyrieid' }],
     search: { provider: 'local' },

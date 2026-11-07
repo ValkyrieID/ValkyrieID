@@ -28,7 +28,7 @@ import { Notifier, optional } from '../../shared/util';
       <button type="submit">Search</button>
     </form>
     <app-problem [problem]="listProblem()" />
-    @if (items.value(); as page) {
+    @if (items.hasValue() ? items.value() : undefined; as page) {
       @if (page.items.length === 0) {
         <p>None found.</p>
       } @else {

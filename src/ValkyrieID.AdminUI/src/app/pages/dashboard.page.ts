@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { AdminApi } from '../api/admin-api';
 import { AuditPage, ClientDto, Page, ResourceDto, SigningKeyDto, UserSummary } from '../api/models';
+import { valueOf } from '../shared/util';
 import { AuditTableComponent } from './audit-table.component';
 
 @Component({
@@ -15,17 +16,26 @@ import { AuditTableComponent } from './audit-table.component';
     <ul class="cards">
       <li>
         <a routerLink="/users"
-          ><span class="count">{{ users.value()?.total ?? '–' }}</span> Users</a
+          ><span class="count">{{
+            (users.hasValue() ? users.value() : undefined)?.total ?? '–'
+          }}</span>
+          Users</a
         >
       </li>
       <li>
         <a routerLink="/clients"
-          ><span class="count">{{ clients.value()?.total ?? '–' }}</span> Clients</a
+          ><span class="count">{{
+            (clients.hasValue() ? clients.value() : undefined)?.total ?? '–'
+          }}</span>
+          Clients</a
         >
       </li>
       <li>
         <a routerLink="/resources"
-          ><span class="count">{{ resources.value()?.total ?? '–' }}</span> API resources</a
+          ><span class="count">{{
+            (resources.hasValue() ? resources.value() : undefined)?.total ?? '–'
+          }}</span>
+          API resources</a
         >
       </li>
       <li>
@@ -42,7 +52,7 @@ import { AuditTableComponent } from './audit-table.component';
     </ul>
 
     <h2>Recent activity</h2>
-    @if (audit.value(); as page) {
+    @if (audit.hasValue() ? audit.value() : undefined; as page) {
       <app-audit-table [entries]="page.items" />
       <p><a routerLink="/audit">Open the audit log</a></p>
     } @else if (audit.isLoading()) {
@@ -66,9 +76,9 @@ export class DashboardPage {
   protected readonly audit = httpResource<AuditPage>(() => this.api.auditUrl({}, null, 10));
 
   protected readonly activeKey = computed(() =>
-    this.keys.value()?.find((k) => k.status === 'active'),
+    valueOf(this.keys)?.find((k) => k.status === 'active'),
   );
   protected readonly pendingKey = computed(() =>
-    this.keys.value()?.some((k) => k.status === 'pending'),
+    valueOf(this.keys)?.some((k) => k.status === 'pending'),
   );
 }

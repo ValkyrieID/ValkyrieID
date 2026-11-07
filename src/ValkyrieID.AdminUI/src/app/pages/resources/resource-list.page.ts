@@ -27,7 +27,7 @@ import { ProblemComponent } from '../../shared/problem.component';
       <button type="submit">Search</button>
     </form>
     <app-problem [problem]="problem()" />
-    @if (resources.value(); as page) {
+    @if (resources.hasValue() ? resources.value() : undefined; as page) {
       @if (page.items.length === 0) {
         <p>No API resources found.</p>
       } @else {

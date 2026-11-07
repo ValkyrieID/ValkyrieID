@@ -189,8 +189,9 @@ main:focus {
 }
 
 @media (max-width: 48rem) {
+  /* minmax(0, …): wide content (tables, code) scrolls or wraps inside its container instead of widening the page. */
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sidebar ul {
@@ -425,6 +426,8 @@ button:disabled {
 /* Tables and lists */
 
 .table-wrap {
+  /* Contains visually hidden (absolutely positioned) header text, so it scrolls with the table. */
+  position: relative;
   overflow-x: auto;
   background: var(--vid-surface);
   border: 1px solid var(--vid-subtle-border);
