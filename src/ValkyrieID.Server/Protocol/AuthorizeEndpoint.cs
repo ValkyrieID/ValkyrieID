@@ -451,6 +451,6 @@ internal sealed class AuthorizationReply(string redirectUri, string? state, stri
         var location = redirectUri.Contains('?', StringComparison.Ordinal)
             ? redirectUri + "&" + query.Value![1..]
             : redirectUri + query.Value;
-        return ProtocolPages.Redirect(location);
+        return ProtocolPages.Redirect(location + ProtocolPages.FragmentFix);
     }
 }

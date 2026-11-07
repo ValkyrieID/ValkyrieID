@@ -64,6 +64,8 @@ public abstract class AuthorizationTests
         var query = QueryHelpers.ParseQuery(location.Query);
 
         Assert.StartsWith(RedirectUri + "?", location.ToString(), StringComparison.Ordinal);
+        // RFC 9700 §4.1.3: a fragment stops browsers from reattaching the authorization request's fragment.
+        Assert.Equal("#_", location.Fragment);
         Assert.Equal("af0ifjsldkj", query["state"].ToString());
         Assert.Equal(ValkyrieAppFactory.DefaultIssuer, query["iss"].ToString());
 
@@ -342,6 +344,7 @@ public abstract class AuthorizationTests
         var location = await AuthorizeAsync(factory.CreateBrowser(), Params("spa", "openid", challenge) with { Prompt = "none", State = "s1" });
 
         AssertRedirectError(location, "login_required");
+        Assert.Equal("#_", location.Fragment);
         Assert.Equal("s1", QueryHelpers.ParseQuery(location.Query)["state"].ToString());
         Assert.Equal(ValkyrieAppFactory.DefaultIssuer, QueryHelpers.ParseQuery(location.Query)["iss"].ToString());
     }

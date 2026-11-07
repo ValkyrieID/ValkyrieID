@@ -75,7 +75,7 @@ public abstract class LogoutTests
 
         // RP-Initiated Logout §3: the redirect happens after the clients were notified.
         Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
-        Assert.Equal($"{PostLogoutUri}?state=s%20t%261", response.Headers.Location!.OriginalString);
+        Assert.Equal($"{PostLogoutUri}?state=s%20t%261#_", response.Headers.Location!.OriginalString);
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString(), StringComparison.Ordinal);
         var requests = receiver.Requests.OrderBy(r => r.Uri.AbsoluteUri, StringComparer.Ordinal).ToList();
         Assert.Equal([BackChannelUri, OtherBackChannelUri], requests.Select(r => r.Uri.AbsoluteUri));
@@ -124,7 +124,7 @@ public abstract class LogoutTests
         var confirmed = await Forms.PostAsync(browser, page, []);
 
         Assert.Equal(HttpStatusCode.SeeOther, confirmed.StatusCode);
-        Assert.Equal($"{PostLogoutUri}?state=xyz", confirmed.Headers.Location!.OriginalString);
+        Assert.Equal($"{PostLogoutUri}?state=xyz#_", confirmed.Headers.Location!.OriginalString);
         Assert.False(await SessionActiveAsync(factory));
     }
 
@@ -146,7 +146,7 @@ public abstract class LogoutTests
         var page = AssertLogoutPage(response);
         Assert.True(await SessionActiveAsync(factory));
         var confirmed = await Forms.PostAsync(browser, page, []);
-        Assert.Equal(PostLogoutUri, confirmed.Headers.Location!.OriginalString);
+        Assert.Equal(PostLogoutUri + "#_", confirmed.Headers.Location!.OriginalString);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public abstract class LogoutTests
         var page = AssertLogoutPage(await browser.GetAsync(EndSessionUrl(("id_token_hint", hint), ("post_logout_redirect_uri", PostLogoutUri)), CancellationToken));
         var response = await Forms.PostAsync(browser, page, []);
 
-        Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
+        Assert.Equal(PostLogoutUri + "#_", response.Headers.Location!.OriginalString);
         Assert.False(await SessionActiveAsync(factory));
     }
 
@@ -180,7 +180,7 @@ public abstract class LogoutTests
 
         // RP-Initiated Logout §4: a logout request for a user who isn't signed in is not an error.
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal($"{PostLogoutUri}?state=abc", response.Headers.Location!.OriginalString);
+        Assert.Equal($"{PostLogoutUri}?state=abc#_", response.Headers.Location!.OriginalString);
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public abstract class LogoutTests
         var response = await factory.CreateBrowser().GetAsync(
             EndSessionUrl(("client_id", "web"), ("post_logout_redirect_uri", "https://app.example.test/bye?from=idp"), ("state", "1")), CancellationToken);
 
-        Assert.Equal("https://app.example.test/bye?from=idp&state=1", response.Headers.Location!.OriginalString);
+        Assert.Equal("https://app.example.test/bye?from=idp&state=1#_", response.Headers.Location!.OriginalString);
     }
 
     [Fact]
@@ -310,7 +310,7 @@ public abstract class LogoutTests
         var response = await Forms.PostAsync(browser, page, []);
 
         // The browser isn't held up by a failing client.
-        Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
+        Assert.Equal(PostLogoutUri + "#_", response.Headers.Location!.OriginalString);
         Assert.Single(receiver.Requests);
         var pending = await SingleDeliveryAsync(factory);
         Assert.Equal(1, pending.Attempts);
@@ -406,7 +406,7 @@ public abstract class LogoutTests
 
         var response = await Forms.PostAsync(browser, page, []);
 
-        Assert.Equal(PostLogoutUri, response.Headers.Location!.OriginalString);
+        Assert.Equal(PostLogoutUri + "#_", response.Headers.Location!.OriginalString);
         Assert.True(DateTimeOffset.UtcNow - started < TimeSpan.FromSeconds(10));
         var pending = await SingleDeliveryAsync(factory);
         Assert.Equal(1, pending.Attempts);

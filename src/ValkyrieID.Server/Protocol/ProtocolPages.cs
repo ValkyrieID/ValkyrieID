@@ -41,6 +41,14 @@ internal static class ProtocolPages
         return new HtmlPage(StatusCodes.Status200OK, "Continue", nonce, html.ToString(), action);
     }
 
+    /// <summary>
+    /// RFC 9700 §4.1.3: browsers reattach the current URL's fragment to a Location without one, so servers "MAY
+    /// prevent browsers from reattaching fragments to redirection URLs by attaching an arbitrary fragment identifier,
+    /// for example #_". Appended to every redirect to a client; registered redirect URIs never contain a fragment
+    /// (RFC 6749 §3.1.2).
+    /// </summary>
+    public const string FragmentFix = "#_";
+
     /// <summary>A redirect that must not be cached, since it carries protocol parameters.</summary>
     public static IResult Redirect(string location, int statusCode = StatusCodes.Status302Found) => new NoStoreRedirect(location, statusCode);
 

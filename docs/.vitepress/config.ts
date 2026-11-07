@@ -51,7 +51,10 @@ export default defineConfig({
       },
       {
         text: 'Security',
-        items: [{ text: 'Security checklist', link: '/security/checklist' }],
+        items: [
+          { text: 'Security checklist', link: '/security/checklist' },
+          { text: 'OAuch results', link: '/security/oauch' },
+        ],
       },
       {
         text: 'Accessibility',

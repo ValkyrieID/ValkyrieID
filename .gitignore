@@ -494,6 +494,7 @@ docs/.vitepress/dist/
 
 # Conformance suite plan configurations (contain client secrets)
 conformance/out/
+security/oauch/out/
 
 # Admin UI build output (built by npm run build / dotnet publish)
 src/ValkyrieID.Server/wwwroot/admin/

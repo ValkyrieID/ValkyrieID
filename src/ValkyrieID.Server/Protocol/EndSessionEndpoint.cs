@@ -73,16 +73,20 @@ internal sealed class EndSessionEndpoint(
         return client is { Enabled: true } && client.PostLogoutRedirectUris.Contains(request.RedirectUri, StringComparer.Ordinal);
     }
 
-    /// <summary>The redirect URI with <c>state</c> added; an existing query component is kept.</summary>
+    /// <summary>
+    /// The redirect URI with <c>state</c> added; an existing query component is kept. Ends with
+    /// <see cref="ProtocolPages.FragmentFix"/> (RFC 9700 §4.1.3).
+    /// </summary>
     public static string Location(string redirectUri, string? state)
     {
         if (state is null)
         {
-            return redirectUri;
+            return redirectUri + ProtocolPages.FragmentFix;
         }
 
         var query = QueryString.Create("state", state).Value!;
-        return redirectUri.Contains('?', StringComparison.Ordinal) ? redirectUri + "&" + query[1..] : redirectUri + query;
+        var location = redirectUri.Contains('?', StringComparison.Ordinal) ? redirectUri + "&" + query[1..] : redirectUri + query;
+        return location + ProtocolPages.FragmentFix;
     }
 
     private string LogoutPageUrl(HttpContext context, LogoutRequest request) =>
