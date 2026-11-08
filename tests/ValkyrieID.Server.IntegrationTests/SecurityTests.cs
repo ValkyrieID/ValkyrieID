@@ -222,7 +222,8 @@ public abstract class SecurityTests
         var authorize = await browser.GetAsync(AuthorizeUrl("web", RedirectUri), CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, account.StatusCode);
-        Assert.Equal("no-store", account.Headers.CacheControl?.ToString());
+        // Pages with forms (every page has the theme form) get "no-cache, no-store" from anti-forgery.
+        Assert.True(account.Headers.CacheControl?.NoStore);
         Assert.Equal(HttpStatusCode.Redirect, authorize.StatusCode);
         Assert.Equal("no-store", authorize.Headers.CacheControl?.ToString());
     }

@@ -167,7 +167,8 @@ public abstract partial class EmailTests
         var response = await PostResetAsync(anonymous, link, NewPassword);
 
         Assert.Contains("password has been reset", await response.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
-        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        // Pages with forms (every page has the theme form) get "no-cache, no-store" from anti-forgery.
+        Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.Equal(HttpStatusCode.Redirect, (await first.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await second.GetAsync("/account", CancellationToken)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await Forms.LoginAsync(server.Factory.CreateBrowser(), "alice", Password)).StatusCode);

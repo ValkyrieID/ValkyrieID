@@ -18,6 +18,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './auth/auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { APP_SETTINGS, readSettings } from './auth/settings';
+import { ThemeService } from './shared/theme.service';
 
 /** "Users – ValkyrieID Admin": every page has a unique, descriptive title (WCAG 2.4.2). */
 @Injectable({ providedIn: 'root' })
@@ -37,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideRouter(routes, withComponentInputBinding()),
     { provide: TitleStrategy, useExisting: AdminTitleStrategy },
+    provideAppInitializer(() => inject(ThemeService).initialize()),
     provideAppInitializer(() => inject(AuthService).initialize(window.location.href)),
   ],
 };

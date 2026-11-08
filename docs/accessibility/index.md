@@ -33,18 +33,19 @@ The admin UI adds the following, since it changes pages without reloading them:
 
 ## Branding
 
-[Branding](/reference/configuration#branding) changes the sign-in pages' colors, logo, background image, and styles. ValkyrieID uses the colors as given, so choose them to keep WCAG 2.2 AA contrast. The default colors meet these ratios.
+[Branding](/reference/configuration#branding) changes the sign-in pages' colors, logo, background image, and styles. ValkyrieID uses the colors as given, so choose them to keep WCAG 2.2 AA contrast in **both** themes: the colors without `Dark` apply to the light theme, the `Dark*` colors to the dark theme. The default colors meet these ratios (light / dark).
 
-| Variable (setting) | Used for | Must contrast with | Minimum ratio | Default |
+| Variable (setting) | Used for | Must contrast with | Minimum ratio | Default (light / dark) |
 |---|---|---|---|---|
-| `--vid-text` (`Branding:TextColor`) | Text | `--vid-surface` | 4.5:1 | 16.9:1 |
-| `--vid-primary` (`Branding:PrimaryColor`) | Links, focus outline | `--vid-surface` | 4.5:1 (links are text) | 6.8:1 |
-| `--vid-primary-text` (custom CSS) | Button text, white by default | `--vid-primary` | 4.5:1 | 6.8:1 |
-| `--vid-muted` (custom CSS) | Hints, "(optional)" | `--vid-surface` | 4.5:1 | 8.0:1 |
-| `--vid-border` (custom CSS) | Input borders | `--vid-surface` | 3:1 (1.4.11) | 4.8:1 |
-| `--vid-error` / `--vid-error-background` (custom CSS) | Error summaries | each other | 4.5:1 | 6.8:1 |
+| `--vid-text` (`Branding:TextColor`, `Branding:DarkTextColor`) | Text | `--vid-surface` | 4.5:1 | 17.7:1 / 15.7:1 |
+| `--vid-primary` (`Branding:PrimaryColor`) | Links, focus outline (light theme) | `--vid-surface` | 4.5:1 (links are text) | 6.3:1 |
+| `--vid-link` (derived from `Branding:DarkPrimaryColor`) | Links, focus outline (dark theme): the primary color mixed 40 % with white | `--vid-surface` | 4.5:1 | 9.6:1 |
+| `--vid-primary-text` (custom CSS) | Button text, white by default | `--vid-primary` | 4.5:1 | 6.3:1 / 6.3:1 |
+| `--vid-muted` (custom CSS) | Hints, "(optional)" | `--vid-surface` | 4.5:1 | 7.7:1 / 7.2:1 |
+| `--vid-border` (custom CSS) | Input borders, the selected theme button | `--vid-surface` | 3:1 (1.4.11) | 4.8:1 / 3.8:1 |
+| `--vid-error` / `--vid-error-background` (custom CSS) | Error summaries | each other | 4.5:1 | 5.9:1 / 6.4:1 |
 
-- **Primary color:** it's both the button background (with white text) and the link and focus color on the card, so it needs 4.5:1 against **both** white and the surface color. Very light or very saturated colors (yellow, light green, orange) usually fail; darken them. If you need a light primary color, set `--vid-primary-text` to a dark color in the custom stylesheet.
+- **Primary color:** in the light theme it's both the button background (with white text) and the link and focus color on the card, so it needs 4.5:1 against **both** white and the surface color. Very light or very saturated colors (yellow, light green, orange) usually fail; darken them. If you need a light primary color, set `--vid-primary-text` to a dark color in the custom stylesheet. In the dark theme, buttons use the dark primary color with white text, and links use a lighter tint of it, so a mid-tone color works best.
 - **Background color and image:** all text is on the card (`--vid-surface`), so the page background has no contrast requirement of its own. Keep the card clearly visible on busy images.
 - **Logo:** the logo's `alt` text is the product name (`Branding:ProductName`), so don't include text in the logo that differs from it.
 - **Custom stylesheets** can break conformance: don't hide focus outlines (`outline: none`), don't fix heights or widths in a way that clips text at 200% zoom or 320 px, keep controls at least 24×24 px, and wrap animations in `@media (prefers-reduced-motion: no-preference)`.

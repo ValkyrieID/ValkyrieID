@@ -83,9 +83,10 @@ internal static class ProtocolPages
             var customCss = branding.CustomCss is null
                 ? string.Empty
                 : $"<link rel=\"stylesheet\" href=\"{encoder.Encode($"{pathBase}{AccountExtensions.BrandingPath}/{branding.CustomCss}")}\">";
+            var theme = ThemePreference.Read(httpContext.Request) ?? ThemePreference.System;
             var html = $"""
                 <!DOCTYPE html>
-                <html lang="en">
+                <html lang="en" data-theme="{theme}">
                 <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">

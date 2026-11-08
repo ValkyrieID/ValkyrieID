@@ -12,11 +12,12 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 import { AuthService } from './auth/auth.service';
 import { Notifier } from './shared/util';
+import { ThemeSwitchComponent } from './shared/theme-switch.component';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeSwitchComponent],
   templateUrl: './app.html',
 })
 export class App {

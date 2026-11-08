@@ -19,10 +19,14 @@ internal static partial class Forms
     }
 
     /// <summary>Loads <paramref name="path"/> for its anti-forgery token, then posts the form to it.</summary>
-    public static async Task<HttpResponseMessage> PostAsync(HttpClient client, string path, Dictionary<string, string> fields)
+    public static Task<HttpResponseMessage> PostAsync(HttpClient client, string path, Dictionary<string, string> fields) =>
+        PostAsync(client, path, path, fields);
+
+    /// <summary>Loads <paramref name="pagePath"/> for its anti-forgery token, then posts a form on it to <paramref name="action"/>.</summary>
+    public static async Task<HttpResponseMessage> PostAsync(HttpClient client, string action, string pagePath, Dictionary<string, string> fields)
     {
-        var token = await GetTokenAsync(client, path);
-        return await client.PostAsync(path, new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))), CancellationToken);
+        var token = await GetTokenAsync(client, pagePath);
+        return await client.PostAsync(action, new FormUrlEncodedContent(fields.Append(new("__RequestVerificationToken", token))), CancellationToken);
     }
 
     public static Task<HttpResponseMessage> LoginAsync(HttpClient client, string identifier, string password, string? returnUrl = null) =>

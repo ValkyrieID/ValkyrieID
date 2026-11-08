@@ -249,6 +249,8 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
 
     public string Css => Current.Css;
 
+    // site.css defines the dark palette with higher specificity than :root, so the light colors below don't leak into
+    // the dark theme. The dark colors use the same selectors as site.css and win by coming later.
     private static string Build(BrandingOptions branding)
     {
         var css = new StringBuilder(":root {\n");
@@ -261,7 +263,20 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
             Add(css, "--vid-background-image", $"url(\"{AccountExtensions.BrandingPath}/{branding.BackgroundImage}\")");
         }
 
-        return css.Append("}\n").ToString();
+        css.Append("}\n");
+
+        var dark = new StringBuilder();
+        Add(dark, "--vid-primary", branding.DarkPrimaryColor);
+        Add(dark, "--vid-background", branding.DarkBackgroundColor);
+        Add(dark, "--vid-surface", branding.DarkSurfaceColor);
+        Add(dark, "--vid-text", branding.DarkTextColor);
+        if (dark.Length > 0)
+        {
+            css.Append(CultureInfo.InvariantCulture, $"@media (prefers-color-scheme: dark) {{\n:root:not([data-theme=\"light\"]) {{\n{dark}}}\n}}\n");
+            css.Append(CultureInfo.InvariantCulture, $":root[data-theme=\"dark\"] {{\n{dark}}}\n");
+        }
+
+        return css.ToString();
     }
 
     private static void Add(StringBuilder css, string name, string? value)

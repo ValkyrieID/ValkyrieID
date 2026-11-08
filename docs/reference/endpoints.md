@@ -36,6 +36,7 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 | `/account/reset-password` | Choose a new password with a link from a reset email; signs out all sessions. Only with SMTP. |
 | `/account/verify-email` | Verify the email address with a link. Only with SMTP. |
 | `/account/confirm-email` | Confirm an email change with the link sent to the new address. Only with SMTP. |
+| `POST /account/theme` | <a id="theme"></a>Stores the [theme](/reference/configuration#themes) choice (`Theme` = `system`, `light`, or `dark`) from the theme switch on every page, and answers `303 See Other` to the local `ReturnUrl` (other URLs go to `/account`). Needs the page's anti-forgery token, works signed in or out, and counts against `RateLimits:Account`. `system` deletes the cookie. |
 
 Every response carries these headers:
 

@@ -128,6 +128,16 @@ export const SECTIONS: Readonly<Record<string, SectionMeta>> = {
         label: 'Text color',
         help: 'Keep a contrast ratio of at least 4.5:1 with the background colors.',
       },
+      darkPrimaryColor: {
+        label: 'Primary color (dark theme)',
+        help: 'The colors above apply to the light theme; these apply to the dark theme. Links and focus outlines use a lighter tint of it.',
+      },
+      darkBackgroundColor: { label: 'Background color (dark theme)' },
+      darkSurfaceColor: { label: 'Card color (dark theme)' },
+      darkTextColor: {
+        label: 'Text color (dark theme)',
+        help: 'Keep a contrast ratio of at least 4.5:1 with the dark background colors.',
+      },
       logo: { label: 'Logo' },
       backgroundImage: { label: 'Background image' },
       customCss: { label: 'Custom stylesheet' },

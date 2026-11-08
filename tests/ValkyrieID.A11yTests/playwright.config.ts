@@ -19,17 +19,31 @@ export default defineConfig({
   },
   projects: [
     { name: 'setup', testMatch: /setup\.spec\.ts/ },
-    { name: 'login', testMatch: /login-pages\.spec\.ts/, dependencies: ['setup'] },
+    { name: 'login', testMatch: /login-pages\.spec\.ts/, dependencies: ['admin-dark'] },
     {
       name: 'admin',
       testMatch: /admin-ui\.spec\.ts/,
-      dependencies: ['setup'],
+      dependencies: ['admin-dark'],
       use: { storageState: adminStorageState },
+    },
+    {
+      name: 'login-dark',
+      testMatch: /login-dark\.spec\.ts/,
+      dependencies: ['login'],
+      use: { colorScheme: 'dark' },
+    },
+    {
+      name: 'admin-dark',
+      testMatch: /admin-dark\.spec\.ts/,
+      // Before the other suites, which sign the admin's stored session out.
+      dependencies: ['setup'],
+      use: { storageState: adminStorageState, colorScheme: 'dark' },
     },
     {
       name: 'branded',
       testMatch: /branded\.spec\.ts/,
-      dependencies: ['login', 'admin'],
+      // Last: the branding settings stay in place for the rest of the run.
+      dependencies: ['login', 'admin', 'login-dark', 'admin-dark'],
     },
   ],
   webServer: {

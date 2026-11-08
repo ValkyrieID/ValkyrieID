@@ -239,7 +239,7 @@ Check the settings with **Send test email** on the admin UI's SMTP settings page
 | `RateLimits:Authorize:PermitLimit` / `:Window` | `60` / `00:01:00` | Authorization endpoint requests per client IP address. |
 | `RateLimits:TwoFactor:PermitLimit` / `:Window` | `10` / `00:01:00` | 2FA code and recovery code submissions (at sign-in and when setting up 2FA), and the account forms that ask for the current password, per client IP address. |
 | `RateLimits:Email:PermitLimit` / `:Window` | `5` / `00:05:00` | Submissions of the [email](/guide/email) forms (forgot password, reset password, verify email, change email) per client IP address. |
-| `RateLimits:Account:PermitLimit` / `:Window` | `30` / `00:01:00` | Other account form submissions (profile, sessions, sign-out) per client IP address. |
+| `RateLimits:Account:PermitLimit` / `:Window` | `30` / `00:01:00` | Other account form submissions (profile, sessions, sign-out, theme) per client IP address. |
 
 Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 clients are counted per `/64` prefix, since a single client usually has a whole `/64` to choose addresses from. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 
@@ -252,14 +252,24 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 
 | `Branding:Logo` | *(none)* | **Runtime.** Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
 | `Branding:BackgroundImage` | *(none)* | **Runtime.** Background image file name in `Branding:Directory`. |
 | `Branding:CustomCss` | *(none)* | **Runtime.** Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
-| `Branding:PrimaryColor` | `#1f4fd1` | **Runtime.** Buttons, links, and focus outlines. |
-| `Branding:BackgroundColor` | `#eef1f6` | **Runtime.** Page background. |
-| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card background. |
-| `Branding:TextColor` | `#1a1d23` | **Runtime.** Text. |
+| `Branding:PrimaryColor` | `#4f46e5` | **Runtime.** Buttons, links, and focus outlines in the light theme. |
+| `Branding:BackgroundColor` | `#fafafa` | **Runtime.** Page background in the light theme. |
+| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card background in the light theme. |
+| `Branding:TextColor` | `#18181b` | **Runtime.** Text in the light theme. |
+| `Branding:DarkPrimaryColor` | `#4f46e5` | **Runtime.** Buttons in the dark theme; links and focus outlines use a lighter tint of it. |
+| `Branding:DarkBackgroundColor` | `#0a0a0b` | **Runtime.** Page background in the dark theme. |
+| `Branding:DarkSurfaceColor` | `#141416` | **Runtime.** Card background in the dark theme. |
+| `Branding:DarkTextColor` | `#ededef` | **Runtime.** Text in the dark theme. |
 
-Colors must be hex (`#1f4fd1`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
+Colors must be hex (`#4f46e5`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
 
-The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-error`, `--vid-error-background` and `--vid-border`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA). The primary color needs 4.5:1 against both white (button text) and the surface color (links); see [Accessibility: Branding](/accessibility/#branding) for every variable's requirement.
+### Themes
+
+The sign-in, account, and setup pages and the admin UI have a light and a dark theme. By default they follow the operating system or browser setting (`prefers-color-scheme`); a theme switch at the top right of the pages (and in the admin UI's top bar) lets users choose System, Light, or Dark. The choice is stored in the `__Host-valkyrie.theme` cookie for one year and applies to both the pages and the admin UI. The pages render it on the server, so it works without JavaScript; the switch there is a form that posts to [`POST /account/theme`](/reference/endpoints#theme).
+
+The colors without `Dark` apply to the light theme only, and the `Dark` colors to the dark theme only, so a light branding can't make the dark theme unreadable. Unset colors keep the built-in palette of that theme.
+
+The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-divider`, `--vid-error`, `--vid-error-background` and `--vid-border`. To change only the dark theme, use the selectors `:root[data-theme="dark"]` and, inside `@media (prefers-color-scheme: dark)`, `:root:not([data-theme="light"])`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA) in both themes. The primary color needs 4.5:1 against white (button text), and in the light theme against the surface color (links); see [Accessibility: Branding](/accessibility/#branding) for every variable's requirement.
 
 ## Audit log
 

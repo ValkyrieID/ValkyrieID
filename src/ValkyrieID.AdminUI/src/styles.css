@@ -1,27 +1,98 @@
 /*
  * All styles are global: the admin UI's CSP is style-src 'self', which doesn't allow the <style> elements Angular
- * adds for component styles. Colors meet WCAG 2.2 AA contrast (4.5:1 for text, 3:1 for UI parts).
+ * adds for component styles.
+ *
+ * Design tokens shared with the login pages (src/ValkyrieID.Server/wwwroot/css/site.css; keep both in sync, see
+ * layout.md). Light is the default; dark applies with data-theme="dark", or with no explicit choice when the system
+ * prefers dark. index.html starts with data-theme="dark" so the page never flashes light before turning dark;
+ * ThemeService applies the stored choice at startup. Text pairs reach 4.5:1, controls and focus 3:1.
  */
 :root {
-  --vid-navy: #0b0f24;
-  --vid-navy-2: #161b3a;
-  --vid-primary: #5b21b6;
-  --vid-primary-hover: #4c1d95;
+  color-scheme: light;
+  --vid-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --vid-font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  --vid-radius-sm: 0.375rem;
+  --vid-radius: 0.5rem;
+  --vid-radius-lg: 0.75rem;
+  --vid-primary: #4f46e5;
   --vid-primary-text: #ffffff;
-  --vid-accent: #ff9a3c;
-  --vid-background: #f4f3f8;
+  --vid-background: #fafafa;
   --vid-surface: #ffffff;
-  --vid-text: #1a1b26;
-  --vid-muted: #4b4f63;
-  --vid-border: #6b7080;
-  --vid-subtle-border: #d7d6e0;
-  --vid-error: #a4161a;
-  --vid-error-background: #fdecec;
-  --vid-ok: #116329;
-  --vid-ok-background: #e6f4ea;
-  --vid-warn: #8a3b00;
-  --vid-warn-background: #fff1e5;
-  --vid-focus: #5b21b6;
+  --vid-surface-raised: #ffffff;
+  --vid-surface-hover: #f4f4f5;
+  --vid-text: #18181b;
+  --vid-muted: #52525b;
+  --vid-divider: #e4e4e7;
+  --vid-border: #71717a;
+  --vid-error: #b91c1c;
+  --vid-error-background: #fef2f2;
+  --vid-ok: #15803d;
+  --vid-ok-background: #f0fdf4;
+  --vid-warn: #a16207;
+  --vid-warn-background: #fefce8;
+  --vid-info: #1d4ed8;
+  --vid-info-background: #eff6ff;
+  --vid-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%);
+  --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
+  --vid-backdrop: rgb(9 9 11 / 50%);
+  --vid-primary-hover: color-mix(in srgb, var(--vid-primary) 85%, #000000);
+  --vid-link: var(--vid-primary);
+  --vid-focus: var(--vid-primary);
+  --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 10%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --vid-background: #0a0a0b;
+    --vid-surface: #141416;
+    --vid-surface-raised: #1c1c1f;
+    --vid-surface-hover: #232327;
+    --vid-text: #ededef;
+    --vid-muted: #a1a1aa;
+    --vid-divider: #27272a;
+    --vid-border: #71717a;
+    --vid-error: #f87171;
+    --vid-error-background: #2a1215;
+    --vid-ok: #4ade80;
+    --vid-ok-background: #0f2417;
+    --vid-warn: #facc15;
+    --vid-warn-background: #2a2207;
+    --vid-info: #93c5fd;
+    --vid-info-background: #0f1d33;
+    --vid-shadow: none;
+    --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
+    --vid-backdrop: rgb(0 0 0 / 70%);
+    --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+    --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+    --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --vid-background: #0a0a0b;
+  --vid-surface: #141416;
+  --vid-surface-raised: #1c1c1f;
+  --vid-surface-hover: #232327;
+  --vid-text: #ededef;
+  --vid-muted: #a1a1aa;
+  --vid-divider: #27272a;
+  --vid-border: #71717a;
+  --vid-error: #f87171;
+  --vid-error-background: #2a1215;
+  --vid-ok: #4ade80;
+  --vid-ok-background: #0f2417;
+  --vid-warn: #facc15;
+  --vid-warn-background: #2a2207;
+  --vid-info: #93c5fd;
+  --vid-info-background: #0f1d33;
+  --vid-shadow: none;
+  --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
+  --vid-backdrop: rgb(0 0 0 / 70%);
+  --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+  --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+  --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
 }
 
 *,
@@ -31,44 +102,50 @@
 }
 
 html {
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--vid-font);
   font-size: 100%;
   line-height: 1.5;
   color: var(--vid-text);
   background: var(--vid-background);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--vid-primary) 25%, transparent);
+}
+
 h1 {
-  font-size: 1.75rem;
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   margin: 0 0 1rem;
 }
 
 h2 {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 2rem 0 0.75rem;
 }
 
 a {
-  color: var(--vid-primary);
+  color: var(--vid-link);
+  text-underline-offset: 0.15em;
 }
 
 code {
-  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  font-size: 0.9em;
+  font-family: var(--vid-font-mono);
+  font-size: 0.875em;
   overflow-wrap: anywhere;
 }
 
 :focus-visible {
-  outline: 3px solid var(--vid-focus);
+  outline: 2px solid var(--vid-focus);
   outline-offset: 2px;
 }
 
@@ -92,63 +169,71 @@ code {
   padding: 0.5rem 1rem;
   color: var(--vid-primary-text);
   background: var(--vid-primary);
+  border-radius: var(--vid-radius-sm);
 }
 
 .skip-link:focus {
   top: 0.5rem;
 }
 
-/* Layout */
+/* Layout (the full shell redesign is phase 11c) */
 
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  min-height: 3.5rem;
   padding: 0.5rem 1rem;
-  color: #ffffff;
-  background: var(--vid-navy);
-  border-bottom: 3px solid var(--vid-accent);
+  background: var(--vid-surface);
+  border-bottom: 1px solid var(--vid-divider);
 }
 
 .topbar .brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 1.125rem;
+  gap: 0.625rem;
+  color: var(--vid-text);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
   text-decoration: none;
 }
 
+.topbar .brand img {
+  width: 2rem;
+  height: 2rem;
+}
+
+.topbar-actions,
 .topbar .account {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-.topbar :focus-visible {
-  outline-color: var(--vid-accent);
-}
-
-.topbar button.secondary {
-  color: #ffffff;
-  background: transparent;
-  border-color: #ffffff;
+.topbar .account {
+  color: var(--vid-muted);
+  font-size: 0.875rem;
 }
 
 .layout {
   display: grid;
   grid-template-columns: 14rem minmax(0, 1fr);
-  min-height: calc(100vh - 3.75rem);
+  min-height: calc(100vh - 3.5rem);
 }
 
 .sidebar {
-  background: var(--vid-navy-2);
-  padding: 1rem 0;
+  padding: 0.75rem 0.5rem;
+  background: var(--vid-surface);
+  border-right: 1px solid var(--vid-divider);
 }
 
 .sidebar ul {
+  display: grid;
+  gap: 0.125rem;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -156,27 +241,24 @@ code {
 
 .sidebar a {
   display: block;
-  padding: 0.625rem 1.25rem;
-  color: #e8e6f5;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--vid-muted);
   text-decoration: none;
-  border-left: 4px solid transparent;
+  border-radius: var(--vid-radius-sm);
 }
 
 .sidebar a:hover {
-  color: #ffffff;
-  background: rgb(255 255 255 / 8%);
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
 }
 
+/* Weight and the marker show the current page, not color alone (WCAG 1.4.1). */
 .sidebar a.active {
-  color: #ffffff;
+  color: var(--vid-text);
   font-weight: 600;
-  border-left-color: var(--vid-accent);
-  background: rgb(255 255 255 / 10%);
-}
-
-.sidebar :focus-visible {
-  outline-color: var(--vid-accent);
-  outline-offset: -3px;
+  background: var(--vid-accent-tint);
+  box-shadow: inset 3px 0 0 var(--vid-primary);
 }
 
 main {
@@ -192,6 +274,11 @@ main:focus {
   /* minmax(0, …): wide content (tables, code) scrolls or wraps inside its container instead of widening the page. */
   .layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--vid-divider);
   }
 
   .sidebar ul {
@@ -243,16 +330,53 @@ section {
 }
 
 .hint {
-  margin: 0.25rem 0 0;
+  margin: 0.375rem 0 0;
   font-size: 0.875rem;
+}
+
+/* Theme switch: a group of toggle buttons; the pressed one is the current choice. */
+
+.theme-switch {
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  background: var(--vid-surface);
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius);
+}
+
+.theme-switch button {
+  min-height: 1.75rem;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vid-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--vid-radius-sm);
+}
+
+.theme-switch button:hover {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+  border-color: transparent;
+}
+
+/* Shown by weight and a 3:1 border, not by color alone (WCAG 1.4.1, 1.4.11). */
+.theme-switch button[aria-pressed='true'] {
+  color: var(--vid-text);
+  font-weight: 600;
+  background: var(--vid-surface-hover);
+  border-color: var(--vid-border);
 }
 
 /* Forms */
 
 label {
   display: block;
+  font-size: 0.875rem;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.375rem;
 }
 
 input:not([type='checkbox'], [type='radio']),
@@ -265,7 +389,7 @@ textarea {
   color: var(--vid-text);
   background: var(--vid-surface);
   border: 1px solid var(--vid-border);
-  border-radius: 0.25rem;
+  border-radius: var(--vid-radius-sm);
 }
 
 input[aria-invalid='true'] {
@@ -297,6 +421,7 @@ input[type='radio'] {
 }
 
 .field.checkbox label {
+  font-size: 1rem;
   font-weight: 400;
   margin: 0;
 }
@@ -371,13 +496,18 @@ a.button {
   min-height: 2.5rem;
   padding: 0.5rem 1rem;
   font: inherit;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--vid-primary-text);
   background: var(--vid-primary);
-  border: 2px solid var(--vid-primary);
-  border-radius: 0.25rem;
+  border: 1px solid var(--vid-primary);
+  border-radius: var(--vid-radius-sm);
   cursor: pointer;
   text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 button:hover,
@@ -387,24 +517,31 @@ a.button:hover {
 }
 
 button.secondary {
-  color: var(--vid-primary);
+  color: var(--vid-text);
   background: var(--vid-surface);
+  border-color: var(--vid-border);
 }
 
 button.secondary:hover {
-  background: #efe9fb;
+  background: var(--vid-surface-hover);
+  border-color: var(--vid-border);
 }
 
 button.danger {
   color: #ffffff;
-  background: var(--vid-error);
-  border-color: var(--vid-error);
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+button.danger:hover {
+  background: #991b1b;
+  border-color: #991b1b;
 }
 
 button.link {
   min-height: 1.5rem;
   padding: 0 0.25rem;
-  color: var(--vid-primary);
+  color: var(--vid-link);
   background: none;
   border: 0;
   text-decoration: underline;
@@ -430,13 +567,14 @@ button:disabled {
   position: relative;
   overflow-x: auto;
   background: var(--vid-surface);
-  border: 1px solid var(--vid-subtle-border);
-  border-radius: 0.25rem;
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius);
 }
 
 table.data {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.9375rem;
 }
 
 table.data th,
@@ -444,12 +582,18 @@ table.data td {
   padding: 0.5rem 0.75rem;
   text-align: left;
   vertical-align: top;
-  border-bottom: 1px solid var(--vid-subtle-border);
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+table.data tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 table.data th {
-  font-size: 0.875rem;
-  background: #ebe9f3;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--vid-muted);
+  background: var(--vid-surface-hover);
 }
 
 table.data td.wrap {
@@ -504,9 +648,10 @@ table.data input {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.875rem;
   background: var(--vid-surface);
-  border: 1px solid var(--vid-subtle-border);
+  border: 1px solid var(--vid-divider);
   border-radius: 1rem;
 }
 
@@ -523,42 +668,49 @@ table.data input {
   flex-direction: column;
   gap: 0.25rem;
   height: 100%;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   color: var(--vid-text);
   text-decoration: none;
   background: var(--vid-surface);
-  border: 1px solid var(--vid-subtle-border);
-  border-top: 4px solid var(--vid-primary);
-  border-radius: 0.25rem;
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius);
+  box-shadow: var(--vid-shadow);
 }
 
 .cards a:hover {
-  border-color: var(--vid-primary);
+  border-color: var(--vid-border);
 }
 
 .cards .count {
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .badge {
   display: inline-block;
   margin-left: 0.25rem;
   padding: 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5rem;
   color: var(--vid-text);
-  background: #ebe9f3;
+  background: var(--vid-surface-hover);
+  border: 1px solid var(--vid-divider);
   border-radius: 1rem;
 }
 
 .badge.ok {
   color: var(--vid-ok);
   background: var(--vid-ok-background);
+  border-color: color-mix(in srgb, var(--vid-ok) 30%, transparent);
 }
 
 .badge.warn {
   color: var(--vid-warn);
   background: var(--vid-warn-background);
+  border-color: color-mix(in srgb, var(--vid-warn) 30%, transparent);
 }
 
 .pager {
@@ -601,11 +753,11 @@ table.data input {
 }
 
 .settings-list li {
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.875rem 1rem;
   background: var(--vid-surface);
-  border: 1px solid var(--vid-subtle-border);
-  border-radius: 0.25rem;
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius);
 }
 
 .settings-list a {
@@ -623,8 +775,9 @@ table.data input {
   padding: 0.75rem 1rem;
   color: var(--vid-error);
   background: var(--vid-error-background);
+  border: 1px solid color-mix(in srgb, var(--vid-error) 35%, transparent);
   border-left: 4px solid var(--vid-error);
-  border-radius: 0.25rem;
+  border-radius: var(--vid-radius-sm);
 }
 
 .alert-title {
@@ -641,8 +794,9 @@ table.data input {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
   background: var(--vid-surface);
+  border: 1px solid var(--vid-divider);
   border-left: 4px solid var(--vid-primary);
-  border-radius: 0.25rem;
+  border-radius: var(--vid-radius-sm);
 }
 
 .notice h2 {
@@ -652,28 +806,30 @@ table.data input {
 .secret {
   display: inline-block;
   padding: 0.25rem 0.5rem;
-  background: #ebe9f3;
-  border-radius: 0.25rem;
+  font-family: var(--vid-font-mono);
+  background: var(--vid-surface-hover);
+  border-radius: var(--vid-radius-sm);
   user-select: all;
 }
 
 .danger-zone {
   margin-top: 3rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--vid-subtle-border);
+  border-top: 1px solid var(--vid-divider);
 }
 
 dialog {
   max-width: 32rem;
   padding: 1.5rem;
   color: var(--vid-text);
-  border: 0;
-  border-radius: 0.5rem;
-  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 30%);
+  background: var(--vid-surface-raised);
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
 }
 
 dialog::backdrop {
-  background: rgb(11 15 36 / 60%);
+  background: var(--vid-backdrop);
 }
 
 dialog h2 {
@@ -682,6 +838,15 @@ dialog h2 {
 
 app-confirm-button {
   display: inline-block;
+}
+
+@media (forced-colors: active) {
+  .theme-switch button[aria-pressed='true'],
+  .sidebar a.active {
+    forced-color-adjust: none;
+    color: HighlightText;
+    background: Highlight;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

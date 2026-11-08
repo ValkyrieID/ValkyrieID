@@ -6,9 +6,12 @@
         <img src="android-chrome-192x192.png" alt="" width="40" height="40" />
         <span>ValkyrieID Admin</span>
       </a>
-      <div class="account">
-        <span>{{ auth.displayName() }}</span>
-        <button type="button" class="secondary" (click)="signOut()">Sign out</button>
+      <div class="topbar-actions">
+        <app-theme-switch />
+        <div class="account">
+          <span>{{ auth.displayName() }}</span>
+          <button type="button" class="secondary" (click)="signOut()">Sign out</button>
+        </div>
       </div>
     </header>
     <div class="layout">

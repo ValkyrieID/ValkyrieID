@@ -3,9 +3,13 @@
 @inject IOptionsMonitor<BrandingOptions> BrandingOptions
 @{
     var branding = BrandingOptions.CurrentValue;
+    // Rendered on the server so the chosen theme shows without any script (strict CSP, PROJECT.md §8.1).
+    var current = ThemePreference.Read(Context.Request) ?? ThemePreference.System;
+    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+    (string Value, string Label)[] themes = [(ThemePreference.System, "System"), (ThemePreference.Light, "Light"), (ThemePreference.Dark, "Dark")];
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="@current">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,6 +26,19 @@
     }
 </head>
 <body>
+    @* First in the page order, matching its position at the top right (WCAG 1.3.2, 2.4.3). *@
+    <header class="site-header">
+        <form method="post" asp-page="/Account/Theme" class="theme-switch">
+            <input type="hidden" name="ReturnUrl" value="@returnUrl">
+            <fieldset>
+                <legend class="visually-hidden">Color theme</legend>
+                @foreach (var (value, label) in themes)
+                {
+                    <button type="submit" name="Theme" value="@value" aria-pressed="@(value == current ? "true" : "false")">@label</button>
+                }
+            </fieldset>
+        </form>
+    </header>
     <main class="card">
         <header class="brand">
             @if (branding.Logo is not null)

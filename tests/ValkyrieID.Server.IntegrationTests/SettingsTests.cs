@@ -134,6 +134,7 @@ public abstract class SettingsTests
     [InlineData("smtp", """{ "host": "smtp.example.test" }""", "Smtp:FromAddress")]
     [InlineData("smtp", """{ "host": "smtp.example.test", "fromAddress": "id@example.test", "security": "None" }""", "Smtp:Security None")]
     [InlineData("branding", """{ "primaryColor": "red;} body{display:none" }""", "Branding:PrimaryColor")]
+    [InlineData("branding", """{ "darkSurfaceColor": "red;} body{display:none" }""", "Branding:DarkSurfaceColor")]
     [InlineData("branding", """{ "logo": "logo.png" }""", "Branding:Logo")]
     [InlineData("email", """{ "verificationAtSignIn": "Require" }""", "while SMTP is configured")]
     [InlineData("auditLog", """{ "retention": 3600 }""", "AuditLog:Retention")]
@@ -266,10 +267,12 @@ public abstract class SettingsTests
         notModified.Headers.IfNoneMatch.Add(etag);
         Assert.Equal(HttpStatusCode.NotModified, (await client.SendAsync(notModified, CancellationToken)).StatusCode);
 
-        Assert.Equal(HttpStatusCode.OK, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { primaryColor = "#123456", productName = "Acme ID" }, CancellationToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { primaryColor = "#123456", darkPrimaryColor = "#abcdef", productName = "Acme ID" }, CancellationToken)).StatusCode);
 
         var after = await client.GetAsync("/theme.css", CancellationToken);
-        Assert.Contains("--vid-primary: #123456;", await after.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
+        var css = await after.Content.ReadAsStringAsync(CancellationToken);
+        Assert.Contains("--vid-primary: #123456;", css, StringComparison.Ordinal);
+        Assert.Contains(":root[data-theme=\"dark\"] {\n  --vid-primary: #abcdef;\n}", css, StringComparison.Ordinal);
         Assert.NotEqual(etag, after.Headers.ETag);
         Assert.Contains("Acme ID", await (await factory.CreateBrowser().GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
     }

@@ -133,12 +133,25 @@ public sealed partial class BrandingOptions
 
     public string? TextColor { get; set; }
 
+    /// <summary>The dark theme's primary color; the colors above apply to the light theme only.</summary>
+    public string? DarkPrimaryColor { get; set; }
+
+    public string? DarkBackgroundColor { get; set; }
+
+    public string? DarkSurfaceColor { get; set; }
+
+    public string? DarkTextColor { get; set; }
+
     internal IEnumerable<(string Name, string? Value)> Colors =>
     [
         ("PrimaryColor", PrimaryColor),
         ("BackgroundColor", BackgroundColor),
         ("SurfaceColor", SurfaceColor),
         ("TextColor", TextColor),
+        ("DarkPrimaryColor", DarkPrimaryColor),
+        ("DarkBackgroundColor", DarkBackgroundColor),
+        ("DarkSurfaceColor", DarkSurfaceColor),
+        ("DarkTextColor", DarkTextColor),
     ];
 
     internal IEnumerable<(string Name, string? Value)> Files =>

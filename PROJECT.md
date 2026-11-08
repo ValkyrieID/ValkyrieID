@@ -198,7 +198,9 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - Turning 2FA off requires the password and a TOTP or recovery code, is refused while 2FA is required, and revokes the other sessions like a password change. The current session keeps its `amr`, which records how it actually authenticated.
   - New recovery codes replace all existing ones and don't affect sessions.
   - Users can only list and revoke their own sessions; revocation uses the shared session service (back-channel logout plus the session's refresh tokens).
-- **Branding:** background image, logo, product name/title, colors (CSS variables), optional custom CSS.
+- **Branding:** background image (fills the sign-in pages' art panel), logo, product name/title, colors (CSS variables) with optional separate dark-theme colors, optional custom CSS.
+- **Layout and motion:** the sign-in pages use a full-page split layout (form panel and art panel) and the account pages an app-style layout (see [layout.md](layout.md)). Animations are CSS only (no script, unchanged CSP) and turned off with `prefers-reduced-motion`.
+- **Themes:** light, dark, and system (the default, following `prefers-color-scheme`), shared with the admin UI (see [layout.md](layout.md)). An explicit choice is kept in the `__Host-valkyrie.theme` cookie (`light` or `dark`; display preference only, not `HttpOnly` so the admin UI can read it) and rendered server-side as `data-theme`, so no script is needed. The pages change it with a form posting to `POST /account/theme` (anti-forgery token, rate-limited, local return URLs only).
 
 ### 8.2 Admin UI (Angular, latest version, signals)
 
@@ -211,6 +213,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - signing keys
   - runtime settings and branding (§10)
 - Includes an audit log viewer.
+- Light, dark, and system themes with a theme control in the top bar, sharing the login pages' theme cookie (§8.1). The page starts dark and switches to light once the app has read the preference, so it never flashes light before turning dark.
 - Talks exclusively to the **Admin REST API**.
 - Served under `/admin` with its own CSP (`script-src 'self'`, `connect-src 'self'`, no inline scripts or styles, no framing). Tokens are kept in memory only; with no refresh tokens, it renews them by a top-level `prompt=none` redirect through the SSO session. Uses `oidc-client-ts`, plus the RFC 9207 `iss` check and ID token claim checks it lacks.
 - `AdminUI:Enabled=false` turns it off (`/admin` answers 404, its client is disabled), for installations managed with the CLI only.
@@ -484,10 +487,12 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
       - release workflow; first tagged release, **v0.1.0**, to `ghcr.io`
 11. **UI layout, visual system, and themes** (see [layout.md](layout.md); delivered in five steps):
     - **11a: shared visual foundation and themes**
-      - shared design tokens and light, dark, and system themes for Razor and Angular
-      - typography, spacing, surfaces, controls, status states, focus behavior, and branding integration
+      - a new, clean, neutral visual identity with an indigo accent, replacing the navy, purple, and orange look
+      - shared design tokens and light, dark, and system themes for Razor and Angular; theme cookie and `POST /account/theme`
+      - typography, spacing, surfaces, controls, status states, focus behavior, and branding integration, including dark-theme branding colors
     - **11b: Razor authentication and account experience**
-      - login, 2FA, recovery, password, email, logout, account, sessions, and setup pages
+      - full-page split layout for sign-in, 2FA, recovery, password, email, logout, setup, and protocol error pages; app-style layout for the account pages
+      - CSS-only entry animation and view transitions, off with reduced motion
     - **11c: Angular admin shell and navigation**
       - top bar, branding, sidebar, theme control, responsive navigation, and preserved accessibility behavior
     - **11d: Angular page content and data presentation**

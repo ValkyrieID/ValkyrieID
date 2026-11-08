@@ -31,6 +31,7 @@ describe('App shell', () => {
     expect(root.querySelector('nav[aria-label="Main"]')).not.toBeNull();
     expect(root.querySelector('main#main')).not.toBeNull();
     expect(root.textContent).toContain('Alice');
+    expect(root.querySelector('header [role="group"][aria-label="Color theme"]')).not.toBeNull();
   });
 
   it('signs out', () => {

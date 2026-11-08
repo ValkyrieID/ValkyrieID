@@ -27,6 +27,7 @@ By default, admins must sign in with [two-factor authentication](/guide/two-fact
 - Access tokens are kept in memory only and last 10 minutes. There are no refresh tokens: when a token is about to expire, or you reload the page, the admin UI gets a new one through your ValkyrieID session, without showing a sign-in page. If the session has ended, you sign in again.
 - Removing the `admin` role or disabling the account takes effect on the next request, because the Admin API checks the user every time.
 - **Sign out** ends your ValkyrieID session (not just the admin UI) and notifies the other apps you signed in to.
+- The **System / Light / Dark** switch in the top bar changes the color theme. The choice is shared with the sign-in and account pages; see [Themes](/reference/configuration#themes).
 
 ## Security
 

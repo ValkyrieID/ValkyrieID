@@ -319,6 +319,7 @@ public abstract class AccountTests
     [Theory]
     [InlineData("Branding:PrimaryColor", "red; } body { display: none")]
     [InlineData("Branding:TextColor", "url(https://evil.example/x)")]
+    [InlineData("Branding:DarkPrimaryColor", "red; } body { display: none")]
     [InlineData("Branding:Logo", "../appsettings.json")]
     public async Task Unsafe_branding_values_fail_startup(string key, string value)
     {
@@ -327,6 +328,165 @@ public abstract class AccountTests
         var exception = Assert.ThrowsAny<Exception>(() => factory.Server);
 
         Assert.Contains(key, exception.ToString(), StringComparison.Ordinal);
+    }
+
+    // Themes
+
+    [Fact]
+    public async Task Pages_follow_the_system_theme_without_a_stored_choice()
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+        Assert.Contains("action=\"/account/theme\"", page, StringComparison.Ordinal);
+        Assert.Contains("<input type=\"hidden\" name=\"ReturnUrl\" value=\"/account/login\">", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"system\" aria-pressed=\"true\"", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"dark\" aria-pressed=\"false\"", page, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public async Task Choosing_a_theme_stores_it_and_renders_it_on_the_server(string theme)
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var response = await Forms.PostAsync(browser, "/account/theme", "/account/login", new() { ["Theme"] = theme, ["ReturnUrl"] = "/account/login?returnUrl=%2Faccount" });
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.Equal("/account/login?returnUrl=%2Faccount", response.Headers.Location?.OriginalString);
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-valkyrie.theme=", StringComparison.Ordinal));
+        Assert.StartsWith($"__Host-valkyrie.theme={theme};", cookie, StringComparison.Ordinal);
+        Assert.Contains("path=/", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("expires=", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("domain=", cookie, StringComparison.OrdinalIgnoreCase);
+        // The admin UI reads it with document.cookie.
+        Assert.DoesNotContain("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+
+        var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+        Assert.Contains($"<html lang=\"en\" data-theme=\"{theme}\">", page, StringComparison.Ordinal);
+        Assert.Contains($"value=\"{theme}\" aria-pressed=\"true\"", page, StringComparison.Ordinal);
+        Assert.Contains("value=\"system\" aria-pressed=\"false\"", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Choosing_the_system_theme_deletes_the_stored_choice()
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+        await Forms.PostAsync(browser, "/account/theme", "/account/login", new() { ["Theme"] = "dark", ["ReturnUrl"] = "/account/login" });
+
+        var response = await Forms.PostAsync(browser, "/account/theme", "/account/login", new() { ["Theme"] = "system", ["ReturnUrl"] = "/account/login" });
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-valkyrie.theme=;", StringComparison.Ordinal) && c.Contains("expires=Thu, 01 Jan 1970", StringComparison.OrdinalIgnoreCase));
+        var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("https://evil.example/")]
+    [InlineData("//evil.example/")]
+    [InlineData("/\\evil.example/")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("")]
+    public async Task Theme_form_only_redirects_to_local_urls(string returnUrl)
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var response = await Forms.PostAsync(browser, "/account/theme", "/account/login", new() { ["Theme"] = "dark", ["ReturnUrl"] = returnUrl });
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.Equal("/account", response.Headers.Location?.OriginalString);
+    }
+
+    [Theory]
+    [InlineData("blue")]
+    [InlineData("Dark")]
+    [InlineData("")]
+    public async Task Theme_form_rejects_unknown_themes(string theme)
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var response = await Forms.PostAsync(browser, "/account/theme", "/account/login", new() { ["Theme"] = theme, ["ReturnUrl"] = "/account/login" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies) && cookies.Any(c => c.StartsWith("__Host-valkyrie.theme", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Theme_form_requires_the_anti_forgery_token()
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var response = await browser.PostAsync("/account/theme", new FormUrlEncodedContent(new Dictionary<string, string> { ["Theme"] = "dark", ["ReturnUrl"] = "/account" }), CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(response.Headers.Contains("Set-Cookie") && response.Headers.GetValues("Set-Cookie").Any(c => c.StartsWith("__Host-valkyrie.theme", StringComparison.Ordinal)));
+        Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync("/account/theme", CancellationToken)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("\"><script>alert(1)</script>")]
+    [InlineData("system")]
+    [InlineData("DARK")]
+    public async Task Unknown_theme_cookie_values_follow_the_system(string value)
+    {
+        await using var factory = CreateFactory();
+        var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = false });
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/account/login");
+        request.Headers.Add("Cookie", $"__Host-valkyrie.theme={Uri.EscapeDataString(value)}");
+
+        var page = await (await client.SendAsync(request, CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<script", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Protocol_pages_render_the_stored_theme()
+    {
+        await using var factory = CreateFactory();
+        var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = false });
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/connect/authorize?client_id=unknown");
+        request.Headers.Add("Cookie", "__Host-valkyrie.theme=dark");
+
+        var response = await client.SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("<html lang=\"en\" data-theme=\"dark\">", await response.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Dark_branding_colors_apply_only_to_the_dark_theme()
+    {
+        await using var factory = CreateFactory(settings: new() { ["Branding:PrimaryColor"] = "#ff0000", ["Branding:DarkPrimaryColor"] = "#00ff00", ["Branding:DarkTextColor"] = "#eeeeee" });
+        var browser = factory.CreateBrowser();
+
+        var css = await (await browser.GetAsync("/theme.css", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.StartsWith(":root {\n  --vid-primary: #ff0000;\n}\n", css, StringComparison.Ordinal);
+        Assert.Contains("@media (prefers-color-scheme: dark) {\n:root:not([data-theme=\"light\"]) {\n  --vid-primary: #00ff00;\n  --vid-text: #eeeeee;\n}\n}\n", css, StringComparison.Ordinal);
+        Assert.Contains(":root[data-theme=\"dark\"] {\n  --vid-primary: #00ff00;\n  --vid-text: #eeeeee;\n}\n", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_dark_branding_colors_the_stylesheet_has_no_dark_rules()
+    {
+        await using var factory = CreateFactory(settings: new() { ["Branding:PrimaryColor"] = "#ff0000" });
+
+        var css = await (await factory.CreateBrowser().GetAsync("/theme.css", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.DoesNotContain("data-theme", css, StringComparison.Ordinal);
     }
 
     // Rate limiting
