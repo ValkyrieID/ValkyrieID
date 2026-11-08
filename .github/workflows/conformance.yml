@@ -31,8 +31,10 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Run the plans
+        env:
+          FULL: ${{ startsWith(github.ref, 'refs/tags/') || inputs.full }}
         run: |
-          if [ "${{ startsWith(github.ref, 'refs/tags/') || inputs.full }}" = "true" ]; then
+          if [ "$FULL" = "true" ]; then
             bash conformance/run.sh --full
           else
             bash conformance/run.sh

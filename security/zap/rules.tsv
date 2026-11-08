@@ -7,3 +7,4 @@
 100000	IGNORE	Informational. 4xx responses to the scanner's malformed or unauthenticated requests are expected.
 10031	IGNORE	Informational. The ReturnUrl hidden field echoes the request's return URL, HTML-encoded by Razor; it is only followed when it is a local URL (open redirect check).
 10112	IGNORE	Informational. ZAP identified the session cookie; it is __Host- prefixed, Secure, HttpOnly, SameSite=Lax.
+10024	IGNORE	Informational. The token in the URL is the one-time link from a verification or password reset email. Pages are no-store with Referrer-Policy: no-referrer, and GET only shows a confirmation form; the token is used by the POST.

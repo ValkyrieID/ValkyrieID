@@ -33,6 +33,13 @@ services:
       RateLimits__TwoFactor__PermitLimit: '100000'
       RateLimits__Email__PermitLimit: '100000'
       RateLimits__Account__PermitLimit: '100000'
+      # The active scan sends wrong codes to the two-factor pages of zapadmin and zapenroll; a lockout would end the
+      # pending sign-ins (and the Admin API scan). Configuration only, like the rate limits.
+      Lockout__MaxFailedAttempts: '1000000'
+      # Turns on the email pages (forgot and reset password, email confirmation) so they're scanned. The host doesn't
+      # exist; queued emails are never delivered.
+      Smtp__Host: smtp.invalid
+      Smtp__FromAddress: zap@example.test
     ports:
       - '127.0.0.1:9443:9443'
     volumes:

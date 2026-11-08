@@ -59,6 +59,9 @@ cp "$ROOT/docs/public/openapi/admin-api.json" "$DIR/out/admin-api.json"
 CLI=("${COMPOSE[@]}" exec -T valkyrieid dotnet /app/valkyrieid.dll)
 printf '%s\n' "$ZAP_ADMIN_PASSWORD" | "${CLI[@]}" user create zapadmin --email zapadmin@example.test > /dev/null
 "${CLI[@]}" admin grant-admin zapadmin > /dev/null
+# A second admin that never enrolls an authenticator, for the enrollment page (pending-login.js).
+printf '%s\n' "$ZAP_ADMIN_PASSWORD" | "${CLI[@]}" user create zapenroll --email zapenroll@example.test > /dev/null
+"${CLI[@]}" admin grant-admin zapenroll > /dev/null
 
 ZAP=("${COMPOSE[@]}" run --rm zap)
 REPORTS=()

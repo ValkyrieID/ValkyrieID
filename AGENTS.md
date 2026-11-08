@@ -101,7 +101,7 @@ This is an identity server. Treat every change to protocol, authentication, toke
 ## Testing
 
 - xUnit for unit and integration tests (`WebApplicationFactory`).
-- Integration tests run against **SQLite** and **PostgreSQL** (Testcontainers; requires Docker).
+- Integration tests run against **SQLite** and **PostgreSQL** (Testcontainers; requires Docker, or Podman with its Docker-compatible API).
 - Angular: unit tests for components and services.
 - Every bug fix includes a regression test. Every protocol feature includes integration tests over HTTP.
 - Run before finishing:

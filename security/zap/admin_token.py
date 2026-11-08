@@ -8,7 +8,11 @@ for admins) and keeps the secret in the state file; later it signs in with codes
 The token is cached in the state file and reused while it is valid for at least --min-validity seconds, so the ZAP
 script can call this before every Admin API request batch. A lock serializes concurrent calls.
 
+With --pending 2fa|enroll it prints the pending-login cookie (__Host-valkyrie.pending) of a sign-in that stopped after
+the password, for the sign-in page scan (pending-login.js). For 2fa it enrolls an authenticator first if needed.
+
 Usage: admin_token.py --issuer <url> --username <name> [--cafile <ca.crt>] [--state <file>] [--min-validity <s>] [--json]
+                      [--pending 2fa|enroll]
 The password is read from the ADMIN_PASSWORD environment variable, never from the command line.
 """
 
@@ -36,6 +40,7 @@ except ImportError:  # Windows: no locking; run one instance at a time.
 
 CLIENT_ID = 'valkyrieid-admin-ui'
 SCOPE = 'openid profile valkyrieid.admin'
+PENDING_COOKIE = '__Host-valkyrie.pending'
 
 
 class Page(html.parser.HTMLParser):
@@ -83,7 +88,7 @@ class Client:
         self.issuer = issuer.rstrip('/')
         self.redirect_uri = self.issuer + '/admin/callback'
         self.cookies = http.cookiejar.MozillaCookieJar(cookie_file)
-        if os.path.exists(cookie_file):
+        if cookie_file and os.path.exists(cookie_file):
             self.cookies.load(ignore_discard=True, ignore_expires=False)
         context = ssl.create_default_context(cafile=cafile)
         self.opener = urllib.request.build_opener(
@@ -167,6 +172,20 @@ def sign_in(client, username, password, state_data):
     return token['access_token'], int(time.time()) + int(token['expires_in'])
 
 
+def pending_cookie(client, username, password, step):
+    """Signs in with the password only and returns the pending-login cookie for the second step (2fa or enroll)."""
+    url, status, body = client.follow(client.issuer + '/account/login')
+    page = Page(body)
+    url, status, body = client.follow(url, {**page.inputs, 'Identifier': username, 'Password': password})
+    path = urllib.parse.urlsplit(url).path
+    if path != '/account/login/' + step:
+        raise RuntimeError(f'Expected the {step} step after the password, got {path} (HTTP {status}).')
+    cookie = next((c for c in client.cookies if c.name == PENDING_COOKIE), None)
+    if cookie is None:
+        raise RuntimeError('No pending-login cookie after the password.')
+    return cookie.value
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--issuer', required=True)
@@ -175,6 +194,8 @@ def main():
     parser.add_argument('--state', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out', 'admin-token-state.json'))
     parser.add_argument('--min-validity', type=int, default=120)
     parser.add_argument('--json', action='store_true', help='print {"access_token", "expires_at"} instead of the token')
+    parser.add_argument('--pending', choices=['2fa', 'enroll'],
+                        help='print a pending-login cookie for this step instead of a token (sign-in page scan)')
     args = parser.parse_args()
     password = os.environ.get('ADMIN_PASSWORD')
     if not password:
@@ -188,7 +209,9 @@ def main():
         if os.path.exists(args.state):
             with open(args.state) as f:
                 state_data = json.load(f)
-        if state_data.get('expires_at', 0) - time.time() < args.min_validity:
+        # The 2fa step needs an enrolled authenticator: sign in fully once, which enrolls one.
+        stale = state_data.get('expires_at', 0) - time.time() < args.min_validity
+        if (args.pending is None and stale) or (args.pending == '2fa' and 'totp_secret' not in state_data):
             client = Client(args.issuer, args.cafile, args.state + '.cookies')
             state_data['access_token'], state_data['expires_at'] = sign_in(client, args.username, password, state_data)
             client.cookies.save(ignore_discard=True)
@@ -197,7 +220,10 @@ def main():
             with os.fdopen(fd, 'w') as f:
                 json.dump(state_data, f)
 
-    if args.json:
+    if args.pending:
+        # A fresh cookie jar: an SSO session would skip the sign-in form.
+        print(pending_cookie(Client(args.issuer, args.cafile, None), args.username, password, args.pending))
+    elif args.json:
         print(json.dumps({'access_token': state_data['access_token'], 'expires_at': state_data['expires_at']}))
     else:
         print(state_data['access_token'])

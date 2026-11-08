@@ -53,6 +53,10 @@ try {
     $env:ZAP_ADMIN_PASSWORD | & $composeExe @cli user create zapadmin --email zapadmin@example.test | Out-Null
     & $composeExe @cli admin grant-admin zapadmin | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Creating the admin failed.' }
+    # A second admin that never enrolls an authenticator, for the enrollment page (pending-login.js).
+    $env:ZAP_ADMIN_PASSWORD | & $composeExe @cli user create zapenroll --email zapenroll@example.test | Out-Null
+    & $composeExe @cli admin grant-admin zapenroll | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Creating the admin failed.' }
 
     $zap = $compose + @('run', '--rm', 'zap')
     $reports = @()

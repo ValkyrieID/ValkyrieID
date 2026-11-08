@@ -8,19 +8,19 @@ The plans run in CI on release tags, nightly, and on demand, with the setup desc
 
 | | |
 |---|---|
-| Date | 2026-11-07 |
-| ValkyrieID | commit `f93c74c` with the phase 10d changes (container image, SQLite) |
+| Date | 2026-11-08 |
+| ValkyrieID | commit `feae35d` (container image built from the commit, SQLite) |
 | Suite | `release-v5.3.4` (prebuilt images), run locally with `conformance/run.ps1 -Full` |
 | Client authentication | `client_secret_basic`; `client_secret_post` in the extra plans |
 
 | Plan | Variants | Passed | Warning | Review | Skipped | Failed | Log |
 |---|---|---|---|---|---|---|---|
-| Basic OP | `discovery`, `static_client` | 21 | 6 | 4 | 4 | 0 | [zip](/conformance/2026-11-07/oidcc-basic-certification-test-plan-discovery-static_client-JLo1SN4q7z7NT-07-Nov-2026.zip) |
-| Config OP | | 1 | 0 | 0 | 0 | 0 | [zip](/conformance/2026-11-07/oidcc-config-certification-test-plan--8zQylzdCeKRSl-07-Nov-2026.zip) |
-| RP-Initiated Logout | `code`, `static_client` | 3 | 0 | 8 | 0 | 0 | [zip](/conformance/2026-11-07/oidcc-rp-initiated-logout-certification-test-plan-code-static_client-aNwehAurlV8KD-07-Nov-2026.zip) |
-| Back-Channel Logout | `code`, `static_client` | 2 | 0 | 0 | 0 | 0 | [zip](/conformance/2026-11-07/oidcc-backchannel-rp-initiated-logout-certification-test-plan-code-static_client-U1zi1UNhCOEju-07-Nov-2026.zip) |
-| Comprehensive, Basic OP code-flow modules (release tags) | `client_secret_post`, `code` | 7 | 1 | 0 | 0 | 0 | [zip](/conformance/2026-11-07/oidcc-test-plan-client_secret_post-code-default-static_client-kgACpbws65sZh-07-Nov-2026.zip) |
-| Form Post Basic (release tags) | `discovery`, `static_client` | 21 | 6 | 4 | 3 | 1 | [zip](/conformance/2026-11-07/oidcc-formpost-basic-certification-test-plan-discovery-static_client-iNJgsRbqUALWe-07-Nov-2026.zip) |
+| Basic OP | `discovery`, `static_client` | 21 | 6 | 4 | 4 | 0 | [zip](/conformance/2026-11-08/oidcc-basic-certification-test-plan-discovery-static_client-3aNz344pWC6lX-08-Nov-2026.zip) |
+| Config OP | | 1 | 0 | 0 | 0 | 0 | [zip](/conformance/2026-11-08/oidcc-config-certification-test-plan--MpFkKW5V6E1I3-08-Nov-2026.zip) |
+| RP-Initiated Logout | `code`, `static_client` | 3 | 0 | 8 | 0 | 0 | [zip](/conformance/2026-11-08/oidcc-rp-initiated-logout-certification-test-plan-code-static_client-TRlfNvWBfh9nL-08-Nov-2026.zip) |
+| Back-Channel Logout | `code`, `static_client` | 2 | 0 | 0 | 0 | 0 | [zip](/conformance/2026-11-08/oidcc-backchannel-rp-initiated-logout-certification-test-plan-code-static_client-qwPvgP8b4edFc-08-Nov-2026.zip) |
+| Comprehensive, Basic OP code-flow modules (release tags) | `client_secret_post`, `code` | 7 | 1 | 0 | 0 | 0 | [zip](/conformance/2026-11-08/oidcc-test-plan-client_secret_post-code-default-static_client-vs3dlT6vZIjlJ-08-Nov-2026.zip) |
+| Form Post Basic (release tags) | `discovery`, `static_client` | 21 | 6 | 4 | 3 | 1 | [zip](/conformance/2026-11-08/oidcc-formpost-basic-certification-test-plan-discovery-static_client-QZlf3fmUAUfP2-08-Nov-2026.zip) |
 
 The zips are the suite's signed exports with the full test logs. They contain the client secrets and test user password of the throwaway instance, which was deleted after the run.
 

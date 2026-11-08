@@ -380,7 +380,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - oidc-client-ts / angular-auth-oidc-client (via the admin UI)
   - oauth2-proxy
   - Grafana generic OAuth
-- **Security scanning** with OWASP ZAP (`security/zap/`): baseline and API scans (the Admin API's OpenAPI document), a full active scan of the login pages (with `__RequestVerificationToken` as the anti-CSRF token), and an authenticated scan of the Admin API. The admin token comes from `security/zap/admin_token.py` (standard library only), which signs in for real (password, TOTP enrollment, authorization code with PKCE as `valkyrieid-admin-ui`); a ZAP httpsender script renews it before the 10-minute expiry. Alerts are triaged in `security/zap/rules.tsv` and `docs/security/zap.md`; CI (`.github/workflows/zap.yml`, release tags and manual runs) fails on Medium or High alerts that aren't triaged.
+- **Security scanning** with OWASP ZAP (`security/zap/`): baseline and API scans (the Admin API's OpenAPI document), a full active scan of the login pages (with `__RequestVerificationToken` as the anti-CSRF token; SMTP configured so the email pages exist, and a pending-login cookie from `admin_token.py --pending` for the two-factor, recovery code, and enrollment pages), and an authenticated scan of the Admin API. The admin token comes from `security/zap/admin_token.py` (standard library only), which signs in for real (password, TOTP enrollment, authorization code with PKCE as `valkyrieid-admin-ui`); a ZAP httpsender script renews it before the 10-minute expiry. Alerts are triaged in `security/zap/rules.tsv` and `docs/security/zap.md`; CI (`.github/workflows/zap.yml`, release tags and manual runs) fails on Medium or High alerts that aren't triaged.
 
 ## 14. Roadmap
 
@@ -472,7 +472,7 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
       - small chiseled, non-root Docker image (admin UI included, amd64 and arm64), health check through `valkyrieid healthcheck`
       - footprint targets measured in CI (targets revised, see §11)
     - **10c: accessibility pass** (WCAG 2.2 AA): automated axe checks (Playwright) and a manual pass (checklist in `docs/accessibility/checklist.md`)
-    - **10d: conformance and security scanning**
+    - **10d: conformance and security scanning** *(done 2026-11-08)*
       - run the OpenID conformance plans: Basic OP, Config OP *(deferred: from phase 4)*, RP-Initiated Logout, Back-Channel Logout *(deferred: from phase 6)*
         - all plans must pass with no failures; warnings fixed or documented
         - CI job that runs the suite and ValkyrieID in Docker and runs every plan on release tags and nightly; the same setup runs locally

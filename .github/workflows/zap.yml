@@ -43,5 +43,6 @@ jobs:
             security/zap/out/*.json
             security/zap/out/*.md
             security/zap/out/*.log
-            !security/zap/out/admin-token-state.json
+            security/zap/out/login-pages-tree.yaml
+            !security/zap/out/admin-token-state.json*
           retention-days: 30
