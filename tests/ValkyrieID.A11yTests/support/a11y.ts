@@ -39,6 +39,8 @@ export { expect };
  */
 export async function checkPage(page: Page, name: string): Promise<void> {
   await test.step(`check ${name}`, async () => {
+    // The entry animation fades the content in; check the page as it ends up, not half-faded.
+    await page.evaluate(() => Promise.allSettled(document.getAnimations().map((a) => a.finished)));
     const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
     const violations = results.violations.map((violation) => ({
       rule: violation.id,

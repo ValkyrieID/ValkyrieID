@@ -5,11 +5,11 @@
     var branding = BrandingOptions.CurrentValue;
     // Rendered on the server so the chosen theme shows without any script (strict CSP, PROJECT.md §8.1).
     var current = ThemePreference.Read(Context.Request) ?? ThemePreference.System;
-    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
-    (string Value, string Label)[] themes = [(ThemePreference.System, "System"), (ThemePreference.Light, "Light"), (ThemePreference.Dark, "Dark")];
+    // Set by the entry pages on a fresh GET only (layout.md, Phase 11b motion); CSS plays the animation.
+    var entry = ViewData[ValkyrieID.Server.Pages.EntryAnimation.Key] is true ? "entry" : null;
 }
 <!DOCTYPE html>
-<html lang="en" data-theme="@current">
+<html lang="en" data-theme="@current" class="@entry">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,34 +25,5 @@
         <link rel="stylesheet" href="~/branding/@branding.CustomCss">
     }
 </head>
-<body>
-    @* First in the page order, matching its position at the top right (WCAG 1.3.2, 2.4.3). *@
-    <header class="site-header">
-        <form method="post" asp-page="/Account/Theme" class="theme-switch">
-            <input type="hidden" name="ReturnUrl" value="@returnUrl">
-            <fieldset>
-                <legend class="visually-hidden">Color theme</legend>
-                @foreach (var (value, label) in themes)
-                {
-                    <button type="submit" name="Theme" value="@value" aria-pressed="@(value == current ? "true" : "false")">@label</button>
-                }
-            </fieldset>
-        </form>
-    </header>
-    <main class="card">
-        <header class="brand">
-            @if (branding.Logo is not null)
-            {
-                <img src="~/branding/@branding.Logo" alt="@branding.ProductName">
-            }
-            else
-            {
-                @* Decorative: the product name next to it is the accessible name (WCAG 1.1.1). *@
-                <img src="~/img/logo-192.png" alt="" width="64" height="64">
-                <p class="product-name">@branding.ProductName</p>
-            }
-        </header>
-        @RenderBody()
-    </main>
-</body>
+@RenderBody()
 </html>

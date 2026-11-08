@@ -95,12 +95,26 @@ internal sealed class UserAdministration(
             await transaction.CommitAsync(cancellationToken);
             return user;
         }
-        catch (Exception ex) when (ex is DbUpdateException or DbException)
+        catch (Exception ex) when (IsSetupConflict(ex))
         {
-            // Another request completed setup first (serialization failure or unique index violation).
+            // Another request completed setup first (serialization failure or unique index violation). Npgsql's
+            // execution strategy wraps the serialization failure (40001) in an InvalidOperationException.
             db.ChangeTracker.Clear();
             return null;
         }
+    }
+
+    private static bool IsSetupConflict(Exception? ex)
+    {
+        for (; ex is not null; ex = ex.InnerException)
+        {
+            if (ex is DbUpdateException or DbException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public Task<bool> AnyUsersAsync(CancellationToken cancellationToken) => db.Users.AnyAsync(cancellationToken);

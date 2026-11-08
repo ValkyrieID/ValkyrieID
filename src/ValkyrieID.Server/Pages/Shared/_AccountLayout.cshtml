@@ -1,0 +1,47 @@
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
+@using ValkyrieID.Server.Pages.Account
+@inject IOptionsMonitor<SmtpOptions> Smtp
+@{
+    Layout = "_Layout";
+    var user = (ViewContext.ViewData.Model as AccountPageModel)?.CurrentUser;
+    var userLabel = user is null ? User.Identity?.Name : string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName;
+    var path = Context.Request.Path.Value?.TrimEnd('/') ?? string.Empty;
+    List<(string Href, string Label)> items = [("/account/profile", "Profile")];
+    if (Smtp.CurrentValue.Enabled)
+    {
+        items.Add(("/account/email", "Email"));
+    }
+    items.AddRange([("/account/password", "Password"), ("/account/two-factor", "Two-factor"), ("/account/sessions", "Sessions")]);
+}
+@* App-style account layout (layout.md, Phase 11b). *@
+<body class="app">
+    <a href="#content" class="skip-link">Skip to content</a>
+    <header class="app-bar">
+        <a href="~/account" class="app-home"><partial name="_Brand" /></a>
+        <div class="app-bar-end">
+            <partial name="_ThemeSwitch" />
+            @if (userLabel is not null)
+            {
+                <span class="app-user"><span class="visually-hidden">Signed in as </span>@userLabel</span>
+            }
+            <form method="post" asp-page="/Account/Logout" class="app-signout">
+                <button type="submit" class="button-secondary">Sign out</button>
+            </form>
+        </div>
+    </header>
+    <div class="app-body">
+        <nav class="app-nav" aria-label="Account">
+            <ul>
+                <li><a href="~/account" aria-current="@(string.Equals(path, "/account", StringComparison.OrdinalIgnoreCase) ? "page" : null)">Overview</a></li>
+                @foreach (var (href, label) in items)
+                {
+                    <li><a href="@Url.Content("~" + href)" aria-current="@(string.Equals(path, href, StringComparison.OrdinalIgnoreCase) ? "page" : null)">@label</a></li>
+                }
+            </ul>
+        </nav>
+        <main id="content" class="app-main" tabindex="-1">
+            @RenderBody()
+        </main>
+    </div>
+</body>

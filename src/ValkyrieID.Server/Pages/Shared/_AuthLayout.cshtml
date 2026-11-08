@@ -1,0 +1,28 @@
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
+@inject IOptionsMonitor<BrandingOptions> BrandingOptions
+@{
+    Layout = "_Layout";
+    var branding = BrandingOptions.CurrentValue;
+    var logo = branding.Logo is not null ? Url.Content($"~/branding/{branding.Logo}") : Url.Content("~/img/logo-192.png");
+}
+@* Split sign-in layout (layout.md, Phase 11b): the form panel, then the decorative art panel. *@
+<body class="auth">
+    <div class="auth-panel">
+        <header class="auth-top">
+            <partial name="_Brand" />
+            <partial name="_ThemeSwitch" />
+        </header>
+        <main class="auth-main">
+            <div class="auth-content">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+    <div class="art@(branding.BackgroundImage is not null ? " art-image" : null)" aria-hidden="true">
+        @if (branding.BackgroundImage is null)
+        {
+            <img src="@logo" alt="" class="art-logo">
+        }
+    </div>
+</body>

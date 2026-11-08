@@ -2,46 +2,51 @@
 @model SessionsModel
 @{
     ViewData["Title"] = "Your sessions";
+    Layout = "_AccountLayout";
 }
-<h1>Your sessions</h1>
-<p>These are the browsers and devices where you're signed in. Signing a session out also signs it out of applications that support it.</p>
+<div class="page-header">
+    <p class="back"><a href="~/account">Your account</a></p>
+    <h1>Your sessions</h1>
+    <p class="lead">These are the browsers and devices where you're signed in. Signing a session out also signs it out of applications that support it.</p>
+</div>
 @if (Model.Message is not null)
 {
-    <p role="status">@Model.Message</p>
+    <p role="status" class="notice">@Model.Message</p>
 }
 <partial name="_Errors" model="Model.Errors" />
 <ul class="sessions">
     @foreach (var session in Model.Sessions)
     {
         var nameId = $"session-{session.Id}";
-        <li>
-            <p>
+        var current = Model.IsCurrent(session);
+        <li class="session@(current ? " session-current" : null)">
+            <p class="session-name">
                 <strong id="@nameId">@(session.UserAgent ?? "Unknown device")</strong>
-                @if (Model.IsCurrent(session))
+                @if (current)
                 {
-                    <span> (this session)</span>
+                    <span class="badge">This session</span>
                 }
             </p>
-            <dl>
-                <dt>IP address</dt>
-                <dd>@(session.IpAddress ?? "Unknown")</dd>
-                <dt>Signed in</dt>
-                <dd><time datetime="@session.AuthenticatedAt.ToString("O")">@session.AuthenticatedAt.ToString("u")</time></dd>
-                <dt>Last activity</dt>
-                <dd><time datetime="@session.LastActivityAt.ToString("O")">@session.LastActivityAt.ToString("u")</time></dd>
+            <dl class="session-meta">
+                <div><dt>IP address</dt> <dd><code>@(session.IpAddress ?? "Unknown")</code></dd></div>
+                <div><dt>Signed in</dt> <dd><time datetime="@session.AuthenticatedAt.ToString("O")">@session.AuthenticatedAt.ToString("u")</time></dd></div>
+                <div><dt>Last activity</dt> <dd><time datetime="@session.LastActivityAt.ToString("O")">@session.LastActivityAt.ToString("u")</time></dd></div>
             </dl>
-            <form method="post" asp-page-handler="Revoke">
+            <form method="post" asp-page-handler="Revoke" class="actions">
                 <input type="hidden" name="SessionId" value="@session.Id">
                 @* The buttons all have the same name; the description tells them apart (WCAG 2.4.6). *@
-                <button type="submit" aria-describedby="@nameId">@(Model.IsCurrent(session) ? "Sign out" : "Sign out this session")</button>
+                <button type="submit" class="button-secondary" aria-describedby="@nameId">@(current ? "Sign out" : "Sign out this session")</button>
             </form>
         </li>
     }
 </ul>
 @if (Model.Sessions.Any(s => !Model.IsCurrent(s)))
 {
-    <form method="post" asp-page-handler="RevokeOthers">
-        <button type="submit">Sign out all other sessions</button>
-    </form>
+    <section class="danger-zone" aria-labelledby="others-heading">
+        <h2 id="others-heading">Other sessions</h2>
+        <p>Sign out every browser and device except this one.</p>
+        <form method="post" asp-page-handler="RevokeOthers" class="actions">
+            <button type="submit" class="button-danger">Sign out all other sessions</button>
+        </form>
+    </section>
 }
-<p class="secondary"><a href="~/account">Back to your account</a></p>

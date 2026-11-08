@@ -15,7 +15,16 @@ internal sealed class ForgotPasswordModel(EmailAccountService emailAccounts) : P
 
     public bool Sent { get; private set; }
 
-    public IActionResult OnGet() => emailAccounts.Enabled ? Page() : NotFound();
+    public IActionResult OnGet()
+    {
+        if (!emailAccounts.Enabled)
+        {
+            return NotFound();
+        }
+
+        ViewData[EntryAnimation.Key] = true;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {

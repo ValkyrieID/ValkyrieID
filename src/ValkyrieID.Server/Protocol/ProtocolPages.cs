@@ -84,6 +84,15 @@ internal static class ProtocolPages
                 ? string.Empty
                 : $"<link rel=\"stylesheet\" href=\"{encoder.Encode($"{pathBase}{AccountExtensions.BrandingPath}/{branding.CustomCss}")}\">";
             var theme = ThemePreference.Read(httpContext.Request) ?? ThemePreference.System;
+            var brandLogo = branding.Logo is null
+                ? $"<img src=\"{encoder.Encode(pathBase)}/img/logo-192.png\" alt=\"\" width=\"32\" height=\"32\"><span class=\"product-name\">{encoder.Encode(branding.ProductName)}</span>"
+                : $"<img src=\"{encoder.Encode($"{pathBase}{AccountExtensions.BrandingPath}/{branding.Logo}")}\" alt=\"{encoder.Encode(branding.ProductName)}\">";
+            var artLogo = branding.Logo is null ? $"{pathBase}/img/logo-192.png" : $"{pathBase}{AccountExtensions.BrandingPath}/{branding.Logo}";
+            // The sign-in split layout without the theme switch: its form would replay the protocol request, and the
+            // form_post page's form-action allows only the client (layout.md, Phase 11b).
+            var art = branding.BackgroundImage is null
+                ? $"<div class=\"art\" aria-hidden=\"true\"><img src=\"{encoder.Encode(artLogo)}\" alt=\"\" class=\"art-logo\"></div>"
+                : "<div class=\"art art-image\" aria-hidden=\"true\"></div>";
             var html = $"""
                 <!DOCTYPE html>
                 <html lang="en" data-theme="{theme}">
@@ -96,11 +105,14 @@ internal static class ProtocolPages
                 <link rel="stylesheet" href="{encoder.Encode(pathBase)}{AccountExtensions.ThemePath}">
                 {customCss}
                 </head>
-                <body>
-                <main class="card">
-                <header class="brand"><p class="product-name">{encoder.Encode(branding.ProductName)}</p></header>
+                <body class="auth">
+                <div class="auth-panel">
+                <header class="auth-top"><div class="brand">{brandLogo}</div></header>
+                <main class="auth-main"><div class="auth-content">
                 {body}
-                </main>
+                </div></main>
+                </div>
+                {art}
                 </body>
                 </html>
                 """;

@@ -2,6 +2,8 @@
 
 Signed-in users manage their own account at `/account`. All account pages are server-rendered and work without JavaScript.
 
+The pages share a top bar with the product, the signed-in user's display name (or username), the [theme switch](/reference/configuration#themes), and **Sign out**, and a navigation to Profile, Email (when email is set up), Password, Two-factor, and Sessions; the current page is marked. A "Skip to content" link comes first. The `/account` overview groups the pages in lists, each with a short description, including whether two-factor authentication is on.
+
 ## Re-entering your password
 
 Changing the password, changing the email address, managing two-factor authentication, and getting new recovery codes all ask for the current password, every time. Someone who gets hold of a signed-in browser can't use it to take over the account.
@@ -36,7 +38,7 @@ After the change:
 
 ## Sessions
 
-`/account/sessions` lists the browsers and devices where the user is signed in: the browser's user agent, IP address, sign-in time, and last activity. The current session is marked.
+`/account/sessions` lists the browsers and devices where the user is signed in: the browser's user agent, IP address, sign-in time, and last activity. Sessions are listed one per row; the current one is highlighted and labelled "This session".
 
 - **Sign out this session** ends that session, notifies its applications by back-channel logout, and revokes the refresh tokens issued from it. Choosing the current session signs this browser out.
 - **Sign out all other sessions** does the same for every session except the current one.

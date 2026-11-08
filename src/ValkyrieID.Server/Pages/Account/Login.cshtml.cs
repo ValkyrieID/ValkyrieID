@@ -42,6 +42,7 @@ internal sealed class LoginModel(
         }
 
         Identifier ??= LoginHint is { Length: <= 256 } hint ? hint : null;
+        ViewData[EntryAnimation.Key] = true;
         return Page();
     }
 

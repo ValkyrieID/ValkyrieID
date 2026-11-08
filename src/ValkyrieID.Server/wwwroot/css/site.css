@@ -105,19 +105,13 @@ html {
   line-height: 1.5;
   color: var(--vid-text);
   background-color: var(--vid-background);
-  background-image: var(--vid-background-image);
-  background-size: cover;
-  background-position: center;
   -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  justify-items: center;
-  padding: 0 1rem 2rem;
+  min-height: 100dvh;
 }
 
 ::selection {
@@ -136,14 +130,29 @@ body {
   border: 0;
 }
 
-/* Header with the theme switch */
+/* Brand: logo and product name */
 
-.site-header {
-  justify-self: stretch;
+.brand {
   display: flex;
-  justify-content: flex-end;
-  padding: 0.75rem 0;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
+
+.brand img {
+  display: block;
+  width: auto;
+  max-width: 10rem;
+  height: 2rem;
+}
+
+.product-name {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Theme switch */
 
 .theme-switch fieldset {
   display: inline-flex;
@@ -181,31 +190,114 @@ body {
   border-color: var(--vid-border);
 }
 
-.card {
-  align-self: center;
-  width: 100%;
-  max-width: 26rem;
-  padding: 2rem;
+/*
+ * Sign-in layout (layout.md, Phase 11b): the form panel on the left, the decorative art panel on the right. On small
+ * screens the art panel is hidden and the form uses the whole page.
+ */
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
-  border-radius: var(--vid-radius-lg);
-  box-shadow: var(--vid-shadow);
 }
 
-.brand img {
-  display: block;
-  max-width: 12rem;
-  max-height: 4rem;
-  margin: 0 auto 0.75rem;
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1rem;
 }
 
-.product-name {
-  margin: 0 0 1.5rem;
-  text-align: center;
-  font-weight: 600;
-  font-size: 1.125rem;
-  letter-spacing: -0.01em;
+.auth-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
+
+.auth-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 0;
+}
+
+.auth-content {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.art {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .auth {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 1fr);
+    background: var(--vid-background);
+  }
+
+  .auth-panel {
+    padding: 1.5rem 2rem;
+    background: var(--vid-surface);
+  }
+
+  /* The theme switch sits at the top right of the page, over the art panel; it stays first in the focus order. */
+  .auth-top .theme-switch {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    z-index: 1;
+  }
+
+  /* Full bleed: the art fills the right side edge to edge and fades into the form panel. */
+  .art {
+    display: block;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    view-transition-name: art;
+  }
+
+  .art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--vid-surface), transparent 35%);
+  }
+}
+
+/* The layer zooms in the entry animation; the built-in art is a subtle indigo glow on the neutral surface. */
+.art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 25% 20%, var(--vid-accent-tint), transparent 55%),
+    radial-gradient(circle at 80% 85%, var(--vid-accent-tint), transparent 50%),
+    linear-gradient(160deg, var(--vid-surface), var(--vid-background));
+}
+
+.art-image::before {
+  background: var(--vid-background-image) center / cover no-repeat, var(--vid-surface-hover);
+}
+
+.art-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(55%, 22rem);
+  height: auto;
+  opacity: 0.14;
+  transform: translate(-50%, -50%);
+}
+
+/* Shared page elements */
 
 h1 {
   font-size: 1.5rem;
@@ -254,6 +346,10 @@ input {
   border-radius: var(--vid-radius-sm);
 }
 
+input[readonly] {
+  background: var(--vid-surface-hover);
+}
+
 input[type="checkbox"],
 input[type="radio"] {
   width: 1.25rem;
@@ -284,12 +380,34 @@ a.button {
   border: 1px solid transparent;
   border-radius: var(--vid-radius-sm);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 button:hover,
 a.button:hover {
   background: var(--vid-primary-hover);
+}
+
+button.button-secondary,
+a.button.button-secondary {
+  color: var(--vid-text);
+  background: var(--vid-surface);
+  border-color: var(--vid-border);
+}
+
+button.button-secondary:hover,
+a.button.button-secondary:hover {
+  background: var(--vid-surface-hover);
+}
+
+button.button-danger {
+  color: var(--vid-error);
+  background: var(--vid-surface);
+  border-color: var(--vid-error);
+}
+
+button.button-danger:hover {
+  background: var(--vid-error-background);
 }
 
 a {
@@ -302,14 +420,57 @@ a {
   outline-offset: 2px;
 }
 
-.alert {
-  margin-bottom: 1rem;
+/* Messages: an icon plus text, never color alone (WCAG 1.4.1). The icons have empty alternative text. */
+
+.alert,
+.notice,
+p[role="status"] {
+  display: flex;
+  gap: 0.625rem;
+  margin: 0 0 1rem;
   padding: 0.75rem 1rem;
+  border-radius: var(--vid-radius-sm);
+}
+
+.alert {
   color: var(--vid-error);
   background: var(--vid-error-background);
   border: 1px solid color-mix(in srgb, var(--vid-error) 35%, transparent);
   border-left: 4px solid var(--vid-error);
-  border-radius: var(--vid-radius-sm);
+}
+
+.notice,
+p[role="status"] {
+  color: var(--vid-text);
+  background: var(--vid-ok-background);
+  border: 1px solid color-mix(in srgb, var(--vid-ok) 35%, transparent);
+  border-left: 4px solid var(--vid-ok);
+}
+
+.alert::before,
+.notice::before,
+p[role="status"]::before {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--vid-surface);
+}
+
+.alert::before {
+  content: "!" / "";
+  background: var(--vid-error);
+}
+
+.notice::before,
+p[role="status"]::before {
+  content: "✓" / "";
+  background: var(--vid-ok);
 }
 
 .alert p,
@@ -317,14 +478,14 @@ a {
   margin: 0;
 }
 
+.alert ul {
+  padding-left: 1.25rem;
+}
+
 .secondary {
   margin: 1.25rem 0 0;
   font-size: 0.9375rem;
   text-align: center;
-}
-
-.links {
-  padding-left: 1.25rem;
 }
 
 .steps {
@@ -372,29 +533,409 @@ code,
   font-family: var(--vid-font-mono);
 }
 
-.sessions {
+/*
+ * Account layout (layout.md, Phase 11b): top bar, account navigation, and the page content. Text sits on the surface
+ * color, as before, so branding with a dark background and a light surface keeps its contrast.
+ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  background: var(--vid-surface);
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  color: var(--vid-text);
+  background: var(--vid-surface-raised);
+  border: 2px solid var(--vid-focus);
+  border-radius: var(--vid-radius-sm);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--vid-surface);
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.app-home {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+}
+
+.app-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-user {
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+  overflow-wrap: anywhere;
+}
+
+.app-signout button {
+  width: auto;
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+}
+
+.app-body {
+  flex: 1;
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.app-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.sessions li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--vid-divider);
-  overflow-wrap: anywhere;
+.app-nav a {
+  display: block;
+  padding: 0.375rem 0.75rem;
+  color: var(--vid-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
 }
 
-.sessions dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
+.app-nav a:hover {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
 }
 
-.sessions dt {
+/* The current page is marked by weight and an inset bar as well as color (WCAG 1.4.1). */
+.app-nav a[aria-current="page"] {
+  color: var(--vid-link);
+  font-weight: 600;
+  background: var(--vid-accent-tint);
+  box-shadow: inset 0 -2px 0 var(--vid-primary);
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+@media (min-width: 48rem) {
+  .app-bar {
+    padding: 0.75rem 1.5rem;
+  }
+
+  .app-body {
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 2.5rem;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .app-nav ul {
+    position: sticky;
+    top: 1.5rem;
+    flex-direction: column;
+  }
+
+  .app-nav a[aria-current="page"] {
+    box-shadow: inset 3px 0 0 var(--vid-primary);
+  }
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+  margin-bottom: 0.375rem;
+}
+
+.back {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.back a::before {
+  content: "← " / "";
+}
+
+.lead {
+  margin: 0;
   color: var(--vid-muted);
 }
 
-.sessions dd {
+/* Account content is flat: sections and lists are separated by dividers, not boxed (layout.md, Phase 11b). */
+
+.form-section,
+.danger-zone {
+  max-width: 40rem;
+  margin: 0 0 2rem;
+}
+
+.form-section + .form-section,
+.danger-zone {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.form-section > h2:first-child,
+.danger-zone > h2:first-child {
+  margin-top: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+form.form-section > .actions,
+.form-section > form > .actions {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.actions button,
+.actions a.button {
+  width: auto;
+}
+
+.danger-zone h2 {
+  color: var(--vid-error);
+}
+
+.app-main section > h2 {
+  margin-top: 0;
+}
+
+.app-main section + section {
+  margin-top: 2rem;
+}
+
+/* Account home: divided lists of links, one row each. */
+
+.list-heading {
+  max-width: 48rem;
   margin: 0;
+  padding-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vid-muted);
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.link-list {
+  max-width: 48rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-list li {
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.link-list a {
+  position: relative;
+  display: block;
+  padding: 0.875rem 2.5rem 0.875rem 0.75rem;
+  color: var(--vid-text);
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+  transition: background-color 120ms ease;
+}
+
+/* Decorative chevron; empty alternative text keeps it out of the accessible name. */
+.link-list a::after {
+  content: "›" / "";
+  position: absolute;
+  top: 50%;
+  right: 0.875rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--vid-muted);
+  transform: translateY(-50%);
+}
+
+.link-list a:hover {
+  background: var(--vid-surface-hover);
+}
+
+.link-list-title {
+  display: block;
+  font-weight: 600;
+  color: var(--vid-link);
+}
+
+.link-list a:hover .link-list-title {
+  text-decoration: underline;
+}
+
+.link-list-status {
+  margin-left: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--vid-muted);
+}
+
+.link-list-text {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+}
+
+/* Sessions: a divided list; the current one has a badge and an accent bar. */
+
+.sessions {
+  max-width: 48rem;
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.session {
+  padding: 1rem 0.75rem;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.session-current {
+  box-shadow: inset 3px 0 0 var(--vid-primary);
+  padding-left: 1rem;
+}
+
+.session-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.375rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  color: var(--vid-link);
+  background: var(--vid-accent-tint);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.session-meta div {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.session-meta dt {
+  color: var(--vid-muted);
+}
+
+.session-meta dd {
+  margin: 0;
+}
+
+.session .actions {
+  margin-top: 0.75rem;
+}
+
+/*
+ * Motion (layout.md, Phase 11b), CSS only and off with reduced motion. The entry animation plays only when the
+ * server sets the "entry" class on <html>; view transitions keep the art panel in place between our own pages.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  .entry .art {
+    animation: vid-art-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .entry .art::before {
+    animation: vid-zoom 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .entry .auth-top > *,
+  .entry .auth-content > * {
+    animation: vid-rise 0.4s ease-out both;
+  }
+
+  .entry .auth-content > :nth-child(1) {
+    animation-delay: 0.08s;
+  }
+
+  .entry .auth-content > :nth-child(2) {
+    animation-delay: 0.13s;
+  }
+
+  .entry .auth-content > :nth-child(n + 3) {
+    animation-delay: 0.18s;
+  }
+}
+
+@keyframes vid-art-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@keyframes vid-zoom {
+  from {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes vid-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
 }
 
 @media (forced-colors: active) {
@@ -405,13 +946,27 @@ code,
     border-color: Highlight;
   }
 
-  .card {
+  .app-nav a[aria-current="page"] {
+    outline: 2px solid Highlight;
+  }
+
+  /* Box shadows are dropped in forced colors; the badge text also marks it. */
+  .session-current {
+    border-left: 3px solid Highlight;
+  }
+
+  .link-list li,
+  .session,
+  .sessions {
     border-color: CanvasText;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     transition: none !important;
+    animation: none !important;
   }
 }

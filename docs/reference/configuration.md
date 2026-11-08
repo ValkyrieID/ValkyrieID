@@ -250,7 +250,7 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 
 | `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and in place of a logo. |
 | `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. Configuration only. |
 | `Branding:Logo` | *(none)* | **Runtime.** Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
-| `Branding:BackgroundImage` | *(none)* | **Runtime.** Background image file name in `Branding:Directory`. |
+| `Branding:BackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory`. It fills the art panel next to the sign-in form (see [Page layouts](#page-layouts)); without one, a subtle built-in gradient with the logo is shown. |
 | `Branding:CustomCss` | *(none)* | **Runtime.** Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
 | `Branding:PrimaryColor` | `#4f46e5` | **Runtime.** Buttons, links, and focus outlines in the light theme. |
 | `Branding:BackgroundColor` | `#fafafa` | **Runtime.** Page background in the light theme. |
@@ -270,6 +270,14 @@ The sign-in, account, and setup pages and the admin UI have a light and a dark t
 The colors without `Dark` apply to the light theme only, and the `Dark` colors to the dark theme only, so a light branding can't make the dark theme unreadable. Unset colors keep the built-in palette of that theme.
 
 The Content Security Policy only allows styles and images from the server itself, so branding files must be in `Branding:Directory`. A custom stylesheet can override the CSS variables `--vid-primary`, `--vid-primary-text`, `--vid-background`, `--vid-surface`, `--vid-text`, `--vid-muted`, `--vid-divider`, `--vid-error`, `--vid-error-background` and `--vid-border`. To change only the dark theme, use the selectors `:root[data-theme="dark"]` and, inside `@media (prefers-color-scheme: dark)`, `:root:not([data-theme="light"])`. Keep a contrast ratio of at least 4.5:1 for text (WCAG 2.2 AA) in both themes. The primary color needs 4.5:1 against white (button text), and in the light theme against the surface color (links); see [Accessibility: Branding](/accessibility/#branding) for every variable's requirement.
+
+### Page layouts
+
+The sign-in pages (sign-in, two-factor and recovery codes, 2FA enrollment, password reset, email verification, sign-out, setup, and sign-in errors) use a split layout: the form on the left, and an art panel filling the right side. The art panel shows `Branding:BackgroundImage`, scaled to cover the panel and centered, so choose an image that still works when cropped; without one, it shows a subtle gradient with a large, faint logo in the light or dark variant. The panel is decorative (hidden from screen readers), so don't put information in the image. On narrow screens (below 64rem) the art panel is hidden and the form uses the whole page.
+
+The account pages use an app layout with a top bar (product, signed-in user, theme switch, Sign out) and an account navigation.
+
+The sign-in, setup, and forgot-password pages play a short entry animation when they are first opened, and moving between pages uses a cross-fade (CSS view transitions) in browsers that support it. Both are CSS only and are turned off when the user prefers reduced motion.
 
 ## Audit log
 

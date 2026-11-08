@@ -13,6 +13,8 @@ public abstract class AccountTests
 {
     private const string Password = "correct horse battery staple";
 
+    private static Dictionary<string, string?> SmtpSettings => new() { ["Smtp:Host"] = "smtp.example.test", ["Smtp:FromAddress"] = "id@example.test" };
+
     protected abstract ValkyrieAppFactory CreateFactory(TimeProvider? timeProvider = null, Dictionary<string, string?>? settings = null);
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -89,11 +91,14 @@ public abstract class AccountTests
                 .CompleteSetupAsync(new NewUser(userName, null, null, Password), new AuditActor("setup"), CancellationToken);
         }
 
-        var results = await Task.WhenAll(SetupAsync("first"), SetupAsync("second"));
+        // Enough concurrent requests that PostgreSQL reports serialization failures on most runs.
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(i => SetupAsync($"admin{i}")));
 
         Assert.Single(results, r => r is not null);
         await using var check = factory.Services.CreateAsyncScope();
-        Assert.Equal(1, await check.ServiceProvider.GetRequiredService<ValkyrieDbContext>().Users.CountAsync(CancellationToken));
+        var db = check.ServiceProvider.GetRequiredService<ValkyrieDbContext>();
+        Assert.Equal(1, await db.Users.CountAsync(CancellationToken));
+        Assert.Equal(1, await db.AuditLog.CountAsync(e => e.EventType == "setup.completed", CancellationToken));
     }
 
     // Login
@@ -340,7 +345,7 @@ public abstract class AccountTests
 
         var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
 
-        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\"", page, StringComparison.Ordinal);
         Assert.Contains("action=\"/account/theme\"", page, StringComparison.Ordinal);
         Assert.Contains("<input type=\"hidden\" name=\"ReturnUrl\" value=\"/account/login\">", page, StringComparison.Ordinal);
         Assert.Contains("value=\"system\" aria-pressed=\"true\"", page, StringComparison.Ordinal);
@@ -370,7 +375,7 @@ public abstract class AccountTests
         Assert.DoesNotContain("httponly", cookie, StringComparison.OrdinalIgnoreCase);
 
         var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
-        Assert.Contains($"<html lang=\"en\" data-theme=\"{theme}\">", page, StringComparison.Ordinal);
+        Assert.Contains($"<html lang=\"en\" data-theme=\"{theme}\"", page, StringComparison.Ordinal);
         Assert.Contains($"value=\"{theme}\" aria-pressed=\"true\"", page, StringComparison.Ordinal);
         Assert.Contains("value=\"system\" aria-pressed=\"false\"", page, StringComparison.Ordinal);
     }
@@ -387,7 +392,7 @@ public abstract class AccountTests
         Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("__Host-valkyrie.theme=;", StringComparison.Ordinal) && c.Contains("expires=Thu, 01 Jan 1970", StringComparison.OrdinalIgnoreCase));
         var page = await (await browser.GetAsync("/account/login", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
-        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\"", page, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -448,7 +453,7 @@ public abstract class AccountTests
 
         var page = await (await client.SendAsync(request, CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
 
-        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", page, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<script", page, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -487,6 +492,143 @@ public abstract class AccountTests
         var css = await (await factory.CreateBrowser().GetAsync("/theme.css", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
 
         Assert.DoesNotContain("data-theme", css, StringComparison.Ordinal);
+    }
+
+    // Layouts and motion (layout.md, Phase 11b)
+
+    [Fact]
+    public async Task Entry_animation_plays_only_on_fresh_gets_of_entry_pages()
+    {
+        await using var factory = CreateFactory(settings: SmtpSettings);
+        var browser = factory.CreateBrowser();
+
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\" class=\"entry\">", await BodyAsync(browser, "/setup"), StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\" class=\"entry\">", await BodyAsync(browser, "/account/login"), StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\" class=\"entry\">", await BodyAsync(browser, "/account/forgot-password"), StringComparison.Ordinal);
+
+        // Error re-renders after a POST don't replay it.
+        var setupError = await Forms.PostAsync(browser, "/setup", new() { ["UserName"] = "root", ["Password"] = Password, ["ConfirmPassword"] = Password + "x" });
+        Assert.Equal(HttpStatusCode.OK, setupError.StatusCode);
+        Assert.Contains("<html lang=\"en\" data-theme=\"system\">", await setupError.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
+
+        var setup = await Forms.PostAsync(browser, "/setup", new() { ["UserName"] = "root", ["Password"] = Password, ["ConfirmPassword"] = Password });
+        Assert.Equal(HttpStatusCode.SeeOther, setup.StatusCode);
+        // Later steps such as the 2FA enrollment never get it.
+        Assert.DoesNotContain("class=\"entry\"", await BodyAsync(browser, "/account/login/enroll?returnUrl=%2Faccount"), StringComparison.Ordinal);
+        await Forms.CompleteEnrollmentAsync(browser);
+        Assert.DoesNotContain("class=\"entry\"", await BodyAsync(browser, "/account"), StringComparison.Ordinal);
+
+        var other = factory.CreateBrowser();
+        var loginError = await Forms.LoginAsync(other, "root", "wrong password!");
+        Assert.Equal(HttpStatusCode.OK, loginError.StatusCode);
+        Assert.DoesNotContain("class=\"entry\"", await loginError.Content.ReadAsStringAsync(CancellationToken), StringComparison.Ordinal);
+
+        var login = await Forms.LoginAsync(other, "root", Password, "/account");
+        Assert.StartsWith("/account/login/2fa", login.Headers.Location?.OriginalString, StringComparison.Ordinal);
+        var twoFactor = await BodyAsync(other, login.Headers.Location!.OriginalString);
+        Assert.Contains("<body class=\"auth\">", twoFactor, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"entry\"", twoFactor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sign_in_layout_has_a_decorative_art_panel_with_the_built_in_art()
+    {
+        await using var factory = CreateFactory();
+
+        var page = await BodyAsync(factory.CreateBrowser(), "/account/login");
+
+        Assert.Contains("<body class=\"auth\">", page, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"art\" aria-hidden=\"true\">", page, StringComparison.Ordinal);
+        Assert.Contains("<img src=\"/img/logo-192.png\" alt=\"\" class=\"art-logo\">", page, StringComparison.Ordinal);
+        // The theme switch is the first control of the page (WCAG 2.4.3).
+        Assert.True(page.IndexOf("class=\"theme-switch\"", StringComparison.Ordinal) < page.IndexOf("<main", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sign_in_layout_shows_the_branding_background_image_in_the_art_panel()
+    {
+        var directory = Directory.CreateTempSubdirectory("valkyrieid-branding-").FullName;
+        try
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, "background.png"), [0x89, 0x50, 0x4e, 0x47], CancellationToken);
+            await using var factory = CreateFactory(settings: new() { ["Branding:Directory"] = directory, ["Branding:BackgroundImage"] = "background.png" });
+            var browser = factory.CreateBrowser();
+
+            var page = await BodyAsync(browser, "/account/login");
+            var error = await (await browser.GetAsync("/connect/authorize?client_id=unknown", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+            var theme = await BodyAsync(browser, "/theme.css");
+
+            Assert.Contains("<div class=\"art art-image\" aria-hidden=\"true\">", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("art-logo", page, StringComparison.Ordinal);
+            Assert.Contains("<div class=\"art art-image\" aria-hidden=\"true\"></div>", error, StringComparison.Ordinal);
+            Assert.Contains("--vid-background-image: url(\"/branding/background.png\");", theme, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Protocol_error_pages_use_the_sign_in_layout_without_a_theme_switch()
+    {
+        await using var factory = CreateFactory();
+
+        var page = await (await factory.CreateBrowser().GetAsync("/connect/authorize?client_id=unknown", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.Contains("<body class=\"auth\">", page, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"art\" aria-hidden=\"true\"><img src=\"/img/logo-192.png\" alt=\"\" class=\"art-logo\"></div>", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("theme-switch", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"entry\"", page, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/account", "Overview")]
+    [InlineData("/account/profile", "Profile")]
+    [InlineData("/account/password", "Password")]
+    [InlineData("/account/two-factor", "Two-factor")]
+    [InlineData("/account/sessions", "Sessions")]
+    public async Task Account_layout_marks_the_current_page_in_the_navigation(string path, string label)
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        var browser = factory.CreateBrowser();
+        Assert.Equal(HttpStatusCode.SeeOther, (await Forms.LoginAsync(browser, "alice", Password)).StatusCode);
+
+        var page = await BodyAsync(browser, path);
+
+        Assert.Contains("<body class=\"app\">", page, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"#content\" class=\"skip-link\">", page, StringComparison.Ordinal);
+        Assert.Contains("<nav class=\"app-nav\" aria-label=\"Account\">", page, StringComparison.Ordinal);
+        Assert.Contains($"aria-current=\"page\">{label}</a>", page, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(page, "aria-current=\"page\""));
+        Assert.Contains("<span class=\"visually-hidden\">Signed in as </span>alice", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"art", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"entry\"", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Sessions_page_highlights_the_current_session()
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        var other = factory.CreateBrowser();
+        await Forms.LoginAsync(other, "alice", Password);
+        var browser = factory.CreateBrowser();
+        await Forms.LoginAsync(browser, "alice", Password);
+
+        var page = await BodyAsync(browser, "/account/sessions");
+
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(page, "<li class=\"session").Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(page, "<li class=\"session session-current\">"));
+        Assert.Contains("<span class=\"badge\">This session</span>", page, StringComparison.Ordinal);
+    }
+
+    private static async Task<string> BodyAsync(HttpClient browser, string path)
+    {
+        var response = await browser.GetAsync(path, CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadAsStringAsync(CancellationToken);
     }
 
     // Rate limiting

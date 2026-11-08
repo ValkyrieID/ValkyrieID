@@ -6,14 +6,19 @@
 @model ProfileModel
 @{
     ViewData["Title"] = "Profile";
+    Layout = "_AccountLayout";
 }
-<h1>Profile</h1>
+<div class="page-header">
+    <p class="back"><a href="~/account">Your account</a></p>
+    <h1>Profile</h1>
+    <p class="lead">How your name appears in applications you sign in to.</p>
+</div>
 @if (Model.Saved)
 {
-    <p role="status">Your profile has been saved.</p>
+    <p role="status" class="notice">Your profile has been saved.</p>
 }
 <partial name="_Errors" model="Model.Errors" />
-<form method="post" novalidate>
+<form method="post" novalidate class="form-section">
     <div class="field">
         <label for="email">Email address</label>
         <input id="email" type="email" value="@Model.CurrentUser?.Email" readonly aria-describedby="email-hint">
@@ -38,6 +43,7 @@
         <label for="family-name">Family name</label>
         <input id="family-name" name="FamilyName" type="text" value="@Model.FamilyName" maxlength="@AccountService.MaxNameLength" autocomplete="family-name">
     </div>
-    <button type="submit">Save</button>
+    <div class="actions">
+        <button type="submit">Save</button>
+    </div>
 </form>
-<p class="secondary"><a href="~/account">Back to your account</a></p>

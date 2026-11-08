@@ -91,9 +91,9 @@ The pages must feel like full pages of their own, not a card floating in the mid
 
 ### Sign-in layout (split screen)
 
-Used by sign-in, 2FA, recovery code, 2FA enrollment at sign-in, forgot/reset password, email verification and confirmation, sign-out, setup, and the protocol error pages (`ProtocolPages`).
+Used by sign-in, 2FA, recovery code, 2FA enrollment at sign-in, forgot/reset password, email verification and confirmation, sign-out, setup, and the protocol error pages (`ProtocolPages`). The protocol pages have no theme switch: its form would replay the protocol request, and the `form_post` page's `form-action` only allows the client. They still render the stored theme.
 
-- **Desktop (≥ 64rem):** form panel on the left, full height, about 40rem wide. The logo and product name sit at the top, the form is vertically centered, and the theme switch is at the panel's top right. The art panel fills the right side, inset with rounded corners.
+- **Desktop (≥ 64rem):** form panel on the left, full height, about 40rem wide. The logo and product name sit at the top, the form is vertically centered, and the theme switch is at the top right of the page, over the art panel. The art panel fills the right side edge to edge, without a border or rounded corners, and fades into the form panel.
 - **Art panel:** shows `Branding:BackgroundImage` when set (cover, centered). Without one, a built-in subtle indigo-on-neutral gradient with a large, faint logo, with light and dark variants. It is decorative (`aria-hidden="true"`, no text).
 - **Mobile:** the art panel is hidden and the form uses the whole page; no floating card.
 - Improve hierarchy, field spacing, action areas, and error/success messages (status tokens with an icon plus text, never color alone). Keep password and 2FA warnings prominent without exposing sensitive data.
@@ -104,9 +104,9 @@ Used by `/account` and its sub-pages (profile, email, password, two-factor, sess
 
 - Top bar with the logo and product name, the signed-in user, the theme switch, and Sign out.
 - Account navigation (Profile, Email, Password, Two-factor, Sessions) with `aria-current="page"`, and a skip link before it.
-- The account home becomes grouped navigation cards with descriptions and clear focus/hover states.
-- Every page has the same structure: back link, title, short explanation, settings panel, action area; destructive actions are separated.
-- Sessions are readable metadata cards; the current session is highlighted.
+- The account home becomes grouped, divided link lists (title, description, decorative chevron) with clear focus/hover states. Account content is flat, not boxed: sections and lists are separated by dividers, and text always sits on the surface color.
+- Every page has the same structure: back link, title, short explanation, settings, action area above a divider; destructive actions are in a separate section with a red heading.
+- Sessions are a divided list with compact metadata; the current session has a badge and an accent bar.
 
 ### Motion (CSS only)
 

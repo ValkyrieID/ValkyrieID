@@ -34,8 +34,16 @@ internal sealed class SetupModel(
 
     public int MinimumPasswordLength => passwordPolicy.CurrentValue.MinimumLength;
 
-    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken) =>
-        await users.AnyUsersAsync(cancellationToken) ? NotFound() : Page();
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
+    {
+        if (await users.AnyUsersAsync(cancellationToken))
+        {
+            return NotFound();
+        }
+
+        ViewData[EntryAnimation.Key] = true;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {

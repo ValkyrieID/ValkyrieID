@@ -1,12 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc;
+using ValkyrieID.Server.Users;
 
 namespace ValkyrieID.Server.Pages.Account;
 
-[Authorize]
-internal sealed class IndexModel : PageModel
+internal sealed class IndexModel(AccountService account) : AccountPageModel(account)
 {
-    public void OnGet()
-    {
-    }
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken) =>
+        await LoadUserAsync(cancellationToken) is null ? Challenge() : Page();
 }

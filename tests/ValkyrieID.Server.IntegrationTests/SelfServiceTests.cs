@@ -335,7 +335,7 @@ public abstract partial class SelfServiceTests
         var ids = SessionIdPattern().Matches(page).Select(m => m.Groups[1].Value).ToList();
         Assert.Equal((await SessionIdsAsync(factory, "alice")).Order(), ids.Order());
         Assert.DoesNotContain((await SessionIdsAsync(factory, "bob")).Single(), page, StringComparison.Ordinal);
-        Assert.Contains("(this session)", page, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"badge\">This session</span>", page, StringComparison.Ordinal);
         // WCAG 2.4.6: each "Sign out" button is described by its session's device.
         foreach (var id in ids)
         {

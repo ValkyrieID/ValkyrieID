@@ -25,6 +25,9 @@ export function defineLoginPageTests(variant: string): void {
     await page.goto(`/connect/authorize?${authorizeQuery.toString()}`);
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await expect(page).toHaveTitle(/^Sign in – /);
+    // The entry animation plays on the fresh GET of the sign-in page only; the art panel is decorative.
+    await expect(page.locator('html')).toHaveClass('entry');
+    await expect(page.locator('.art')).toHaveAttribute('aria-hidden', 'true');
     await checkPage(page, 'sign-in');
 
     // 2.4.3, 2.4.7, 2.4.11: a logical order, with a visible, unobscured focus indicator. The first field has
@@ -34,10 +37,12 @@ export function defineLoginPageTests(variant: string): void {
 
     await submitLogin(page, admin.userName, 'wrong password');
     await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.locator('html')).not.toHaveClass(/entry/);
     await checkPage(page, 'sign-in with errors');
 
     await submitLogin(page, admin.userName, admin.password);
     await expect(page.getByRole('heading', { name: 'Two-factor authentication' })).toBeVisible();
+    await expect(page.locator('html')).not.toHaveClass(/entry/);
     await checkPage(page, '2FA');
     // 3.3.8: the code can be pasted and filled in by password managers and authenticator apps.
     const code = page.getByLabel('Code from your authenticator app');
@@ -94,8 +99,21 @@ export function defineLoginPageTests(variant: string): void {
     await submitLogin(page, user.userName, user.password);
     await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible();
     await checkPage(page, 'account');
+    const accountNav = page.getByRole('navigation', { name: 'Account' });
+    await expect(accountNav.getByRole('link', { name: 'Overview' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(page.locator('html')).not.toHaveClass(/entry/);
+    // The skip link comes first and moves past the top bar and the navigation (2.4.1).
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
 
-    await page.getByRole('link', { name: 'Profile' }).click();
+    await accountNav.getByRole('link', { name: 'Profile', exact: true }).click();
+    await expect(accountNav.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     await checkPage(page, 'profile');
     await page.getByLabel('Display name').fill('Alice');
     await page.getByRole('button', { name: 'Save' }).click();

@@ -1,0 +1,18 @@
+@using Microsoft.Extensions.Options
+@using ValkyrieID.Server.Configuration
+@inject IOptionsMonitor<BrandingOptions> BrandingOptions
+@{
+    var branding = BrandingOptions.CurrentValue;
+}
+<div class="brand">
+    @if (branding.Logo is not null)
+    {
+        <img src="~/branding/@branding.Logo" alt="@branding.ProductName">
+    }
+    else
+    {
+        @* Decorative: the product name next to it is the accessible name (WCAG 1.1.1). *@
+        <img src="~/img/logo-192.png" alt="" width="32" height="32">
+        <span class="product-name">@branding.ProductName</span>
+    }
+</div>

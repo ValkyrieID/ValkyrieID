@@ -1,0 +1,16 @@
+@using ValkyrieID.Server.Configuration
+@{
+    var current = ThemePreference.Read(Context.Request) ?? ThemePreference.System;
+    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+    (string Value, string Label)[] themes = [(ThemePreference.System, "System"), (ThemePreference.Light, "Light"), (ThemePreference.Dark, "Dark")];
+}
+<form method="post" asp-page="/Account/Theme" class="theme-switch">
+    <input type="hidden" name="ReturnUrl" value="@returnUrl">
+    <fieldset>
+        <legend class="visually-hidden">Color theme</legend>
+        @foreach (var (value, label) in themes)
+        {
+            <button type="submit" name="Theme" value="@value" aria-pressed="@(value == current ? "true" : "false")">@label</button>
+        }
+    </fieldset>
+</form>

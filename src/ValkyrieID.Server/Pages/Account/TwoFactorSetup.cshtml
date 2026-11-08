@@ -2,74 +2,91 @@
 @model TwoFactorSetupModel
 @{
     ViewData["Title"] = "Two-factor authentication";
+    Layout = "_AccountLayout";
 }
-<h1>Two-factor authentication</h1>
+<div class="page-header">
+    <p class="back"><a href="~/account">Your account</a></p>
+    <h1>Two-factor authentication</h1>
+    <p class="lead">Protect your account with a code from an authenticator app in addition to your password.</p>
+</div>
 @if (Model.RecoveryCodes is not null)
 {
     @if (Model.Regenerated)
     {
-        <p role="status">You have new recovery codes. Your old codes no longer work.</p>
+        <p role="status" class="notice">You have new recovery codes. Your old codes no longer work.</p>
     }
     else
     {
-        <p role="status">Two-factor authentication is on. You'll be asked for a code from your authenticator app when you sign in.</p>
+        <p role="status" class="notice">Two-factor authentication is on. You'll be asked for a code from your authenticator app when you sign in.</p>
     }
-    <partial name="_RecoveryCodes" model="Model.RecoveryCodes" />
-    <p><a href="~/account">Back to your account</a></p>
+    <div class="form-section">
+        <partial name="_RecoveryCodes" model="Model.RecoveryCodes" />
+        <div class="actions">
+            <a href="~/account" class="button">Done</a>
+        </div>
+    </div>
 }
 else if (Model.Enrollment is not null)
 {
     @if (Model.Disabled)
     {
-        <p role="status">Two-factor authentication is off. You've been signed out everywhere else.</p>
+        <p role="status" class="notice">Two-factor authentication is off. You've been signed out everywhere else.</p>
     }
-    <p>Protect your account with a code from an authenticator app in addition to your password.</p>
     <partial name="_Errors" model="Model.Errors" />
-    <form method="post" novalidate>
+    <form method="post" novalidate class="form-section">
         <partial name="_TotpEnrollment" model="Model.Enrollment" />
         <div class="field">
             <label for="password">Current password</label>
             <input id="password" name="Password" type="password" autocomplete="current-password" required>
         </div>
-        <button type="submit">Turn on two-factor authentication</button>
+        <div class="actions">
+            <button type="submit">Turn on two-factor authentication</button>
+            <a href="~/account" class="button button-secondary">Cancel</a>
+        </div>
     </form>
-    <p class="secondary"><a href="~/account">Cancel</a></p>
 }
 else
 {
-    <p>Two-factor authentication is on. You have @Model.UnusedRecoveryCodes unused recovery code(s).</p>
+    <p class="notice notice-ok">Two-factor authentication is on. You have @Model.UnusedRecoveryCodes unused recovery code(s).</p>
     <partial name="_Errors" model="Model.Errors" />
 
-    <h2>New recovery codes</h2>
-    <p>Get a new set of recovery codes, for example if you've used most of them or think someone else has seen them. Your old codes stop working.</p>
-    <form method="post" asp-page-handler="Regenerate" novalidate>
-        <div class="field">
-            <label for="regenerate-password">Current password</label>
-            <input id="regenerate-password" name="Password" type="password" autocomplete="current-password" required>
-        </div>
-        <button type="submit">Get new recovery codes</button>
-    </form>
-
-    <h2>Turn off two-factor authentication</h2>
-    @if (Model.Required)
-    {
-        <p>Two-factor authentication is required for your account, so it can't be turned off.</p>
-        <p>If you lost your authenticator app, use a recovery code to sign in, or contact your administrator.</p>
-    }
-    else
-    {
-        <p>Turning it off signs you out on all other devices.</p>
-        <form method="post" asp-page-handler="Disable" novalidate>
+    <section class="form-section" aria-labelledby="regenerate-heading">
+        <h2 id="regenerate-heading">New recovery codes</h2>
+        <p>Get a new set of recovery codes, for example if you've used most of them or think someone else has seen them. Your old codes stop working.</p>
+        <form method="post" asp-page-handler="Regenerate" novalidate>
             <div class="field">
-                <label for="disable-password">Current password</label>
-                <input id="disable-password" name="Password" type="password" autocomplete="current-password" required>
+                <label for="regenerate-password">Current password</label>
+                <input id="regenerate-password" name="Password" type="password" autocomplete="current-password" required>
             </div>
-            <div class="field">
-                <label for="disable-code">Code from your authenticator app, or a recovery code</label>
-                <input id="disable-code" name="Code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
+            <div class="actions">
+                <button type="submit">Get new recovery codes</button>
             </div>
-            <button type="submit">Turn off two-factor authentication</button>
         </form>
-    }
-    <p class="secondary"><a href="~/account">Back to your account</a></p>
+    </section>
+
+    <section class="danger-zone" aria-labelledby="disable-heading">
+        <h2 id="disable-heading">Turn off two-factor authentication</h2>
+        @if (Model.Required)
+        {
+            <p>Two-factor authentication is required for your account, so it can't be turned off.</p>
+            <p>If you lost your authenticator app, use a recovery code to sign in, or contact your administrator.</p>
+        }
+        else
+        {
+            <p>Turning it off signs you out on all other devices.</p>
+            <form method="post" asp-page-handler="Disable" novalidate>
+                <div class="field">
+                    <label for="disable-password">Current password</label>
+                    <input id="disable-password" name="Password" type="password" autocomplete="current-password" required>
+                </div>
+                <div class="field">
+                    <label for="disable-code">Code from your authenticator app, or a recovery code</label>
+                    <input id="disable-code" name="Code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
+                </div>
+                <div class="actions">
+                    <button type="submit" class="button-danger">Turn off two-factor authentication</button>
+                </div>
+            </form>
+        }
+    </section>
 }
