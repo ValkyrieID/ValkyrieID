@@ -247,21 +247,22 @@ Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 
 
 | Key | Default | Description |
 |---|---|---|
-| `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and in place of a logo. |
+| `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and next to the logo. The built-in name is shown as the "Valkyrie id" wordmark. |
 | `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. Configuration only. |
 | `Branding:Logo` | *(none)* | **Runtime.** Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
-| `Branding:BackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory`. It fills the art panel next to the sign-in form (see [Page layouts](#page-layouts)); without one, a subtle built-in gradient with the logo is shown. |
+| `Branding:BackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory`. It fills the page behind the sign-in and account pages (see [Page layouts](#page-layouts)), in both themes unless `Branding:DarkBackgroundImage` is set; without one, the built-in light wallpaper is shown. |
+| `Branding:DarkBackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory` for the dark theme. Without one, the dark theme uses `Branding:BackgroundImage`, or the built-in dark wallpaper. |
 | `Branding:CustomCss` | *(none)* | **Runtime.** Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
-| `Branding:PrimaryColor` | `#4f46e5` | **Runtime.** Buttons, links, and focus outlines in the light theme. |
-| `Branding:BackgroundColor` | `#fafafa` | **Runtime.** Page background in the light theme. |
-| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card background in the light theme. |
+| `Branding:PrimaryColor` | `#0f766e` | **Runtime.** Buttons, links, and focus outlines in the light theme. |
+| `Branding:BackgroundColor` | `#fafafa` | **Runtime.** Page background in the light theme, shown behind the wallpaper while it loads. |
+| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card and glass background in the light theme. |
 | `Branding:TextColor` | `#18181b` | **Runtime.** Text in the light theme. |
-| `Branding:DarkPrimaryColor` | `#4f46e5` | **Runtime.** Buttons in the dark theme; links and focus outlines use a lighter tint of it. |
-| `Branding:DarkBackgroundColor` | `#0a0a0b` | **Runtime.** Page background in the dark theme. |
-| `Branding:DarkSurfaceColor` | `#141416` | **Runtime.** Card background in the dark theme. |
+| `Branding:DarkPrimaryColor` | `#0f766e` | **Runtime.** Buttons in the dark theme; links and focus outlines use a lighter tint of it. |
+| `Branding:DarkBackgroundColor` | `#0a0a0b` | **Runtime.** Page background in the dark theme, shown behind the wallpaper while it loads. |
+| `Branding:DarkSurfaceColor` | `#141416` | **Runtime.** Card and glass background in the dark theme. |
 | `Branding:DarkTextColor` | `#ededef` | **Runtime.** Text in the dark theme. |
 
-Colors must be hex (`#4f46e5`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
+Colors must be hex (`#0f766e`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
 
 ### Themes
 
@@ -273,11 +274,13 @@ The Content Security Policy only allows styles and images from the server itself
 
 ### Page layouts
 
-The sign-in pages (sign-in, two-factor and recovery codes, 2FA enrollment, password reset, email verification, sign-out, setup, and sign-in errors) use a split layout: the form on the left, and an art panel filling the right side. The art panel shows `Branding:BackgroundImage`, scaled to cover the panel and centered, so choose an image that still works when cropped; without one, it shows a subtle gradient with a large, faint logo in the light or dark variant. The panel is decorative (hidden from screen readers), so don't put information in the image. On narrow screens (below 64rem) the art panel is hidden and the form uses the whole page.
+Every sign-in and account page sits on a full-page wallpaper, with its content on see-through frosted-glass surfaces. The light theme shows `Branding:BackgroundImage`; the dark theme shows `Branding:DarkBackgroundImage`, falling back to `Branding:BackgroundImage`. Without either, ValkyrieID's built-in light and dark wallpapers are shown. Images are scaled to cover the window and centered, so choose images that still work when cropped, in both landscape and portrait; providing both a light and a dark image gives the best result. With the built-in wallpapers the glass is see-through; with a custom image it is mostly opaque, so text stays readable whatever the image looks like. The wallpaper is decorative (a CSS background, invisible to screen readers and hidden in forced-colors mode), so don't put information in it.
 
-The account pages use an app layout with a top bar (product, signed-in user, theme switch, Sign out) and an account navigation.
+The sign-in pages (sign-in, two-factor and recovery codes, 2FA enrollment, password reset, email verification, sign-out, setup, and sign-in errors) show the logo and product name beside a glass card with the form; on narrow screens (below 64rem) the logo and name sit above the card. The logo and name sit directly on the wallpaper, so the image needs enough contrast with the text color of that theme behind them (see [Accessibility: Branding](/accessibility/#branding)).
 
-The sign-in, setup, and forgot-password pages play a short entry animation when they are first opened, and moving between pages uses a cross-fade (CSS view transitions) in browsers that support it. Both are CSS only and are turned off when the user prefers reduced motion.
+The account pages use an app layout with a glass top bar (product, signed-in user, theme switch, Sign out), a glass account navigation, and the page content on a glass panel.
+
+The sign-in, setup, and forgot-password pages play a short entry animation when they are first opened (the wallpaper sharpens in and the card rises in), and moving between pages uses CSS view transitions in browsers that support them. Both are CSS only and are turned off when the user prefers reduced motion.
 
 ## Audit log
 

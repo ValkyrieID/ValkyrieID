@@ -21,11 +21,11 @@ This plan covers the visual refresh of the server-rendered Razor pages and the A
 
 ## Shared design foundation
 
-Phase 11 introduces a new visual identity: **clean and neutral, with a single indigo accent**, in the spirit of tools such as Linear, Vercel, and GitHub. Professional, calm, and quietly polished; color is used for meaning (actions, links, focus, status), not decoration.
+Phase 11 introduces a new visual identity: **calm surfaces with a single teal accent and a touch of gold, taken from the logo**. Professional, calm, and quietly polished; color is used for meaning (actions, links, focus, status), and gold only for decoration.
 
 Principles:
 
-- neutral gray surfaces; indigo only for primary actions, links, focus, and the active navigation item
+- neutral gray surfaces; teal only for primary actions, links, focus, and the active navigation item; gold only for decorative highlights (the logo glow and the card's top edge), never for text or controls
 - crisp 1 px dividers and subtle surface steps instead of heavy shadows; in the dark theme, raised surfaces get lighter instead of casting shadows
 - small radii (6 px for controls, 8 px for cards), a 4/8 px spacing grid, the system font stack, and a monospace stack for identifiers and keys
 - a compact type scale with clear weight steps; muted text for secondary information
@@ -45,16 +45,23 @@ Shared tokens (CSS custom properties, `--vid-*`, defined in both `site.css` and 
 | `--vid-muted` | `#52525b` | `#a1a1aa` | Secondary text |
 | `--vid-divider` | `#e4e4e7` | `#27272a` | Dividers, card borders |
 | `--vid-border` | `#71717a` | `#71717a` | Control borders (3:1) |
-| `--vid-primary` | `#4f46e5` | `#4f46e5` | Primary buttons (white text) |
+| `--vid-primary` | `#0f766e` | `#0f766e` | Primary buttons (white text, 5.5:1) |
 | `--vid-primary-hover` | primary mixed with black | primary mixed with black | Primary button hover |
 | `--vid-link` | `--vid-primary` | primary mixed with white | Links and accent text |
 | `--vid-focus` | `--vid-primary` | primary mixed with white | Focus rings |
-| `--vid-accent-tint` | 10 % primary | 18 % primary | Active navigation, selection |
+| `--vid-accent-tint` | 10 % primary | 22 % primary | Active navigation, selection |
+| `--vid-accent` | `#b8862f` | `#d4a84b` | Gold, decorative only (logo glow, card edge); never text or controls |
+| `--vid-background-image` | `img/wall-light.png` | `img/wall-dark.png` | Razor page wallpaper; overridden by `Branding:BackgroundImage` / `Branding:DarkBackgroundImage` |
+| `--vid-glass` | 50 % surface | 45 % slate-teal (surface mixed with `#6b8a8c`) | See-through frosted glass on the wallpaper (Razor pages), with a 12 px backdrop blur; plain surface without `backdrop-filter` |
+| `--vid-glass-border` | 60 % white | 12 % white | Glass surface edge |
+| `--vid-glass-muted`, `--vid-glass-control-border`, `--vid-glass-link` | muted, border, and primary moved toward the text color | same, link unchanged | Replace `--vid-muted`, `--vid-border`, and `--vid-link` on glass, so they keep 4.5:1 and 3:1 over the wallpaper |
+| `--vid-glass-input` | 85 % surface | 80 % surface | Input fill on glass (mostly opaque) |
+| `--vid-wordmark`, `--vid-wordmark-muted` | `#1f2937`, `#4b5059` | `#e8eaed`, `#a8adb5` | "Valkyrie" and the large lockup's "id" (3:1, large text only; the small wordmark's "id" uses `--vid-muted`) |
 | `--vid-error`, `--vid-ok`, `--vid-warn`, `--vid-info` | `#b91c1c`, `#15803d`, `#a16207`, `#1d4ed8` | `#f87171`, `#4ade80`, `#facc15`, `#93c5fd` | Status text, with matching `-background` tints |
 
-Derived tokens (`--vid-link`, `--vid-focus`, `--vid-primary-hover`, `--vid-accent-tint`) are computed with `color-mix()` from `--vid-primary`, so branding colors carry through. Every text pair must reach 4.5:1 and every control, border, and focus pair 3:1 in both themes.
+Derived tokens (`--vid-link`, `--vid-focus`, `--vid-primary-hover`, `--vid-accent-tint`, `--vid-glass`) are computed with `color-mix()` from `--vid-primary` and `--vid-surface`, so branding colors carry through. Every text pair must reach 4.5:1 and every control, border, and focus pair 3:1 in both themes, including on glass over the brightest (dark theme) or darkest (light theme) part of the wallpaper.
 
-The logo was designed for the previous navy and orange look; it is kept for now and may get a variant that suits both themes later.
+The logo (a teal winged shield with a gold edge) and both wallpapers live in `assets/branding`; the served copies are in `src/ValkyrieID.Server/wwwroot/img` and the admin UI's `public` folder.
 
 The server-rendered and Angular styles use the same token names. Branding overrides keep working: the branding colors apply to the light theme, and optional `Branding:Dark*` colors apply to the dark theme. Operators remain responsible for the contrast of custom colors.
 
@@ -87,45 +94,50 @@ Theme controls have an accessible name and state, meet the 24 px target size, an
 
 Affected areas include the shared Razor layout, login, logout, error, 2FA, recovery-code, password-reset, email-verification, account, profile, password, two-factor, sessions, and setup pages.
 
-The pages must feel like full pages of their own, not a card floating in the middle of the screen (inspired by Pocket ID). Two layouts replace the single centered card. Everything stays server-rendered, works without JavaScript, and keeps the strict CSP (`style-src 'self'`, no script).
+Every page sits on a full-page wallpaper, with content on frosted-glass surfaces. Two layouts replace the single centered card. Everything stays server-rendered, works without JavaScript, and keeps the strict CSP (`style-src 'self'`, no script).
 
-### Sign-in layout (split screen)
+### Wallpaper and glass
+
+- **Wallpaper:** fills the page behind every Razor page (cover, centered, fixed). The light theme shows `Branding:BackgroundImage`, or the built-in `wall-light.png`; the dark theme shows `Branding:DarkBackgroundImage`, then `Branding:BackgroundImage`, then the built-in `wall-dark.png`. It is decorative (a CSS background, no markup, no text in the image) and hidden in forced-colors mode.
+- **Glass:** the sign-in card, the account top bar, navigation, and content, and the theme switch are see-through frosted glass (`--vid-glass` with `backdrop-filter: blur()` and a thin `--vid-glass-border`); the wallpaper's lines and nodes show softly through it. The sign-in card adds a faint teal glow in its top-left corner. On glass, muted text, control borders and links use the `--vid-glass-*` variants and inputs a mostly opaque fill, so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper (measured on the rendered pages). Without `backdrop-filter` support, the glass is the plain surface. The Angular admin UI keeps solid surfaces. The see-through glass is tuned and measured for the built-in wallpapers; when a branding background image applies to a theme, `/theme.css` makes that theme's glass mostly opaque (88 % surface), so text keeps its contrast over any image.
+
+### Sign-in layout (lockup and glass card)
 
 Used by sign-in, 2FA, recovery code, 2FA enrollment at sign-in, forgot/reset password, email verification and confirmation, sign-out, setup, and the protocol error pages (`ProtocolPages`). The protocol pages have no theme switch: its form would replay the protocol request, and the `form_post` page's `form-action` only allows the client. They still render the stored theme.
 
-- **Desktop (≥ 64rem):** form panel on the left, full height, about 40rem wide. The logo and product name sit at the top, the form is vertically centered, and the theme switch is at the top right of the page, over the art panel. The art panel fills the right side edge to edge, without a border or rounded corners, and fades into the form panel.
-- **Art panel:** shows `Branding:BackgroundImage` when set (cover, centered). Without one, a built-in subtle indigo-on-neutral gradient with a large, faint logo, with light and dark variants. It is decorative (`aria-hidden="true"`, no text).
-- **Mobile:** the art panel is hidden and the form uses the whole page; no floating card.
+- **Lockup:** the logo, with a soft teal and gold glow, above the product name. With the built-in name, the product name is the "Valkyrie id" wordmark: bold "Valkyrie" and a lighter "id", hidden from assistive technology, which reads the visually hidden product name "ValkyrieID" instead. A custom `Branding:ProductName` or `Branding:Logo` replaces it.
+- **Desktop (≥ 64rem):** the lockup on the left, the glass card with the form on the right (about 28rem), both vertically centered; the theme switch is at the top right of the page and first in the focus order. A thin teal-to-gold line marks the card's top edge.
+- **Mobile:** the theme switch, then the smaller lockup above the glass card, which fills the width with a small margin.
 - Improve hierarchy, field spacing, action areas, and error/success messages (status tokens with an icon plus text, never color alone). Keep password and 2FA warnings prominent without exposing sensitive data.
 
 ### Account layout (app style)
 
 Used by `/account` and its sub-pages (profile, email, password, two-factor, sessions).
 
-- Top bar with the logo and product name, the signed-in user, the theme switch, and Sign out.
-- Account navigation (Profile, Email, Password, Two-factor, Sessions) with `aria-current="page"`, and a skip link before it.
-- The account home becomes grouped, divided link lists (title, description, decorative chevron) with clear focus/hover states. Account content is flat, not boxed: sections and lists are separated by dividers, and text always sits on the surface color.
+- A glass top bar with the logo and product name, the signed-in user, the theme switch, and Sign out.
+- Account navigation (Profile, Email, Password, Two-factor, Sessions) on a glass panel with `aria-current="page"`, and a skip link before it.
+- The page content sits on one glass surface. Inside it, the account home becomes grouped, divided link lists (title, description, decorative chevron) with clear focus/hover states, and sections and lists are separated by dividers rather than boxed again.
 - Every page has the same structure: back link, title, short explanation, settings, action area above a divider; destructive actions are in a separate section with a red heading.
 - Sessions are a divided list with compact metadata; the current session has a badge and an accent bar.
 
 ### Motion (CSS only)
 
 - **No JavaScript and no success interstitial:** after a successful sign-in the server redirects straight to the application.
-- **Entry animation:** the art panel slides in from the form side with a gentle image zoom (about 1.15× to 1×), and the form content fades and rises in with a short stagger; about 0.6 s total. It plays only when the server adds a class to `<html>`: on a fresh GET of a flow's entry page (sign-in, setup, forgot password). Never on error re-renders after a POST or on later steps such as 2FA.
-- **Step transitions:** cross-document view transitions (`@view-transition { navigation: auto; }`) between our own pages, with the art panel given its own `view-transition-name` so it stays put while the form changes. Browsers without support just navigate.
+- **Entry animation:** the wallpaper sharpens in (fade from a light blur), the lockup rises in, and the card rises and scales in with its content staggered; about 0.7 s total. It plays only when the server adds a class to `<html>`: on a fresh GET of a flow's entry page (sign-in, setup, forgot password). Never on error re-renders after a POST or on later steps such as 2FA.
+- **Step transitions:** cross-document view transitions (`@view-transition { navigation: auto; }`) between our own pages, with the lockup and the card given their own `view-transition-name` so they stay put while the form changes. Browsers without support just navigate.
 - The account pages have no entry animation, only view transitions.
 - `prefers-reduced-motion: reduce` turns off all animations and view transitions.
 
 ### Acceptance
 
-- Integration tests: the entry-animation class only on fresh GETs of entry pages (not after a POST, not on 2FA); both layouts render with and without a background image; the art panel is `aria-hidden`; the account navigation marks the current page.
+- Integration tests: the entry-animation class only on fresh GETs of entry pages (not after a POST, not on 2FA); both layouts render the lockup and glass surfaces; the built-in wallpapers are served and branding images override them per theme; the account navigation marks the current page.
 - The accessibility suite passes on every page in light and dark, at 320 px, and with reduced motion.
 - Desktop and mobile screenshots of sign-in, 2FA, setup, account, and sessions in both themes.
-- The docs explain that the branding background image fills the art panel.
+- The docs explain that the branding background images fill the page behind the glass surfaces, and that text outside them (the lockup) needs contrast with the image.
 
 ## Phase 11c: Angular admin shell and navigation
 
-- Refresh the top bar, branding, user controls, sidebar, active navigation, and content gutters. The sidebar uses the page surface with a thin divider; the active item gets the indigo tint and a marker.
+- Refresh the top bar, branding, user controls, sidebar, active navigation, and content gutters. The sidebar uses the page surface with a thin divider; the active item gets the teal tint and a marker.
 - Restyle the theme control added in 11a to fit the new shell.
 - Group navigation where that improves scanning without hiding routes from keyboard or screen-reader users.
 - Replace awkward mobile navigation wrapping with a responsive navigation pattern that remains discoverable and usable.

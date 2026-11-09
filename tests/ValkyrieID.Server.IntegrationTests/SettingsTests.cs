@@ -302,6 +302,41 @@ public abstract class SettingsTests
         }
     }
 
+    [Fact]
+    public async Task Dark_background_image_is_a_runtime_setting_for_the_dark_theme()
+    {
+        var directory = Directory.CreateTempSubdirectory("valkyrieid-branding-").FullName;
+        try
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, "night.png"), [0x89, 0x50, 0x4e, 0x47], CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(directory, "site.css"), "body{}", CancellationToken);
+            await using var factory = CreateFactory(settings: new() { ["Branding:Directory"] = directory });
+            var api = await AdminApiAsync(factory);
+
+            var section = await ReadJsonAsync(await api.GetAsync("/api/admin/settings/branding", CancellationToken));
+            Assert.Equal(["night.png"], Setting(section, "darkBackgroundImage").GetProperty("options").EnumerateArray().Select(o => o.GetString()));
+
+            // Only images from the branding directory can be chosen.
+            Assert.Equal(HttpStatusCode.BadRequest, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { darkBackgroundImage = "site.css" }, CancellationToken)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { darkBackgroundImage = "../night.png" }, CancellationToken)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { darkBackgroundImage = "x\"); } body { display: none" }, CancellationToken)).StatusCode);
+
+            Assert.Equal(HttpStatusCode.OK, (await api.PatchAsJsonAsync("/api/admin/settings/branding", new { darkBackgroundImage = "night.png" }, CancellationToken)).StatusCode);
+
+            var css = await (await factory.CreateClient().GetAsync("/theme.css", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+            Assert.StartsWith(":root {\n}\n", css, StringComparison.Ordinal);
+            Assert.Contains(":root[data-theme=\"dark\"] {\n  --vid-background-image: url(\"/branding/night.png\");\n  --vid-glass: color-mix(in srgb, var(--vid-surface) 88%, transparent);\n}", css, StringComparison.Ordinal);
+
+            await using var scope = factory.Services.CreateAsyncScope();
+            var entry = await scope.ServiceProvider.GetRequiredService<ValkyrieDbContext>().AuditLog.SingleAsync(e => e.EventType == "settings.updated", CancellationToken);
+            Assert.Equal("Branding:DarkBackgroundImage", JsonDocument.Parse(entry.Details!).RootElement.GetProperty("changes")[0].GetProperty("key").GetString());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     // Reloading
 
     [Fact]

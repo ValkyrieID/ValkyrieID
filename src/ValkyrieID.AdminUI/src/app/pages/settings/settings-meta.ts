@@ -139,7 +139,14 @@ export const SECTIONS: Readonly<Record<string, SectionMeta>> = {
         help: 'Keep a contrast ratio of at least 4.5:1 with the dark background colors.',
       },
       logo: { label: 'Logo' },
-      backgroundImage: { label: 'Background image' },
+      backgroundImage: {
+        label: 'Background image',
+        help: 'Fills the page behind the sign-in and account pages. Without one, the built-in wallpaper is shown.',
+      },
+      darkBackgroundImage: {
+        label: 'Background image (dark theme)',
+        help: 'Without one, the dark theme uses the background image above, or the built-in dark wallpaper.',
+      },
       customCss: { label: 'Custom stylesheet' },
     },
   },

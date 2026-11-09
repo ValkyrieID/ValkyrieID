@@ -326,6 +326,8 @@ public abstract class AccountTests
     [InlineData("Branding:TextColor", "url(https://evil.example/x)")]
     [InlineData("Branding:DarkPrimaryColor", "red; } body { display: none")]
     [InlineData("Branding:Logo", "../appsettings.json")]
+    [InlineData("Branding:DarkBackgroundImage", "x\"); } body { display: none")]
+    [InlineData("Branding:DarkBackgroundImage", "../secret.png")]
     public async Task Unsafe_branding_values_fail_startup(string key, string value)
     {
         await using var factory = CreateFactory(settings: new() { [key] = value, ["Branding:Directory"] = Path.GetTempPath() });
@@ -531,37 +533,93 @@ public abstract class AccountTests
     }
 
     [Fact]
-    public async Task Sign_in_layout_has_a_decorative_art_panel_with_the_built_in_art()
+    public async Task Sign_in_layout_shows_the_brand_lockup_beside_the_card()
     {
         await using var factory = CreateFactory();
 
         var page = await BodyAsync(factory.CreateBrowser(), "/account/login");
 
         Assert.Contains("<body class=\"auth\">", page, StringComparison.Ordinal);
-        Assert.Contains("<div class=\"art\" aria-hidden=\"true\">", page, StringComparison.Ordinal);
-        Assert.Contains("<img src=\"/img/logo-192.png\" alt=\"\" class=\"art-logo\">", page, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"auth-lockup\">", page, StringComparison.Ordinal);
+        Assert.Contains("<main class=\"auth-card\">", page, StringComparison.Ordinal);
+        // The built-in name is the "Valkyrie id" wordmark, hidden from assistive technology, which reads "ValkyrieID".
+        Assert.Contains("<span class=\"product-name\"><span class=\"visually-hidden\">ValkyrieID</span><span aria-hidden=\"true\">Valkyrie<span class=\"product-name-suffix\">id</span></span></span>", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"art", page, StringComparison.Ordinal);
         // The theme switch is the first control of the page (WCAG 2.4.3).
         Assert.True(page.IndexOf("class=\"theme-switch\"", StringComparison.Ordinal) < page.IndexOf("<main", StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task Sign_in_layout_shows_the_branding_background_image_in_the_art_panel()
+    public async Task A_custom_product_name_replaces_the_wordmark()
+    {
+        await using var factory = CreateFactory(settings: new() { ["Branding:ProductName"] = "Acme <ID>" });
+
+        var page = await BodyAsync(factory.CreateBrowser(), "/account/login");
+        var error = await (await factory.CreateBrowser().GetAsync("/connect/authorize?client_id=unknown", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
+
+        Assert.Contains("<span class=\"product-name\">Acme &lt;ID&gt;</span>", page, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"product-name\">Acme &lt;ID&gt;</span>", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("product-name-suffix", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Built_in_wallpapers_are_served_and_used_without_a_branding_image()
+    {
+        await using var factory = CreateFactory();
+        var browser = factory.CreateBrowser();
+
+        var site = await BodyAsync(browser, "/css/site.css");
+        var theme = await BodyAsync(browser, "/theme.css");
+
+        Assert.Contains("--vid-background-image: url(\"../img/wall-light.png\");", site, StringComparison.Ordinal);
+        Assert.Contains("--vid-background-image: url(\"../img/wall-dark.png\");", site, StringComparison.Ordinal);
+        Assert.DoesNotContain("--vid-background-image", theme, StringComparison.Ordinal);
+        foreach (var path in new[] { "/img/wall-light.png", "/img/wall-dark.png", "/img/logo-192.png" })
+        {
+            var response = await browser.GetAsync(path, CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        }
+    }
+
+    [Theory]
+    [InlineData("background.png", null, "/branding/background.png", "/branding/background.png")]
+    [InlineData("background.png", "dark.png", "/branding/background.png", "/branding/dark.png")]
+    [InlineData(null, "dark.png", null, "/branding/dark.png")]
+    public async Task Branding_background_images_fill_the_page_in_each_theme(string? light, string? dark, string? expectedLight, string expectedDark)
     {
         var directory = Directory.CreateTempSubdirectory("valkyrieid-branding-").FullName;
         try
         {
-            await File.WriteAllBytesAsync(Path.Combine(directory, "background.png"), [0x89, 0x50, 0x4e, 0x47], CancellationToken);
-            await using var factory = CreateFactory(settings: new() { ["Branding:Directory"] = directory, ["Branding:BackgroundImage"] = "background.png" });
-            var browser = factory.CreateBrowser();
+            Dictionary<string, string?> settings = new() { ["Branding:Directory"] = directory };
+            foreach (var (key, file) in new[] { ("Branding:BackgroundImage", light), ("Branding:DarkBackgroundImage", dark) })
+            {
+                if (file is not null)
+                {
+                    await File.WriteAllBytesAsync(Path.Combine(directory, file), [0x89, 0x50, 0x4e, 0x47], CancellationToken);
+                    settings[key] = file;
+                }
+            }
 
-            var page = await BodyAsync(browser, "/account/login");
-            var error = await (await browser.GetAsync("/connect/authorize?client_id=unknown", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
-            var theme = await BodyAsync(browser, "/theme.css");
+            await using var factory = CreateFactory(settings: settings);
+            var theme = await BodyAsync(factory.CreateBrowser(), "/theme.css");
+            var lightRule = theme[..theme.IndexOf("}\n", StringComparison.Ordinal)];
+            var darkRule = $"  --vid-background-image: url(\"{expectedDark}\");\n  --vid-glass: color-mix(in srgb, var(--vid-surface) 88%, transparent);\n";
 
-            Assert.Contains("<div class=\"art art-image\" aria-hidden=\"true\">", page, StringComparison.Ordinal);
-            Assert.DoesNotContain("art-logo", page, StringComparison.Ordinal);
-            Assert.Contains("<div class=\"art art-image\" aria-hidden=\"true\"></div>", error, StringComparison.Ordinal);
-            Assert.Contains("--vid-background-image: url(\"/branding/background.png\");", theme, StringComparison.Ordinal);
+            if (expectedLight is null)
+            {
+                // Without a light image, the light theme keeps the built-in wallpaper and its see-through glass.
+                Assert.DoesNotContain("--vid-background-image", lightRule, StringComparison.Ordinal);
+                Assert.DoesNotContain("--vid-glass", lightRule, StringComparison.Ordinal);
+            }
+            else
+            {
+                // Over a custom image the glass is mostly opaque, so text keeps its contrast whatever the image.
+                Assert.Contains($"  --vid-background-image: url(\"{expectedLight}\");\n  --vid-glass: color-mix(in srgb, var(--vid-surface) 88%, transparent);\n", lightRule, StringComparison.Ordinal);
+            }
+
+            Assert.Contains($":root:not([data-theme=\"light\"]) {{\n{darkRule}}}", theme, StringComparison.Ordinal);
+            Assert.Contains($":root[data-theme=\"dark\"] {{\n{darkRule}}}", theme, StringComparison.Ordinal);
         }
         finally
         {
@@ -577,7 +635,8 @@ public abstract class AccountTests
         var page = await (await factory.CreateBrowser().GetAsync("/connect/authorize?client_id=unknown", CancellationToken)).Content.ReadAsStringAsync(CancellationToken);
 
         Assert.Contains("<body class=\"auth\">", page, StringComparison.Ordinal);
-        Assert.Contains("<div class=\"art\" aria-hidden=\"true\"><img src=\"/img/logo-192.png\" alt=\"\" class=\"art-logo\"></div>", page, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"auth-lockup\"><div class=\"brand\"><img src=\"/img/logo-192.png\" alt=\"\" width=\"32\" height=\"32\"><span class=\"product-name\"><span class=\"visually-hidden\">ValkyrieID</span><span aria-hidden=\"true\">Valkyrie<span class=\"product-name-suffix\">id</span></span></span></div></div>", page, StringComparison.Ordinal);
+        Assert.Contains("<main class=\"auth-card\">", page, StringComparison.Ordinal);
         Assert.DoesNotContain("theme-switch", page, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"entry\"", page, StringComparison.Ordinal);
     }

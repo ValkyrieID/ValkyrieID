@@ -1,6 +1,6 @@
 # ValkyrieID
 
-<img src="assets/branding/ValkyrieID.png" alt="ValkyrieID logo, a winged helmet with a keyhole" width="128" height="128">
+<img src="assets/branding/ValkyrieID.png" alt="ValkyrieID logo, a winged shield" width="128" height="128">
 
 A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET.
 

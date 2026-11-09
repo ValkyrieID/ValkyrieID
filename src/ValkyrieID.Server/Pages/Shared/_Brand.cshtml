@@ -13,6 +13,14 @@
     {
         @* Decorative: the product name next to it is the accessible name (WCAG 1.1.1). *@
         <img src="~/img/logo-192.png" alt="" width="32" height="32">
-        <span class="product-name">@branding.ProductName</span>
+        @if (branding.ProductName == ValkyrieID.Server.Configuration.BrandingOptions.DefaultProductName)
+        {
+            @* The "Valkyrie id" wordmark is visual only; assistive technology reads the product name. *@
+            <span class="product-name"><span class="visually-hidden">@branding.ProductName</span><span aria-hidden="true">Valkyrie<span class="product-name-suffix">id</span></span></span>
+        }
+        else
+        {
+            <span class="product-name">@branding.ProductName</span>
+        }
     }
 </div>

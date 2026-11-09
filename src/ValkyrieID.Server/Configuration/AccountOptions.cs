@@ -111,7 +111,10 @@ public sealed partial class BrandingOptions
 {
     public const string SectionName = "Branding";
 
-    public string ProductName { get; set; } = "ValkyrieID";
+    /// <summary>The built-in product name, shown as the "Valkyrie id" wordmark.</summary>
+    public const string DefaultProductName = "ValkyrieID";
+
+    public string ProductName { get; set; } = DefaultProductName;
 
     /// <summary>Directory with branding files (logo, background image, custom CSS), served under <c>/branding/</c>.</summary>
     public string? Directory { get; set; }
@@ -121,6 +124,12 @@ public sealed partial class BrandingOptions
 
     /// <summary>File name of the background image in <see cref="Directory"/>.</summary>
     public string? BackgroundImage { get; set; }
+
+    /// <summary>
+    /// File name of the dark theme's background image in <see cref="Directory"/>; without one, the dark theme uses
+    /// <see cref="BackgroundImage"/>.
+    /// </summary>
+    public string? DarkBackgroundImage { get; set; }
 
     /// <summary>File name of a stylesheet in <see cref="Directory"/>, loaded after the built-in styles.</summary>
     public string? CustomCss { get; set; }
@@ -158,6 +167,7 @@ public sealed partial class BrandingOptions
     [
         ("Logo", Logo),
         ("BackgroundImage", BackgroundImage),
+        ("DarkBackgroundImage", DarkBackgroundImage),
         ("CustomCss", CustomCss),
     ];
 

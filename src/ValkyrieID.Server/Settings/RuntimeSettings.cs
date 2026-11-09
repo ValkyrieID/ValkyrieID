@@ -266,6 +266,7 @@ internal static class RuntimeSettings
             (nameof(BrandingOptions.DarkTextColor), null),
             (nameof(BrandingOptions.Logo), SettingKind.File),
             (nameof(BrandingOptions.BackgroundImage), SettingKind.File),
+            (nameof(BrandingOptions.DarkBackgroundImage), SettingKind.File),
             (nameof(BrandingOptions.CustomCss), SettingKind.File)),
         RuntimeSettingSection.Create<AuditLogOptions>("auditLog", AuditLogOptions.SectionName,
             (nameof(AuditLogOptions.Retention), null)),

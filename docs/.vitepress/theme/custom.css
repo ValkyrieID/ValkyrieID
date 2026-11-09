@@ -1,0 +1,45 @@
+/*
+ * The ValkyrieID palette (layout.md): teal from the logo for brand actions and links, gold for decoration only.
+ * Link and button colors keep 4.5:1 against the VitePress backgrounds in both themes.
+ */
+:root {
+  --vp-c-brand-1: #0f766e;
+  --vp-c-brand-2: #0d6961;
+  --vp-c-brand-3: #0f766e;
+  --vp-c-brand-soft: rgb(15 118 110 / 14%);
+  --vid-accent: #b8862f;
+
+  --vp-home-hero-name-color: transparent;
+  /* The large hero name needs 3:1 on the light wallpaper, so the light gradient ends in a deeper gold. */
+  --vp-home-hero-name-background: linear-gradient(120deg, #0f766e 30%, #8a6420);
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    rgb(15 118 110 / 45%) 50%,
+    rgb(184 134 47 / 40%) 50%
+  );
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: #5eead4;
+  --vp-c-brand-2: #2dd4bf;
+  --vp-c-brand-3: #0f766e;
+  --vp-c-brand-soft: rgb(45 212 191 / 16%);
+  --vid-accent: #d4a84b;
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #5eead4 30%, #d4a84b);
+}
+
+/* The home page sits on the same wallpaper as the sign-in pages. */
+.VPHome {
+  background: url("/wall-light.png") center top / cover no-repeat fixed;
+}
+
+.dark .VPHome {
+  background-image: url("/wall-dark.png");
+}
+
+.VPHome .VPFeature {
+  background-color: color-mix(in srgb, var(--vp-c-bg-soft) 80%, transparent);
+  backdrop-filter: blur(18px);
+}

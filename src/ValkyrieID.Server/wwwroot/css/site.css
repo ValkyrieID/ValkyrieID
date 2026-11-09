@@ -3,16 +3,20 @@
  * Light is the default; dark applies with data-theme="dark", or with no explicit choice when the system prefers dark.
  * The dark selectors are more specific than :root, so branding colors (/theme.css, :root) only change the light
  * theme; Branding:Dark* colors are emitted with the dark selectors. Text pairs reach 4.5:1, controls and focus 3:1.
+ * The teal primary and the gold accent come from the logo; gold is decorative only and never carries text.
  */
 :root {
   color-scheme: light;
-  --vid-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --vid-font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  --vid-font:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --vid-font-mono:
+    ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
   --vid-radius-sm: 0.375rem;
   --vid-radius: 0.5rem;
   --vid-radius-lg: 0.75rem;
-  --vid-primary: #4f46e5;
+  --vid-primary: #0f766e;
   --vid-primary-text: #ffffff;
+  --vid-accent: #b8862f;
   --vid-background: #fafafa;
   --vid-surface: #ffffff;
   --vid-surface-raised: #ffffff;
@@ -32,7 +36,25 @@
   --vid-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%);
   --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
   --vid-backdrop: rgb(9 9 11 / 50%);
-  --vid-background-image: none;
+  /* Relative to this stylesheet, so a path base carries through; /theme.css overrides it with the branding image. */
+  --vid-background-image: url("../img/wall-light.png");
+  --vid-glass: color-mix(in srgb, var(--vid-surface) 50%, transparent);
+  --vid-glass-border: rgb(255 255 255 / 60%);
+  --vid-glass-blur: 12px;
+  /*
+   * On see-through glass the backdrop varies, so muted text, control borders and links move toward the text color
+   * there to keep 4.5:1 and 3:1 over the wallpaper; derived from the base tokens so branding carries through.
+   */
+  --vid-glass-muted: color-mix(in srgb, var(--vid-muted) 60%, var(--vid-text));
+  --vid-glass-control-border: color-mix(
+    in srgb,
+    var(--vid-border) 55%,
+    var(--vid-text)
+  );
+  --vid-glass-link: color-mix(in srgb, var(--vid-primary) 75%, var(--vid-text));
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 85%, transparent);
+  --vid-wordmark: #1f2937;
+  --vid-wordmark-muted: #4b5059;
   --vid-primary-hover: color-mix(in srgb, var(--vid-primary) 85%, #000000);
   --vid-link: var(--vid-primary);
   --vid-focus: var(--vid-primary);
@@ -61,6 +83,18 @@
     --vid-shadow: none;
     --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
     --vid-backdrop: rgb(0 0 0 / 70%);
+    --vid-accent: #d4a84b;
+    --vid-background-image: url("../img/wall-dark.png");
+    --vid-glass: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+      transparent
+    );
+    --vid-glass-border: rgb(255 255 255 / 12%);
+    --vid-glass-link: var(--vid-link);
+    --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+    --vid-wordmark: #e8eaed;
+    --vid-wordmark-muted: #a8adb5;
     --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
@@ -88,6 +122,18 @@
   --vid-shadow: none;
   --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
   --vid-backdrop: rgb(0 0 0 / 70%);
+  --vid-accent: #d4a84b;
+  --vid-background-image: url("../img/wall-dark.png");
+  --vid-glass: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+    transparent
+  );
+  --vid-glass-border: rgb(255 255 255 / 12%);
+  --vid-glass-link: var(--vid-link);
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+  --vid-wordmark: #e8eaed;
+  --vid-wordmark-muted: #a8adb5;
   --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
@@ -152,6 +198,24 @@ body {
   letter-spacing: -0.01em;
 }
 
+/*
+ * The "Valkyrie id" wordmark (built-in name only): soft off-white or ink, with a muted, lighter "id". The softer
+ * --vid-wordmark-muted is for the large lockup only (3:1 for large text); the small one uses --vid-muted (4.5:1).
+ */
+.product-name > [aria-hidden] {
+  color: var(--vid-wordmark);
+}
+
+.product-name-suffix {
+  margin-left: 0.18em;
+  font-weight: 400;
+  color: var(--vid-muted);
+}
+
+.auth-lockup .product-name-suffix {
+  color: var(--vid-wordmark-muted);
+}
+
 /* Theme switch */
 
 .theme-switch fieldset {
@@ -160,8 +224,6 @@ body {
   margin: 0;
   padding: 0.125rem;
   min-width: 0;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
   border-radius: var(--vid-radius);
 }
 
@@ -191,110 +253,181 @@ body {
 }
 
 /*
- * Sign-in layout (layout.md, Phase 11b): the form panel on the left, the decorative art panel on the right. On small
- * screens the art panel is hidden and the form uses the whole page.
+ * Wallpaper and glass (layout.md, Phase 11b): every page sits on the wallpaper, and content sits on see-through
+ * frosted glass. On glass, muted text, control borders and links use the --vid-glass-* variants, and inputs a mostly
+ * opaque fill, so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper. Without backdrop-filter support
+ * the glass is the plain surface.
  */
 
-.auth {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  background: var(--vid-surface);
+.auth::before,
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    var(--vid-background-image) center / cover no-repeat,
+    var(--vid-background);
 }
 
-.auth-panel {
+.auth-card,
+.app-bar,
+.app-nav ul,
+.app-main,
+.theme-switch fieldset {
+  --vid-muted: var(--vid-glass-muted);
+  --vid-border: var(--vid-glass-control-border);
+  --vid-link: var(--vid-glass-link);
+  background: var(--vid-glass);
+  border: 1px solid var(--vid-glass-border);
+  -webkit-backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+}
+
+:is(.auth-card, .app-main)
+  input:not([type="checkbox"], [type="radio"], [readonly]) {
+  background: var(--vid-glass-input);
+}
+
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  html
+    :is(.auth-card, .app-bar, .app-nav ul, .app-main, .theme-switch fieldset),
+  html
+    :is(.auth-card, .app-main)
+    input:not([type="checkbox"], [type="radio"], [readonly]) {
+    background: var(--vid-surface);
+  }
+}
+
+/* Sign-in layout: the brand lockup beside the glass card; on small screens the lockup sits above it. */
+
+.auth {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: 1rem;
 }
 
 .auth-top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem;
 }
 
-.auth-main {
+.auth-layout {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem 0;
-}
-
-.auth-content {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1.5rem;
   width: 100%;
-  max-width: 24rem;
+  padding: 0 1rem 2.5rem;
 }
 
-.art {
-  display: none;
+.auth-lockup .brand {
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.auth-lockup .brand img {
+  height: 4.5rem;
+  max-width: 16rem;
+}
+
+/* A teal and gold glow around the built-in logo, as in the logo itself. */
+.auth-lockup .brand img[alt=""] {
+  filter: drop-shadow(
+      0 0 1.25rem color-mix(in srgb, var(--vid-primary) 45%, transparent)
+    )
+    drop-shadow(
+      0 0 2.5rem color-mix(in srgb, var(--vid-accent) 30%, transparent)
+    );
+}
+
+.auth-lockup .product-name {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* A faint teal glow in the top-left corner of the see-through card, as if lit by the logo. */
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem 1.5rem;
+  background:
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--vid-primary) 16%, transparent),
+      transparent 60%
+    ),
+    var(--vid-glass);
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+/* Decorative teal-to-gold highlight along the top edge of the card. */
+.auth-card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--vid-primary),
+    var(--vid-accent),
+    transparent
+  );
+  opacity: 0.8;
+}
+
+.auth-card > :last-child {
+  margin-bottom: 0;
 }
 
 @media (min-width: 64rem) {
-  .auth {
-    grid-template-columns: minmax(0, 40rem) minmax(0, 1fr);
-    background: var(--vid-background);
-  }
-
-  .auth-panel {
-    padding: 1.5rem 2rem;
-    background: var(--vid-surface);
-  }
-
-  /* The theme switch sits at the top right of the page, over the art panel; it stays first in the focus order. */
-  .auth-top .theme-switch {
+  /* The theme switch sits at the top right of the page; it stays first in the focus order. */
+  .auth-top {
     position: absolute;
-    top: 1.5rem;
-    right: 2rem;
-    z-index: 1;
-  }
-
-  /* Full bleed: the art fills the right side edge to edge and fades into the form panel. */
-  .art {
-    display: block;
-    position: sticky;
     top: 0;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    view-transition-name: art;
+    right: 0;
+    z-index: 1;
+    padding: 1.5rem 2rem;
   }
 
-  .art::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, var(--vid-surface), transparent 35%);
+  .auth-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 28rem);
+    column-gap: clamp(3rem, 8vw, 8rem);
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 5rem 2rem;
   }
-}
 
-/* The layer zooms in the entry animation; the built-in art is a subtle indigo glow on the neutral surface. */
-.art::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 25% 20%, var(--vid-accent-tint), transparent 55%),
-    radial-gradient(circle at 80% 85%, var(--vid-accent-tint), transparent 50%),
-    linear-gradient(160deg, var(--vid-surface), var(--vid-background));
-}
+  .auth-lockup .brand img {
+    height: 9rem;
+    max-width: 24rem;
+  }
 
-.art-image::before {
-  background: var(--vid-background-image) center / cover no-repeat, var(--vid-surface-hover);
-}
+  .auth-lockup .product-name {
+    font-size: 3rem;
+  }
 
-.art-logo {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(55%, 22rem);
-  height: auto;
-  opacity: 0.14;
-  transform: translate(-50%, -50%);
+  .auth-card {
+    max-width: none;
+    padding: 2.5rem 2.25rem;
+  }
+
+  .auth-card::before {
+    left: 2.25rem;
+    right: 2.25rem;
+  }
 }
 
 /* Shared page elements */
@@ -380,7 +513,10 @@ a.button {
   border: 1px solid transparent;
   border-radius: var(--vid-radius-sm);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 button:hover,
@@ -534,14 +670,13 @@ code,
 }
 
 /*
- * Account layout (layout.md, Phase 11b): top bar, account navigation, and the page content. Text sits on the surface
- * color, as before, so branding with a dark background and a light surface keeps its contrast.
+ * Account layout (layout.md, Phase 11b): a glass top bar, account navigation, and page content on the wallpaper.
+ * Text sits on the glass surfaces, which are mostly surface color, so branding colors keep their contrast.
  */
 
 .app {
   display: flex;
   flex-direction: column;
-  background: var(--vid-surface);
 }
 
 .skip-link {
@@ -568,8 +703,7 @@ code,
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: var(--vid-surface);
-  border-bottom: 1px solid var(--vid-divider);
+  border-width: 0 0 1px;
 }
 
 .app-home {
@@ -614,8 +748,9 @@ code,
   flex-wrap: wrap;
   gap: 0.25rem;
   margin: 0;
-  padding: 0;
+  padding: 0.375rem;
   list-style: none;
+  border-radius: var(--vid-radius-lg);
 }
 
 .app-nav a {
@@ -643,6 +778,9 @@ code,
 
 .app-main {
   min-width: 0;
+  padding: 1.5rem 1.25rem;
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
 }
 
 .app-main:focus {
@@ -664,6 +802,10 @@ code,
     position: sticky;
     top: 1.5rem;
     flex-direction: column;
+  }
+
+  .app-main {
+    padding: 2rem;
   }
 
   .app-nav a[aria-current="page"] {
@@ -693,7 +835,7 @@ code,
   color: var(--vid-muted);
 }
 
-/* Account content is flat: sections and lists are separated by dividers, not boxed (layout.md, Phase 11b). */
+/* Within the glass content, sections and lists are separated by dividers, not boxed again (layout.md, Phase 11b). */
 
 .form-section,
 .danger-zone {
@@ -885,49 +1027,62 @@ form.form-section > .actions,
 
 /*
  * Motion (layout.md, Phase 11b), CSS only and off with reduced motion. The entry animation plays only when the
- * server sets the "entry" class on <html>; view transitions keep the art panel in place between our own pages.
+ * server sets the "entry" class on <html>; view transitions keep the lockup and card in place between our own pages.
  */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
   }
 
-  .entry .art {
-    animation: vid-art-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  .auth-lockup {
+    view-transition-name: lockup;
   }
 
-  .entry .art::before {
-    animation: vid-zoom 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  .auth-card {
+    view-transition-name: card;
   }
 
-  .entry .auth-top > *,
-  .entry .auth-content > * {
+  .entry .auth::before {
+    animation: vid-backdrop-in 0.7s ease-out both;
+  }
+
+  .entry .auth-top,
+  .entry .auth-lockup {
+    animation: vid-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.05s both;
+  }
+
+  .entry .auth-card {
+    animation: vid-card-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s both;
+  }
+
+  .entry .auth-card > * {
     animation: vid-rise 0.4s ease-out both;
   }
 
-  .entry .auth-content > :nth-child(1) {
-    animation-delay: 0.08s;
+  .entry .auth-card > :nth-child(1) {
+    animation-delay: 0.2s;
   }
 
-  .entry .auth-content > :nth-child(2) {
-    animation-delay: 0.13s;
+  .entry .auth-card > :nth-child(2) {
+    animation-delay: 0.25s;
   }
 
-  .entry .auth-content > :nth-child(n + 3) {
-    animation-delay: 0.18s;
+  .entry .auth-card > :nth-child(n + 3) {
+    animation-delay: 0.3s;
   }
 }
 
-@keyframes vid-art-in {
+@keyframes vid-backdrop-in {
   from {
     opacity: 0;
-    clip-path: inset(0 100% 0 0);
+    filter: blur(12px);
   }
 }
 
-@keyframes vid-zoom {
+@keyframes vid-card-in {
   from {
-    transform: scale(1.15);
+    opacity: 0;
+    transform: translateY(1rem) scale(0.98);
   }
 }
 
@@ -939,6 +1094,13 @@ form.form-section > .actions,
 }
 
 @media (forced-colors: active) {
+  /* The wallpaper is decorative; content sits on the system canvas. */
+  .auth::before,
+  .app::before,
+  .auth-card::before {
+    display: none;
+  }
+
   .theme-switch button[aria-pressed="true"] {
     forced-color-adjust: none;
     color: HighlightText;

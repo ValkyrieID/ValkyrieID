@@ -249,6 +249,10 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
 
     public string Css => Current.Css;
 
+    // The see-through glass in site.css is measured against the built-in wallpapers only; over a custom image it is
+    // mostly opaque, so text keeps its contrast whatever the image looks like (layout.md, Phase 11b).
+    private const string OpaqueGlass = "color-mix(in srgb, var(--vid-surface) 88%, transparent)";
+
     // site.css defines the dark palette with higher specificity than :root, so the light colors below don't leak into
     // the dark theme. The dark colors use the same selectors as site.css and win by coming later.
     private static string Build(BrandingOptions branding)
@@ -261,6 +265,7 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
         if (branding.BackgroundImage is not null)
         {
             Add(css, "--vid-background-image", $"url(\"{AccountExtensions.BrandingPath}/{branding.BackgroundImage}\")");
+            Add(css, "--vid-glass", OpaqueGlass);
         }
 
         css.Append("}\n");
@@ -270,6 +275,14 @@ internal sealed class ThemeStylesheet(IOptionsMonitor<BrandingOptions> options)
         Add(dark, "--vid-background", branding.DarkBackgroundColor);
         Add(dark, "--vid-surface", branding.DarkSurfaceColor);
         Add(dark, "--vid-text", branding.DarkTextColor);
+        // site.css sets the built-in dark wallpaper with the dark selectors, so a light-only image must be repeated
+        // there; a brand image usually suits both themes, unlike the light colors.
+        if ((branding.DarkBackgroundImage ?? branding.BackgroundImage) is { } darkImage)
+        {
+            Add(dark, "--vid-background-image", $"url(\"{AccountExtensions.BrandingPath}/{darkImage}\")");
+            Add(dark, "--vid-glass", OpaqueGlass);
+        }
+
         if (dark.Length > 0)
         {
             css.Append(CultureInfo.InvariantCulture, $"@media (prefers-color-scheme: dark) {{\n:root:not([data-theme=\"light\"]) {{\n{dark}}}\n}}\n");

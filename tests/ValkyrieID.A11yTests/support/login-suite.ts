@@ -25,9 +25,17 @@ export function defineLoginPageTests(variant: string): void {
     await page.goto(`/connect/authorize?${authorizeQuery.toString()}`);
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await expect(page).toHaveTitle(/^Sign in – /);
-    // The entry animation plays on the fresh GET of the sign-in page only; the art panel is decorative.
+    // The entry animation plays on the fresh GET of the sign-in page only; the wallpaper is a decorative background.
     await expect(page.locator('html')).toHaveClass('entry');
-    await expect(page.locator('.art')).toHaveAttribute('aria-hidden', 'true');
+    if (variant !== 'branded') {
+      // The visual "Valkyrie id" wordmark is hidden from assistive technology, which reads the product name once.
+      await expect(page.locator('.auth-lockup .product-name > [aria-hidden="true"]')).toHaveText(
+        'Valkyrieid',
+      );
+      await expect(page.locator('.auth-lockup .product-name .visually-hidden')).toHaveText(
+        'ValkyrieID',
+      );
+    }
     await checkPage(page, 'sign-in');
 
     // 2.4.3, 2.4.7, 2.4.11: a logical order, with a visible, unobscured focus indicator. The first field has

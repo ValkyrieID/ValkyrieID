@@ -14,8 +14,9 @@
   --vid-radius-sm: 0.375rem;
   --vid-radius: 0.5rem;
   --vid-radius-lg: 0.75rem;
-  --vid-primary: #4f46e5;
+  --vid-primary: #0f766e;
   --vid-primary-text: #ffffff;
+  --vid-accent: #b8862f;
   --vid-background: #fafafa;
   --vid-surface: #ffffff;
   --vid-surface-raised: #ffffff;
@@ -63,6 +64,7 @@
     --vid-shadow: none;
     --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
     --vid-backdrop: rgb(0 0 0 / 70%);
+    --vid-accent: #d4a84b;
     --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
@@ -90,6 +92,7 @@
   --vid-shadow: none;
   --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
   --vid-backdrop: rgb(0 0 0 / 70%);
+  --vid-accent: #d4a84b;
   --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
