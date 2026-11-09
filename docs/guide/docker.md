@@ -57,7 +57,7 @@ mkdir -p ./data && sudo chown 1654:1654 ./data
 
 In production, a proxy terminates TLS and forwards to port `8080` over a private network. While the issuer is `https`, ValkyrieID refuses every request that didn't arrive over HTTPS (except the health endpoints), so the proxy **must** be trusted with `ReverseProxy__KnownProxies` (or `ReverseProxy__KnownNetworks`). Otherwise its `X-Forwarded-Proto: https` header is ignored and every request gets `400 HTTPS is required`. See [reverse proxy](/operations/reverse-proxy) for the details.
 
-This Compose example uses [Caddy](https://caddyserver.com), which obtains a certificate automatically and sends `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Fixed addresses let ValkyrieID trust exactly the Caddy container; ValkyrieID's port isn't published, so clients can only reach it through Caddy.
+This Compose example uses [Caddy](https://caddyserver.com), which obtains a certificate automatically and sends `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Fixed addresses let ValkyrieID trust exactly the Caddy container; ValkyrieID's port isn't published, so clients can only reach it through Caddy. To put an app behind ValkyrieID with Caddy, see [Protect an app](/guide/protect-an-app).
 
 `compose.yaml`:
 

@@ -68,4 +68,4 @@ Issuer__Url=https://id.example.com
 ReverseProxy__KnownProxies__0=172.18.0.2   # the nginx container
 ```
 
-For a complete Compose setup with Caddy (and a note on Nginx Proxy Manager), see [Docker](/guide/docker#behind-a-reverse-proxy).
+For a complete Compose setup with Caddy (and a note on Nginx Proxy Manager), see [Docker](/guide/docker#behind-a-reverse-proxy). To protect a web app behind ValkyrieID with oauth2-proxy and Caddy, see [Protect an app](/guide/protect-an-app).

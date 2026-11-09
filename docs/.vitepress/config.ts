@@ -21,6 +21,7 @@ export default defineConfig({
           { text: 'Docker', link: '/guide/docker' },
           { text: 'First run', link: '/guide/first-run' },
           { text: 'Protect an API', link: '/guide/protect-an-api' },
+          { text: 'Protect an app', link: '/guide/protect-an-app' },
           { text: 'Sign in users', link: '/guide/sign-in-users' },
           { text: 'Two-factor authentication', link: '/guide/two-factor' },
           { text: 'Your account', link: '/guide/account' },
