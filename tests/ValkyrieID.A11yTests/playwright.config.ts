@@ -19,11 +19,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'setup', testMatch: /setup\.spec\.ts/ },
-    { name: 'login', testMatch: /login-pages\.spec\.ts/, dependencies: ['admin-dark'] },
+    { name: 'login', testMatch: /login-pages\.spec\.ts/, dependencies: ['regressions'] },
     {
       name: 'admin',
       testMatch: /admin-ui\.spec\.ts/,
-      dependencies: ['admin-dark'],
+      dependencies: ['regressions'],
       use: { storageState: adminStorageState },
     },
     {
@@ -38,6 +38,12 @@ export default defineConfig({
       // Before the other suites, which sign the admin's stored session out.
       dependencies: ['setup'],
       use: { storageState: adminStorageState, colorScheme: 'dark' },
+    },
+    {
+      name: 'regressions',
+      testMatch: /regressions\.spec\.ts/,
+      // Also before the suites that sign the admin's stored session out.
+      dependencies: ['admin-dark'],
     },
     {
       name: 'branded',

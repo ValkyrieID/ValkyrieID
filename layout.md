@@ -179,12 +179,20 @@ Done.
 
 ## Phase 11e: Responsive polish and verification
 
-- Review all admin, login, account, and setup states at desktop and mobile sizes.
-- Verify light, dark, and system themes on every shared component.
-- Run Lighthouse and axe checks against representative pages and states.
-- Perform keyboard-only and screen-reader review, including dialogs, expandable audit details, theme controls, and destructive actions.
-- Add regression tests for theme preference behavior, responsive table rendering, account navigation, and audit-log details.
-- Update the accessibility checklist and relevant documentation.
+Done.
+
+- **Review:** every admin, login, account, and setup page and state at 1440×900, 1920×1080, 390, and 320 px, in light, dark, and system themes, with chrome-devtools screenshots, accessibility-tree snapshots, and keyboard-only checks of dialogs, audit details, theme controls, destructive actions, and live announcements.
+- **Fixes:**
+  - **Stacked tables:** cards use `border-box`, and dates and short IDs wrap, so the active signing key no longer scrolls sideways at 320 px.
+  - **Form controls:** checkboxes and radio buttons don't shrink.
+  - **Dialogs:** they keep a 1 rem margin to the screen edges.
+  - **Navigation:** on narrow screens, group labels line up with the first row of links.
+  - **Dashboard activity:** below 30 rem the badge sits above the event, so event names don't break mid-word.
+  - **Account sessions:** each session shows a short browser name ("Edge on Windows") with the full user agent as a tooltip.
+- **Checks:**
+  - **Lighthouse:** `npm run lighthouse` scores 100 for accessibility and best practices on all 28 runs (sign-in, sign-in error, account, sessions, admin dashboard, expanded audit log, and admin signed out; light and dark; desktop and mobile).
+  - **Contrast:** `npm run measure-contrast` now also covers error, notice, and open-dialog states, the admin signed-out page, a sign-in error, and `/account/email`. Lowest text 4.76:1, lowest icon 4.76:1, 9,140 measurements, all above the minimum.
+- **Regression tests:** `tests/regressions.spec.ts` covers theme preference, responsive tables, the account navigation, and the audit-log details; the sessions page has integration tests.
 
 ## Suggested implementation order
 

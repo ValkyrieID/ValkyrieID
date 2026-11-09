@@ -38,7 +38,7 @@ After the change:
 
 ## Sessions
 
-`/account/sessions` lists the browsers and devices where the user is signed in: the browser's user agent, IP address, sign-in time, and last activity. Sessions are listed one per row; the current one is highlighted and labelled "This session".
+`/account/sessions` lists the browsers and devices where the user is signed in: a short name for the browser and system taken from its user agent (e.g. "Edge on Windows", with the full user agent as a tooltip; unrecognized user agents are shown as they are), IP address, sign-in time, and last activity. The user agent is sent by the browser, so the name is a hint, not proof of the device. Sessions are listed one per row; the current one is highlighted and labelled "This session".
 
 - **Sign out this session** ends that session, notifies its applications by back-channel logout, and revokes the refresh tokens issued from it. Choosing the current session signs this browser out.
 - **Sign out all other sessions** does the same for every session except the current one.

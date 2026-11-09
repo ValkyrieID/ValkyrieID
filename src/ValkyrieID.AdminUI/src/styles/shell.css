@@ -79,7 +79,8 @@
 .nav-group {
   display: grid;
   grid-template-columns: 6.5rem minmax(0, 1fr);
-  align-items: center;
+  /* The label lines up with the first row of links when they wrap. */
+  align-items: baseline;
 }
 
 .nav-group:first-child {

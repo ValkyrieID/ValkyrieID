@@ -118,3 +118,14 @@
     justify-content: flex-start;
   }
 }
+
+/* Very small screens: the badge above the event, so event names keep the full width and don't break mid-word. */
+@media (max-width: 29.99rem) {
+  .activity li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .activity-meta {
+    grid-column: 1;
+  }
+}

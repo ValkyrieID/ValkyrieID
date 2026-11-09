@@ -21,7 +21,8 @@
         var current = Model.IsCurrent(session);
         <li class="session@(current ? " session-current" : null)">
             <p class="session-name">
-                <strong id="@nameId">@(session.UserAgent ?? "Unknown device")</strong>
+                @* A short name; the full User-Agent is in the tooltip. *@
+                <strong id="@nameId" title="@session.UserAgent">@UserAgentSummary.Summarize(session.UserAgent)</strong>
                 @if (current)
                 {
                     <span class="badge">This session</span>

@@ -1,6 +1,6 @@
 # Accessibility checklist
 
-This checklist records how ValkyrieID meets [WCAG 2.2](https://www.w3.org/TR/WCAG22/) level AA, beyond what the [automated checks](/accessibility/#running-the-checks) find. It was written during the phase 10c accessibility pass (November 2026) and is kept up to date with the pages.
+This checklist records how ValkyrieID meets [WCAG 2.2](https://www.w3.org/TR/WCAG22/) level AA, beyond what the [automated checks](/accessibility/#running-the-checks) find. It was written during the phase 10c accessibility pass (November 2026), reviewed again in the phase 11e pass (November 2026, after the visual refresh), and is kept up to date with the pages.
 
 - **Login pages** are the server-rendered pages: sign-in, 2FA, recovery code, setup wizard and 2FA enrollment, the account pages (profile, password, 2FA, sessions, email), forgot and reset password, email verification and change, sign-out, and the protocol error and `form_post` pages.
 - **Admin UI** is the Angular app under `/admin`, including its dialogs and its empty, error, signed-out, and not-authorized states.
@@ -15,7 +15,7 @@ This checklist records how ValkyrieID meets [WCAG 2.2](https://www.w3.org/TR/WCA
 | No keyboard traps | 2.1.2 | No scripts that capture keys | Modal dialogs keep the focus inside while open and close with `Esc`; nothing else captures the focus | test: `checkDialogs` (opens every confirmation dialog, closes it with `Esc`) | ✅ |
 | Focus order follows the page | 2.4.3 | DOM order; the first field has `autofocus`, or the error summary after a failed submission | Skip link, header, navigation, main content. Focus moves to the main content after navigation and returns to the opening button when a dialog closes | test: `tabThrough` on sign-in; `dashboard and navigation`; `checkDialogs` | ✅ |
 | Focus is visible | 2.4.7 | 3 px outline in the primary color with a 2 px offset on fields, buttons, links, and the error summary | 3 px outline (`:focus-visible`), orange on the dark header and navigation | test: `tabThrough` checks for an outline of at least 2 px on every focused element | ✅ |
-| Focus isn't hidden | 2.4.11 | No sticky or fixed elements | No sticky header or banners; dialogs are modal and centered | test: `tabThrough` checks the focused element is on top at its center | ✅ |
+| Focus isn't hidden | 2.4.11 | No sticky or fixed elements | From 48 rem the navigation is a sticky sidebar beside the content, so it never covers it; dialogs are modal and centered | test: `tabThrough` checks the focused element is on top at its center | ✅ |
 | Bypass blocks (skip link) | 2.4.1 | ➖ No repeated navigation: the only content before the form is the logo or product name, inside `<main>` | "Skip to content" is the first focusable element and moves the focus to `<main>` | test: `dashboard and navigation` | ✅ |
 | Shortcuts | 2.1.4 | ➖ none | ➖ none | manual | ➖ |
 
@@ -44,21 +44,21 @@ Tools can't tell whether announcements make sense. Before each release, go throu
 
 | Flow | Last checked | Notes |
 |---|---|---|
-| 1–4 | 🔁 not yet (first release) | Structure, names, and live regions were checked in the Chrome accessibility tree during 10c. |
+| 1–4 | 🔁 not yet (first release) | Structure, names, and live regions were checked in the Chrome accessibility tree during 10c, and again in 11e: dialog names and initial focus, audit details buttons ("Details of _event_, _time_", `aria-expanded`, `aria-controls`), copy announcements ("Entry ID copied."), theme controls (named group, `aria-pressed`), and danger zone buttons. |
 
 ## Zoom and reflow
 
 | Check | WCAG | Login pages | Admin UI | Method | Status |
 |---|---|---|---|---|---|
 | 200% zoom, text resize | 1.4.4 | Relative units (`rem`); no fixed heights, nothing clipped | Relative units; the navigation wraps below 48 rem | manual (Chrome zoom, 640×400 CSS px) | ✅ |
-| 400% zoom (320 CSS px) without horizontal scrolling | 1.4.10 | Single column card | Single column below 48 rem; data tables scroll inside their own container (allowed for tables) | test: `checkPage` checks every page at 320 px. Fixed in 10c: the layout grid grew with wide tables, and visually hidden table headers escaped the table's scroll container | ✅ |
+| 400% zoom (320 CSS px) without horizontal scrolling | 1.4.10 | Single column card | Single column below 48 rem; tables become one card per row, so nothing scrolls sideways, also not inside the table container | test: `checkPage` checks every page at 320 px; `regressions.spec.ts` checks the stacked signing keys at 390 and 320 px. Fixed in 10c: the layout grid grew with wide tables, and visually hidden table headers escaped the table's scroll container. Fixed in 11e: see below | ✅ |
 | Text spacing | 1.4.12 | No fixed heights on text containers | No fixed heights on text containers | manual (text spacing bookmarklet) | ✅ |
 
 ## Contrast
 
 | Check | WCAG | Login pages | Admin UI | Method | Status |
 |---|---|---|---|---|---|
-| Text contrast | 1.4.3 | Light / dark theme: 17.7 / 15.7:1 (text), 7.7 / 7.2:1 (hints), 6.3 / 9.6:1 (links), 6.3:1 (buttons), 5.9 / 6.4:1 (errors) | Same palette in both themes: text, links, badges, and alerts at least 4.5:1 | axe (`color-contrast`) on every page | ✅ |
+| Text contrast | 1.4.3 | Light / dark theme: 17.7 / 15.7:1 (text), 7.7 / 7.2:1 (hints), 6.3 / 9.6:1 (links), 6.3:1 (buttons), 5.9 / 6.4:1 (errors) | Same palette in both themes: text, links, badges, and alerts at least 4.5:1; over the glass at least 4.76:1 (badges) | axe (`color-contrast`) on every page; `npm run measure-contrast` over the glass, including error, notice, dialog, and signed-out states (11e) | ✅ |
 | Non-text contrast (borders, focus) | 1.4.11 | Light / dark: input borders and the selected theme button 4.8 / 3.8:1, focus outline 6.3 / 9.6:1 | Same palette: input borders, the selected theme button, and focus outlines at least 3:1 | manual (DevTools contrast) | ✅ |
 | Branding colors | 1.4.3, 1.4.11 | Operator's choice: [requirements](/accessibility/#branding). The custom branding fixture passes all checks | ➖ the admin UI isn't branded | axe with `fixtures/branding` | ✅ (fixture) |
 | Use of color | 1.4.1 | Errors are text, not only a red border | States are text badges ("disabled", "locked out") | manual | ✅ |
@@ -75,7 +75,7 @@ Tools can't tell whether announcements make sense. Before each release, go throu
 
 | Check | WCAG | Login pages | Admin UI | Method | Status |
 |---|---|---|---|---|---|
-| Target size | 2.5.8 | Buttons span the card; links are inline text or 24 px high lines | Buttons at least 40 px high; link buttons 24 px; checkboxes 20 px with spacing | axe (`target-size`) | ✅ |
+| Target size | 2.5.8 | Buttons span the card; links are inline text or 24 px high lines | Buttons at least 40 px high; link buttons 24 px; checkboxes and radio buttons 20 px with spacing, and they no longer shrink on narrow screens (11e) | axe (`target-size`); test: `radio buttons and checkboxes keep their size on small screens` | ✅ |
 | Accessible authentication | 3.3.8 | No cognitive tests or CAPTCHAs. `autocomplete` on every credential field (`username`, `current-password`, `new-password`, `one-time-code`), so password managers and authenticator apps can fill them; pasting is never blocked, including the TOTP and recovery code fields. The TOTP key can be copied as text | Signs in through the login pages | integration test: `Sign_in_fields_work_with_password_managers`; test: 2FA field attributes; manual (paste) | ✅ |
 | Redundant entry | 3.3.7 | Values are kept after a failed submission (except passwords); the username is pre-filled when known | Forms keep their values after errors | manual | ✅ |
 | Error prevention | 3.3.4 | Changing the password, email, or 2FA asks for the current password | Deleting and disabling ask for confirmation | manual | ✅ |
@@ -93,3 +93,44 @@ Tools can't tell whether announcements make sense. Before each release, go throu
 | The admin UI's sign-in error and signed-out pages were replaced by a new sign-in at once, so they couldn't be read or acted on | 3.2.1, 3.3.1 | The token renewal guard only runs while signed in | `freshTokenGuard` unit tests; `sign-in error`, `signed out` checks |
 | The error summary on login pages wasn't focused without JavaScript, so screen readers didn't read it first | 3.3.1, 4.1.3 | `autofocus` on the summary (`_Errors.cshtml`, invalid link messages) | `Sign_in_errors_get_the_focus_and_are_linked_to_the_fields` |
 | "Sign out this session" buttons had the same name with nothing to tell them apart | 2.4.6 | `aria-describedby` pointing to the session's device | `Sessions_page_lists_only_the_users_own_active_sessions` |
+
+## Phase 11e review
+
+Reviewed in Chrome (chrome-devtools: screenshots, accessibility tree, keyboard) against the published server, after the visual refresh of phases 11a–11d: every login, setup, account, and admin page and state at 1440×900, 1920×1080, 390, and 320 CSS px, in light, dark, and system themes. Also checked:
+
+- **Automated:** axe in the Playwright suite (all pages and states, both brandings) and Lighthouse with `npm run lighthouse`: accessibility and best practices 100 on all 28 runs (7 pages and states, light and dark, desktop and mobile), including the admin dashboard.
+- **Keyboard:**
+  - **Confirmation dialogs:** focus starts on **Cancel**, and `Esc` or **Cancel** returns it to the opening button.
+  - **Audit details:** they open and close with Enter, and focus stays on the button.
+  - **Theme switch:** buttons with `aria-pressed` in a named group.
+  - **Danger zone actions:** each one opens a dialog.
+- **Theme:**
+  - a choice made in the admin UI applies to the account pages (shared cookie)
+  - with no cookie, the pages follow the system theme
+  - the admin UI paints dark before its script runs
+
+| Problem | WCAG | Fix | Regression test |
+|---|---|---|---|
+| The active signing key's stacked card scrolled sideways at 320 px, cutting off the dates: the short key ID and the dates don't wrap | 1.4.10 | Stacked cards use `box-sizing: border-box`; no-wrap cells and IDs wrap in cards (`styles/stacked-tables.css`) | `the active signing key fits and its labels clear the marker at 320 px` |
+| Radio buttons shrank to 13–16 px wide on narrow screens (flex shrinking), smaller than the checkboxes and out of line with them | 2.5.8 | `flex: none` on checkboxes and radio buttons (`styles/forms.css`) | `radio buttons and checkboxes keep their size on small screens` |
+| Confirmation dialogs filled the whole width below 32 rem, touching the screen edges | — (layout) | `max-width: min(32rem, calc(100% - 2rem))` (`styles/dialogs.css`) | `confirm dialogs keep a margin to the screen edges` |
+| On narrow screens, navigation group labels were centered across wrapped rows of links instead of beside the first row | 1.3.2 (visual) | `align-items: baseline` on the groups (`styles/shell.css`) | screenshots (visual only) |
+| Dashboard activity: event names broke mid-word at 320 px ("authorize.code_i / ssued") | — (layout) | Below 30 rem the result badge sits above the event (`styles/dashboard.css`) | screenshots (visual only) |
+| Account sessions used the full user agent as each session's name (five lines at 320 px) | — (readability) | A short name ("Edge on Windows") with the full user agent as a tooltip (`UserAgentSummary`) | `UserAgentSummaryTests`; `Sessions_page_shows_a_short_browser_name_with_the_full_user_agent_as_tooltip` |
+
+New regression tests (`tests/regressions.spec.ts`):
+
+- **Theme preference:**
+  - with no cookie, the login pages follow the system theme
+  - a cookie wins over the system theme without JavaScript, so the first paint is already right
+  - an unknown cookie value follows the system theme
+  - the admin UI paints dark before its script runs, and applies the cookie before the first render
+- **Responsive tables:**
+  - stacked labels are generated content with empty alternative text
+  - the table roles stay in place
+  - the active signing key fits, and its labels clear the marker
+- **Account navigation:** exactly one link has `aria-current="page"`.
+- **Audit log details:**
+  - `aria-expanded` and `aria-controls` change as the details open and close
+  - focus stays on the button
+  - the copy button copies the full value and announces it

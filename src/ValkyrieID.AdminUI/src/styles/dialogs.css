@@ -1,6 +1,7 @@
 /* Dialogs stay opaque over the glass for readability (layout.md, Phase 11d). */
 dialog {
-  max-width: 32rem;
+  /* Keeps a margin to the screen edges on small screens. */
+  max-width: min(32rem, calc(100% - 2rem));
   padding: 1.5rem;
   color: var(--vid-text);
   background: var(--vid-surface-raised);

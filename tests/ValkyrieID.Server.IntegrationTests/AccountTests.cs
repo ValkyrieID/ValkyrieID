@@ -683,6 +683,21 @@ public abstract class AccountTests
         Assert.Contains("<span class=\"badge\">This session</span>", page, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Sessions_page_shows_a_short_browser_name_with_the_full_user_agent_as_tooltip()
+    {
+        const string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0";
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        var browser = factory.CreateBrowser();
+        browser.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", userAgent);
+        await Forms.LoginAsync(browser, "alice", Password);
+
+        var page = await BodyAsync(browser, "/account/sessions");
+
+        Assert.Matches($"<strong id=\"session-[^\"]+\" title=\"{System.Text.RegularExpressions.Regex.Escape(userAgent)}\">Edge on Windows</strong>", page);
+    }
+
     private static async Task<string> BodyAsync(HttpClient browser, string path)
     {
         var response = await browser.GetAsync(path, CancellationToken);

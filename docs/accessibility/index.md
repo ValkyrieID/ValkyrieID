@@ -38,7 +38,8 @@ The admin UI adds the following, since it changes pages without reloading them:
 - **Small screens (1.4.10):** below 48rem, tables become one card per row with each value's column name beside it, so nothing scrolls horizontally down to 320 px. The tables keep explicit ARIA table roles (`table`, `row`, `columnheader`, `cell`), and the header row stays available to screen readers.
 - **Phase 11d measurement:** the new surfaces were measured the same way (text hidden through the CSSOM, worst backdrop pixel under each text node and icon) on the dashboard, users, clients, API resources, roles, signing keys, settings, audit log with an expanded entry, and a user's danger zone, in light and dark at 1440×900, 1920×1080, 390 px, and 320 px. Lowest values: badges 4.76:1, danger zone heading 4.92:1 (its red moves toward the text color on glass), expanded audit row labels 5.34:1, dashboard activity times 5.87:1, metric labels 7.27:1, icons 7.32:1. No surface needed an opaque fill.
 - **Danger zone headings on the account pages** (two-factor, sessions) use the same glass-adjusted red as the admin UI: plain red measured 4.07:1 in dark over the wallpaper, the adjusted red at least 4.98:1 (dark) and 6.84:1 (light) at all four sizes. On small screens, the active signing key's stacked row is indented past its green marker bar, so the column labels don't sit on it.
-- The measurement is repeatable with `npm run measure-contrast` (see [Running the checks](#running-the-checks)); its latest run on the admin and account pages: lowest text 4.79:1 (badges), lowest icon or badge mark 4.79:1.
+- The measurement is repeatable with `npm run measure-contrast` (see [Running the checks](#running-the-checks)); its latest run (Phase 11e: the admin and account pages plus error, notice, open dialog, signed-out, and sign-in error states, 9,140 measurements): lowest text 4.76:1 (badges), lowest icon or badge mark 4.76:1.
+- **Phase 11e review:** every login, setup, account, and admin page and state at 1440×900, 1920×1080, 390, and 320 px, in light, dark, and system themes, plus keyboard and accessibility-tree checks of dialogs, audit details, theme controls, destructive actions, and announcements. Fixed: the active signing key's stacked row scrolled sideways at 320 px (the short key ID and dates didn't wrap); radio buttons shrank below 20 px on narrow screens; confirmation dialogs touched the screen edges below 32 rem; navigation group labels were centered across wrapped rows instead of aligned with the first; dashboard event names broke mid-word at 320 px; the account sessions page used the full user agent as each session's name. Lighthouse scores 100 for accessibility and best practices on every audited page and state (see [Running Lighthouse](#running-lighthouse)).
 
 ## Branding
 
@@ -77,7 +78,8 @@ npm test
 1. publishes the server with the admin UI to `.run/server` (set `A11Y_SKIP_PUBLISH=1` to reuse the last build);
 2. starts it on `https://localhost:5199` with the .NET development certificate, a new SQLite database, and an SMTP sink that writes emails to `.run/mail`;
 3. runs the setup wizard (creating the admin with 2FA) and creates users, a client, and an API resource with the [CLI](/reference/cli);
-4. checks every sign-in, account, and protocol page and every admin UI route, including dialogs, empty states, and error states, first with the default branding, then with a custom one (`fixtures/branding`).
+4. checks every sign-in, account, and protocol page and every admin UI route, including dialogs, empty states, and error states, first with the default branding, then with a custom one (`fixtures/branding`);
+5. runs regression tests (`tests/regressions.spec.ts`) for the theme preference (system fallback, the cookie winning over the system, unknown values, no light flash in the admin UI before its script runs), responsive tables (stacked labels, table roles, the active signing key at 390 and 320 px, control sizes, dialog margins), the account navigation (`aria-current`), and the audit log's details (disclosure, copy, announcement).
 
 A check fails on any axe violation tagged WCAG 2.0/2.1/2.2 A or AA, on horizontal scrolling at 320 CSS px, on animations with reduced motion, on a missing or hidden focus indicator in the keyboard tests, and on any Content Security Policy violation. `npm run report` opens the HTML report of the last run. Ports can be changed with `A11Y_PORT` and `A11Y_SMTP_PORT`.
 
@@ -103,12 +105,23 @@ node scripts/serve.ts            # publishes and starts the server; A11Y_SKIP_PU
 npm run measure-contrast         # in a second terminal
 ```
 
-On a fresh server the script runs the setup wizard and creates the same admin, user, client, and API resource as the checks; otherwise it signs in as that admin (with `.run/state.json`). For the account pages and the admin dashboard, users, roles, groups, clients, API resources (lists and details), signing keys, the audit log with an entry expanded, and settings, in light and dark at 1440×900, 1920×1080, 390, and 320 CSS px, it:
+On a fresh server the script runs the setup wizard and creates the same admin, user, client, and API resource as the checks; otherwise it signs in as that admin (with `.run/state.json`). `node scripts/serve.ts` configures email, so `/account/email` is measured too (the page doesn't exist without email). For the account pages and the admin dashboard, users, roles, groups, clients, API resources (lists and details), signing keys, the audit log with an entry expanded, and settings, and for message and dialog states (account profile saved, password errors, new user with errors, user saved, the disable-user and rotate-key confirmation dialogs, the admin UI's signed-out page, and a sign-in error), in light and dark at 1440×900, 1920×1080, 390, and 320 CSS px, it:
 
 1. collects every visible text node, generated text (badge marks, stacked table labels), and icon with its color;
 2. hides text and icons by adding rules through the CSSOM (`insertRule`; the CSP allows no `<style>` elements), and screenshots the page one viewport at a time;
 3. takes the worst backdrop pixel under each one, and restores the page by deleting the rules (the admin UI isn't reloaded, so it signs in only once).
 
-It skips disabled controls, visually hidden and clipped content, and the `aria-hidden` wordmark (a logotype). Text needs 4.5:1; large text, icons, and single-symbol marks (✓, !, ⚠, …) need 3:1. The script prints the lowest value per kind and every result below the minimum, and exits non-zero when there is one. Use `A11Y_PORT` for a server on another port.
+It skips disabled controls, visually hidden and clipped content, the `aria-hidden` wordmark (a logotype), and, while a modal dialog is open, the page behind it (inert, and dimmed by the backdrop on purpose). Text needs 4.5:1; large text, icons, and single-symbol marks (✓, !, ⚠, …) need 3:1. The script prints the lowest value per kind and every result below the minimum, and exits non-zero when there is one. Use `A11Y_PORT` for a server on another port. The sign-in error uses an unknown user, so repeated runs don't lock the admin out.
+
+### Running Lighthouse
+
+`npm run lighthouse` runs [Lighthouse](https://developer.chrome.com/docs/lighthouse) (accessibility and best practices; not performance) against the same running test server:
+
+```sh
+node scripts/serve.ts            # first terminal
+npm run lighthouse               # second terminal
+```
+
+It audits the sign-in page, a sign-in error, the account overview and sessions, the admin dashboard, the audit log with an entry expanded, and the admin UI's signed-out page, in light and dark, with Lighthouse's desktop and mobile settings. Pages are loaded by Lighthouse (a navigation); states that only exist after an interaction are audited as a snapshot of the current page. Lighthouse drives the same Chromium as Playwright through its debugging port (`A11Y_DEBUGGING_PORT`, default 9333). The script fails if a run is redirected away from its page or loses the color scheme, writes HTML and JSON reports to `test-results/lighthouse`, and exits non-zero when any score is below 100. Latest run (Phase 11e): 100 for both categories on all 28 runs.
 
 In CI, the checks run on pull requests to `main` and on manual runs (not on every push), in one Linux job with Chromium. When they fail, the job uploads the HTML report and traces as the `accessibility-report` artifact.

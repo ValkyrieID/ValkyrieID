@@ -503,8 +503,9 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
       - shared page header, loading and empty states, and danger zones; status badges with text and a mark; dashboard metric tiles and a compact activity list
       - audit log rows with an inline disclosure for full identifiers and details; shortened IDs with the full value as text and a copy button (Clipboard API only)
       - tables stack into cards below 48rem with explicit ARIA table roles
-    - **11e: responsive polish and verification**
+    - **11e: responsive polish and verification** *(done 2026-11-09)*
       - desktop/mobile review, theme review, accessibility checks, regression tests, and documentation
+      - Lighthouse script (`npm run lighthouse`, accessibility and best practices); contrast measurement extended to message, dialog, and signed-out states; account sessions show a short browser name
 12. **Protocol additions** *(deferred: from phase 10; after v0.1.0)*:
     - **12a: `private_key_jwt` client authentication** (OIDC Core §9, RFC 7523; RFC 9700 §2.5). Design decided while planning (2026-11-05):
       - keys: a public JWKS stored on the client or API resource; no `jwks_uri` (no outbound fetches, so no SSRF or key caching). Validated on save: public keys only, RSA ≥ 2048 bits or EC P-256/384/521, `use` = `sig` or absent, unique `kid`s, size limits. Rotation by publishing old and new keys together

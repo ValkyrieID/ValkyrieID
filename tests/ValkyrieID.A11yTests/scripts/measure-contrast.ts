@@ -1,14 +1,24 @@
 // Measures the text and icon contrast on the rendered admin and account pages (WCAG 2.2 1.4.3, 1.4.11), over the
 // wallpaper and the glass: for every text node, generated text, and icon it hides the text and icons through the
 // CSSOM, takes a screenshot, and takes the worst backdrop pixel under each one. Light and dark, at 1440x900,
-// 1920x1080, 390 and 320 CSS px. Run against a running test server (node scripts/serve.ts); see
+// 1920x1080, 390 and 320 CSS px; on the pages and on states with messages (errors, notices), open confirmation
+// dialogs, the admin UI's signed-out page, and a sign-in error. Run against a running test server
+// (node scripts/serve.ts, which configures email, so /account/email is measured too); see
 // docs/accessibility/index.md. Exits non-zero when anything is below 4.5:1 (text) or 3:1 (large text and icons).
-import { existsSync, writeFileSync } from 'node:fs';
 import { chromium, type Page } from '@playwright/test';
-import { baseUrl, cli, readState, stateFile, type RunState } from '../support/env.ts';
+import {
+  adminSignedOut,
+  auditExpanded,
+  firstItem,
+  nav,
+  openAdmin,
+  row,
+  signIn,
+  type PageState,
+} from '../support/admin-session.ts';
+import { baseUrl } from '../support/env.ts';
 import { decodePng, type Image } from '../support/png.ts';
-import { freshTotp } from '../support/totp.ts';
-import { admin, alicePassword } from '../support/users.ts';
+import { admin } from '../support/users.ts';
 
 const sizes = [
   { width: 1440, height: 900 },
@@ -81,8 +91,14 @@ function inPage(rects: boolean): Target[] | Box[][] {
   const colorOf = (value: string) => (rects ? transparent : parse(value));
 
   // Skipped: not rendered, visually hidden or clipped away (WCAG applies to visible content), disabled controls
-  // (1.4.3 exception), and aria-hidden text, which is the logotype (the wordmark; 1.4.3 exception).
+  // (1.4.3 exception), aria-hidden text, which is the logotype (the wordmark; 1.4.3 exception), and the page behind an
+  // open modal dialog, which is inert (inactive, 1.4.3 exception) and dimmed by the backdrop on purpose.
+  const modal = document.querySelector('dialog:modal');
   const hidden = (element: Element): boolean => {
+    if (modal && !modal.contains(element)) {
+      return true;
+    }
+
     for (let e: Element | null = element; e; e = e.parentElement) {
       const style = getComputedStyle(e);
       if (style.display === 'none' || style.visibility !== 'visible' || style.opacity === '0') {
@@ -440,122 +456,48 @@ async function measure(page: Page, name: string, theme: string, size: string): P
   });
 }
 
-// --- Signing in as the suite's administrator (setting up a fresh server like tests/setup.spec.ts). ---
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/setup');
-  if (await page.getByRole('button', { name: 'Create administrator' }).isVisible()) {
-    await page.getByLabel('Username').fill(admin.userName);
-    await page.getByLabel('Email').fill(admin.email);
-    await page.getByLabel('Password', { exact: true }).fill(admin.password);
-    await page.getByLabel('Confirm password').fill(admin.password);
-    await page.getByRole('button', { name: 'Create administrator' }).click();
-    const secret = ((await page.locator('#totp-secret').textContent()) ?? '').trim();
-    await page.getByLabel('Code from your authenticator app').fill(await freshTotp(secret));
-    await page.getByRole('button', { name: 'Turn on two-factor authentication' }).click();
-    await page.getByRole('heading', { name: 'Two-factor authentication is on' }).waitFor();
-    const recoveryCodes = await page.locator('.recovery-codes code').allTextContents();
-    const state: RunState = { adminTotpSecret: secret, adminRecoveryCodes: recoveryCodes };
-    writeFileSync(stateFile, JSON.stringify(state));
-    await page.getByRole('link', { name: 'Continue' }).click();
-
-    // The same data as the accessibility suite.
-    await cli(
-      ['user', 'create', 'alice', '--email', 'alice@example.test', '--name', 'Alice'],
-      alicePassword,
-    );
-    await cli([
-      'client',
-      'create',
-      'webapp',
-      '--public',
-      '--grant',
-      'authorization_code',
-      '--redirect-uri',
-      'http://127.0.0.1:8765/callback',
-      '--scope',
-      'openid',
-      '--scope',
-      'profile',
-      '--name',
-      'Web app',
-    ]);
-    await cli([
-      'resource',
-      'create',
-      'orders',
-      '--scope',
-      'orders.read',
-      '--scope',
-      'orders.write',
-      '--name',
-      'Orders API',
-    ]);
-  } else {
-    if (!existsSync(stateFile)) {
-      throw new Error(
-        `${stateFile} not found: start a fresh test server (node scripts/serve.ts) first.`,
-      );
-    }
-
-    await page.goto('/account/login?returnUrl=%2Faccount');
-    await page.getByLabel('Username or email').fill(admin.userName);
-    await page.getByLabel('Password').fill(admin.password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page
-      .getByLabel('Code from your authenticator app')
-      .fill(await freshTotp(readState().adminTotpSecret));
-    await page.getByRole('button', { name: 'Verify' }).click();
-  }
-
-  await page.getByRole('heading', { name: 'Your account' }).waitFor();
-}
-
 // --- The pages. Admin pages are reached by in-app navigation: every reload signs in to the admin UI again. ---
 
-interface PageState {
-  name: string;
-  /** Gets there from the previous state. */
-  open: (page: Page) => Promise<void>;
-}
-
-const heading = async (page: Page, name: string | RegExp) => {
-  await page.getByRole('heading', { level: 1, name }).waitFor();
-  await page.waitForLoadState('networkidle');
-  await page
-    .locator('app-loading')
-    .first()
-    .waitFor({ state: 'detached' })
-    .catch(() => undefined);
-};
-const nav =
-  (link: string, title: string | RegExp): PageState['open'] =>
+/** Opens the confirmation dialog of a button on the current page. */
+const dialog =
+  (button: string): PageState['open'] =>
   async (page) => {
-    await page
-      .getByRole('navigation', { name: 'Main' })
-      .getByRole('link', { name: link, exact: true })
-      .click();
-    await heading(page, title);
+    await page.locator('main').getByRole('button', { name: button, exact: true }).click();
+    await page.locator('dialog[open]').waitFor();
   };
-const row =
-  (link: RegExp | string, title: string | RegExp): PageState['open'] =>
+/** Closes an open dialog first. */
+const closing =
+  (open: PageState['open']): PageState['open'] =>
   async (page) => {
-    await page.locator('main').getByRole('link', { name: link }).first().click();
-    await heading(page, title);
+    await page.keyboard.press('Escape');
+    await page.locator('dialog[open]').waitFor({ state: 'detached' });
+    await open(page);
   };
-/** The first item of a list page (its main link), e.g. a built-in role. */
-const firstItem: PageState['open'] = async (page) => {
-  const link = page.locator('main a.cell-title').first();
-  const name = ((await link.textContent()) ?? '').trim();
-  await link.click();
-  await heading(page, name);
-};
 
 const adminStates: PageState[] = [
   { name: 'admin dashboard', open: nav('Dashboard', 'Dashboard') },
   { name: 'admin users', open: nav('Users', 'Users') },
-  { name: 'admin user detail', open: row('alice', 'alice') },
-  { name: 'admin roles', open: nav('Roles', 'Roles') },
+  {
+    name: 'admin new user (errors)',
+    open: async (page) => {
+      await row('New user', 'New user')(page);
+      await page.getByLabel('Username').fill('not valid!');
+      await page.getByLabel('Password').fill('short');
+      await page.getByRole('button', { name: 'Create user' }).click();
+      await page.getByRole('alert').waitFor();
+    },
+  },
+  {
+    name: 'admin user detail (saved notice)',
+    open: async (page) => {
+      await nav('Users', 'Users')(page);
+      await row('alice', 'alice')(page);
+      await page.getByRole('button', { name: 'Save profile' }).click();
+      await page.getByText('The profile was saved.').waitFor();
+    },
+  },
+  { name: 'admin user detail (disable dialog)', open: dialog('Disable user') },
+  { name: 'admin roles', open: closing(nav('Roles', 'Roles')) },
   { name: 'admin role detail', open: firstItem },
   { name: 'admin groups', open: nav('Groups', 'Groups') },
   { name: 'admin clients', open: nav('Clients', 'Clients') },
@@ -563,25 +505,57 @@ const adminStates: PageState[] = [
   { name: 'admin API resources', open: nav('API resources', 'API resources') },
   { name: 'admin API resource detail', open: row('orders', /Orders API|orders/) },
   { name: 'admin signing keys', open: nav('Signing keys', 'Signing keys') },
+  { name: 'admin signing keys (rotate dialog)', open: dialog('Rotate now') },
   {
     name: 'admin audit log (entry expanded)',
-    open: async (page) => {
-      await nav('Audit log', 'Audit log')(page);
-      await page.locator('table.audit button[aria-expanded="false"]').first().click();
-    },
+    open: closing(auditExpanded),
   },
   { name: 'admin settings', open: nav('Settings', 'Settings') },
   { name: 'admin settings section', open: row(/Token lifetimes/, 'Token lifetimes') },
+  // Last: signs out (of the account too).
+  { name: 'admin signed out', open: adminSignedOut },
+  {
+    name: 'sign-in error',
+    open: async (page) => {
+      await page.goto('/account/login');
+      // An unknown user: the same generic error, without counting failures against the administrator (lockout).
+      await page.getByLabel('Username or email').fill('nobody');
+      await page.getByLabel('Password').fill('not the password');
+      await page.getByRole('button', { name: 'Sign in' }).click();
+      await page.getByRole('alert').first().waitFor();
+    },
+  },
 ];
 
-const accountPages = [
+/** Account pages, by path, with an optional action that leads to a message (an error or a notice). */
+const accountPages: [string, string, ((page: Page) => Promise<void>)?][] = [
   ['account', '/account'],
   ['account profile', '/account/profile'],
+  [
+    'account profile (saved notice)',
+    '/account/profile',
+    async (page) => {
+      await page.getByRole('button', { name: 'Save' }).click();
+      await page.locator('[role="status"].notice').waitFor();
+    },
+  ],
   ['account email', '/account/email'],
   ['account password', '/account/password'],
+  [
+    'account password (errors)',
+    '/account/password',
+    async (page) => {
+      // The correct current password (a wrong one would count toward the lockout), and an invalid new one.
+      await page.getByLabel('Current password').fill(admin.password);
+      await page.getByLabel('New password', { exact: true }).fill('short');
+      await page.getByLabel('Confirm new password').fill('different');
+      await page.getByRole('button', { name: 'Change password' }).click();
+      await page.getByRole('alert').first().waitFor();
+    },
+  ],
   ['account two-factor (danger zone)', '/account/two-factor'],
   ['account sessions', '/account/sessions'],
-] as const;
+];
 
 // --- Run. ---
 
@@ -611,7 +585,7 @@ async function everySizeAndTheme(name: string): Promise<void> {
 
 try {
   await signIn(page);
-  for (const [name, path] of accountPages) {
+  for (const [name, path, action] of accountPages) {
     await page.setViewportSize(firstSize);
     // The email page exists only when email is configured.
     const response = await page.goto(path);
@@ -620,12 +594,12 @@ try {
       continue;
     }
 
+    await action?.(page);
     await everySizeAndTheme(name);
   }
 
   await page.setViewportSize(firstSize);
-  await page.goto('/admin/');
-  await heading(page, 'Dashboard');
+  await openAdmin(page);
   for (const state of adminStates) {
     await page.setViewportSize(firstSize);
     await state.open(page);

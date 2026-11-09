@@ -8,6 +8,7 @@
   table.data.stack tr,
   table.data.stack td {
     display: block;
+    box-sizing: border-box;
     width: 100%;
   }
 
@@ -51,6 +52,16 @@
 
   table.data.stack td.wrap {
     max-width: none;
+  }
+
+  /* A card line is narrower than a column: dates and IDs wrap instead of widening the card. */
+  table.data.stack td.nowrap,
+  table.data.stack app-id code {
+    white-space: normal;
+  }
+
+  table.data.stack td {
+    overflow-wrap: anywhere;
   }
 
   table.data.stack input {
