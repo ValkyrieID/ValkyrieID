@@ -266,7 +266,7 @@ Colors must be hex (`#0f766e`), named (`teal`), `rgb()` or `hsl()` values. File 
 
 ### Themes
 
-The sign-in, account, and setup pages and the admin UI have a light and a dark theme. By default they follow the operating system or browser setting (`prefers-color-scheme`); a theme switch at the top right of the pages (and in the admin UI's top bar) lets users choose System, Light, or Dark. The choice is stored in the `__Host-valkyrie.theme` cookie for one year and applies to both the pages and the admin UI. The pages render it on the server, so it works without JavaScript; the switch there is a form that posts to [`POST /account/theme`](/reference/endpoints#theme).
+The sign-in, account, and setup pages and the admin UI have a light and a dark theme. By default they follow the operating system or browser setting (`prefers-color-scheme`); a theme switch at the top right of the pages (and in the admin UI's top bar) lets users choose System, Light, or Dark (icon buttons: a monitor, a sun, and a moon, each with a label for screen readers and a tooltip). The choice is stored in the `__Host-valkyrie.theme` cookie for one year and applies to both the pages and the admin UI. The pages render it on the server, so it works without JavaScript; the switch there is a form that posts to [`POST /account/theme`](/reference/endpoints#theme).
 
 The colors without `Dark` apply to the light theme only, and the `Dark` colors to the dark theme only, so a light branding can't make the dark theme unreadable. Unset colors keep the built-in palette of that theme.
 

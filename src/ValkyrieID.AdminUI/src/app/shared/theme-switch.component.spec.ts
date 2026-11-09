@@ -19,7 +19,13 @@ describe('ThemeSwitchComponent', () => {
     const { root, buttons } = render('light');
 
     expect(root.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Color theme');
-    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['System', 'Light', 'Dark']);
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'System theme',
+      'Light theme',
+      'Dark theme',
+    ]);
+    expect(buttons.map((b) => b.title)).toEqual(['System theme', 'Light theme', 'Dark theme']);
+    expect(buttons.every((b) => b.querySelector('svg[aria-hidden="true"]'))).toBe(true);
     expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
     expect(buttons.every((b) => b.type === 'button')).toBe(true);
   });
