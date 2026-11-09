@@ -114,6 +114,15 @@ dotnet test
 npm test        # in the Angular project
 ```
 
+When a change affects the look of the login, account, or admin pages (styles, layout, themes, glass surfaces, or new pages and states), also run the two measurement scripts in `tests/ValkyrieID.A11yTests` before finishing. CI runs them too, but only on pull requests to `main`. Start a test server with `node scripts/serve.ts`, then in a second terminal:
+
+```sh
+npm run measure-contrast   # text and icon contrast over the glass; must report no failures
+npm run lighthouse         # accessibility and best practices; every run must score 100
+```
+
+Add new pages or states to the scripts when you add them to the UI. Record the new lowest values in `docs/accessibility`. See `docs/accessibility/index.md`.
+
 ## Database
 
 - Every schema change needs EF Core migrations for **both** SQLite and PostgreSQL.

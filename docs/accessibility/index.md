@@ -97,7 +97,7 @@ Keep the image tag in step with the `@playwright/test` version in `package.json`
 
 ### Measuring contrast over the glass
 
-axe can't judge text on see-through glass, so a separate script measures it on the rendered pages. It isn't part of `npm test`. Start a test server in one terminal and run the script in another:
+axe can't judge text on see-through glass, so a separate script measures it on the rendered pages. It isn't part of `npm test`, but CI runs it after the checks (see below). To run it yourself, start a test server in one terminal and run the script in another:
 
 ```sh
 cd tests/ValkyrieID.A11yTests
@@ -124,4 +124,4 @@ npm run lighthouse               # second terminal
 
 It audits the sign-in page, a sign-in error, the account overview and sessions, the admin dashboard, the audit log with an entry expanded, and the admin UI's signed-out page, in light and dark, with Lighthouse's desktop and mobile settings. Pages are loaded by Lighthouse (a navigation); states that only exist after an interaction are audited as a snapshot of the current page. Lighthouse drives the same Chromium as Playwright through its debugging port (`A11Y_DEBUGGING_PORT`, default 9333). The script fails if a run is redirected away from its page or loses the color scheme, writes HTML and JSON reports to `test-results/lighthouse`, and exits non-zero when any score is below 100. Latest run (Phase 11e): 100 for both categories on all 28 runs.
 
-In CI, the checks run on pull requests to `main` and on manual runs (not on every push), in one Linux job with Chromium. When they fail, the job uploads the HTML report and traces as the `accessibility-report` artifact.
+In CI, the checks run on pull requests to `main` and on manual runs (not on every push), in one Linux job with Chromium. After `npm test`, the same job starts the published server again on a fresh database and runs `npm run measure-contrast` and `npm run lighthouse` (about 5 minutes together). When anything fails, the job uploads the HTML report, traces, Lighthouse reports, and the server log as the `accessibility-report` artifact.

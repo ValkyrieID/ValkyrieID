@@ -114,10 +114,10 @@ jobs:
         run: dotnet test --no-build -c Release --project tests/ValkyrieID.Server.IntegrationTests -- --filter-trait "Category=PostgreSql" --filter-trait "Category=Redis"
 
   accessibility:
-    name: Accessibility (axe, WCAG 2.2 AA)
+    name: Accessibility (axe, contrast, Lighthouse; WCAG 2.2 AA)
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: tests/ValkyrieID.A11yTests
@@ -150,6 +150,23 @@ jobs:
       - name: Accessibility tests
         run: npm test
 
+      # The same build on a fresh database, for the measurement scripts (docs/accessibility).
+      - name: Start the test server
+        run: |
+          A11Y_SKIP_PUBLISH=1 nohup node scripts/serve.ts > server.log 2>&1 &
+          for i in $(seq 60); do
+            curl -skf https://localhost:5199/health/ready > /dev/null && exit 0
+            sleep 2
+          done
+          cat server.log
+          exit 1
+
+      - name: Contrast over the glass
+        run: npm run measure-contrast
+
+      - name: Lighthouse (accessibility, best practices)
+        run: npm run lighthouse
+
       - name: Upload the report
         if: failure()
         uses: actions/upload-artifact@v6
@@ -158,4 +175,5 @@ jobs:
           path: |
             tests/ValkyrieID.A11yTests/playwright-report
             tests/ValkyrieID.A11yTests/test-results
+            tests/ValkyrieID.A11yTests/server.log
           retention-days: 7
