@@ -1,0 +1,77 @@
+/* Brand (logo and wordmark) and the theme switch. */
+
+/* Brand: logo and the "Valkyrie id" wordmark, as on the account pages. */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.brand img {
+  display: block;
+  width: auto;
+  height: 2rem;
+}
+
+.product-name {
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* The wordmark is visual only (aria-hidden); the small one uses --vid-muted for "id" (4.5:1), like site.css. */
+.product-name > [aria-hidden] {
+  color: var(--vid-wordmark);
+}
+
+.product-name-suffix {
+  margin-left: 0.18em;
+  font-weight: 400;
+  color: var(--vid-muted);
+}
+
+.product-area {
+  margin-left: 0.375rem;
+  padding-left: 0.5rem;
+  font-weight: 500;
+  color: var(--vid-text);
+  border-left: 1px solid var(--vid-divider);
+}
+
+/* Theme switch: a group of toggle buttons; the pressed one is the current choice. */
+
+.theme-switch {
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border-radius: var(--vid-radius);
+}
+
+.theme-switch button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  color: var(--vid-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--vid-radius-sm);
+}
+
+.theme-switch button:hover {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+  border-color: transparent;
+}
+
+/* Shown by weight and a 3:1 border, not by color alone (WCAG 1.4.1, 1.4.11). */
+.theme-switch button[aria-pressed='true'] {
+  color: var(--vid-text);
+  font-weight: 600;
+  background: var(--vid-surface-hover);
+  border-color: var(--vid-border);
+}

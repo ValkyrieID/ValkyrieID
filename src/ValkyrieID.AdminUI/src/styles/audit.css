@@ -1,0 +1,59 @@
+/* Audit log: compact rows; the disclosure button opens a full-width detail row below. */
+table.audit td.disclosure {
+  width: 1px;
+  padding-right: 0;
+}
+
+table.audit > tbody > tr:not(.audit-detail) > td {
+  vertical-align: middle;
+}
+
+table.audit td.disclosure svg {
+  transition: transform 120ms ease;
+}
+
+table.audit button[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+table.audit tr.expanded > td {
+  border-bottom-color: transparent;
+}
+
+table.audit tr.expanded,
+table.audit tr.audit-detail {
+  background: var(--vid-accent-tint);
+}
+
+table.audit tr.audit-detail:hover {
+  background: var(--vid-accent-tint);
+}
+
+table.audit tr.audit-detail > td {
+  padding: 0.25rem 0.75rem 1rem 3.25rem;
+}
+
+table.audit .facts {
+  max-width: none;
+  grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr);
+  font-size: 0.875rem;
+}
+
+/* Every pair is one row of the same height (the copy button's), label and value centered on it. */
+table.audit .facts dt,
+table.audit .facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 2.5rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+table.audit .facts dt {
+  padding-right: 1.5rem;
+}
+
+table.audit .facts dd {
+  gap: 0.25rem 0.75rem;
+}

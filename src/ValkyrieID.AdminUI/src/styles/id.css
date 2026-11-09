@@ -1,0 +1,26 @@
+/* Identifiers (app-id): the short form, the full value as visually hidden text, and a copy button. */
+app-id {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+app-id code {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+app-id.id-full code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.id-copied {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--vid-text);
+}

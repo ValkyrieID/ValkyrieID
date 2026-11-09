@@ -87,7 +87,7 @@ Tools can't tell whether announcements make sense. Before each release, go throu
 
 | Problem | WCAG | Fix | Regression test |
 |---|---|---|---|
-| Admin UI pages scrolled horizontally at 320 px: the single-column layout grew with wide tables | 1.4.10 | `grid-template-columns: minmax(0, 1fr)` (`styles.css`) | `checkPage` (every admin page) |
+| Admin UI pages scrolled horizontally at 320 px: the single-column layout grew with wide tables | 1.4.10 | `grid-template-columns: minmax(0, 1fr)` (`styles/shell.css`) | `checkPage` (every admin page) |
 | Visually hidden table headers (absolutely positioned) escaped the tables' scroll containers and widened the page | 1.4.10 | `.table-wrap { position: relative }` | `checkPage` (API resource with a new secret) |
 | Detail pages of a missing user, client, resource, role, or group were blank: reading a failed resource's value threw, so neither a heading nor the error showed | 1.3.1, 2.4.6, 3.3.1 | `valueOf()` helper; an `<h1>` in the error state | `UserDetailPage` unit test; `unknown user`, `unknown client` checks |
 | The admin UI's sign-in error and signed-out pages were replaced by a new sign-in at once, so they couldn't be read or acted on | 3.2.1, 3.3.1 | The token renewal guard only runs while signed in | `freshTokenGuard` unit tests; `sign-in error`, `signed out` checks |

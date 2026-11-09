@@ -1,0 +1,68 @@
+/* Base: box sizing, document, headings, links, code, focus, and visually hidden text. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--vid-font);
+  font-size: 100%;
+  line-height: 1.5;
+  color: var(--vid-text);
+  background-color: var(--vid-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--vid-primary) 25%, transparent);
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+}
+
+a {
+  color: var(--vid-link);
+  text-underline-offset: 0.15em;
+}
+
+code {
+  font-family: var(--vid-font-mono);
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vid-focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

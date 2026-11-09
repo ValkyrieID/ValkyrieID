@@ -1,5 +1,5 @@
 /*
- * Design tokens shared with the admin UI (src/ValkyrieID.AdminUI/src/styles.css; keep both in sync, see layout.md).
+ * Design tokens shared with the admin UI (src/ValkyrieID.AdminUI/src/styles/tokens.css and glass.css; keep both in sync, see layout.md).
  * Light is the default; dark applies with data-theme="dark", or with no explicit choice when the system prefers dark.
  * The dark selectors are more specific than :root, so branding colors (/theme.css, :root) only change the light
  * theme; Branding:Dark* colors are emitted with the dark selectors. Text pairs reach 4.5:1, controls and focus 3:1.
@@ -873,8 +873,12 @@ form.form-section > .actions,
   width: auto;
 }
 
+/*
+ * On glass the red moves toward the text color, like muted text and links (--vid-glass-*), so the heading keeps
+ * 4.5:1 over any part of the wallpaper (as in the admin UI's styles).
+ */
 .danger-zone h2 {
-  color: var(--vid-error);
+  color: color-mix(in srgb, var(--vid-error) 75%, var(--vid-text));
 }
 
 .app-main section > h2 {

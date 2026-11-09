@@ -1,0 +1,22 @@
+/* Dialogs stay opaque over the glass for readability (layout.md, Phase 11d). */
+dialog {
+  max-width: 32rem;
+  padding: 1.5rem;
+  color: var(--vid-text);
+  background: var(--vid-surface-raised);
+  border: 1px solid var(--vid-divider);
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+dialog::backdrop {
+  background: var(--vid-backdrop);
+}
+
+dialog h2 {
+  margin-top: 0;
+}
+
+app-confirm-button {
+  display: inline-block;
+}

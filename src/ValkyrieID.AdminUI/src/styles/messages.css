@@ -1,0 +1,81 @@
+/* Messages: an icon plus text, never color alone (WCAG 1.4.1). The icons have empty alternative text. */
+
+.alert,
+.notice {
+  position: relative;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  border-radius: var(--vid-radius-sm);
+}
+
+.alert {
+  color: var(--vid-error);
+  background: var(--vid-error-background);
+  border: 1px solid color-mix(in srgb, var(--vid-error) 35%, transparent);
+  border-left: 4px solid var(--vid-error);
+}
+
+.notice {
+  color: var(--vid-text);
+  background: var(--vid-info-background);
+  border: 1px solid color-mix(in srgb, var(--vid-info) 35%, transparent);
+  border-left: 4px solid var(--vid-info);
+}
+
+.alert::before,
+.notice::before {
+  position: absolute;
+  top: 0.875rem;
+  left: 0.875rem;
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--vid-surface);
+}
+
+.alert::before {
+  content: '!' / '';
+  background: var(--vid-error);
+}
+
+.notice::before {
+  content: 'i' / '';
+  font-family: Georgia, serif;
+  background: var(--vid-info);
+}
+
+.alert-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.alert ul,
+.alert p {
+  margin: 0.25rem 0 0;
+}
+
+.alert > :first-child,
+.notice > :first-child {
+  margin-top: 0;
+}
+
+.notice > :last-child {
+  margin-bottom: 0;
+}
+
+.notice h2 {
+  margin-top: 0;
+}
+
+.secret {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--vid-font-mono);
+  background: var(--vid-surface-hover);
+  border-radius: var(--vid-radius-sm);
+  user-select: all;
+}

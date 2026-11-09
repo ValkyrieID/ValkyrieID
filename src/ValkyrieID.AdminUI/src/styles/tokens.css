@@ -1,0 +1,135 @@
+/*
+ * Design tokens shared with the login pages (src/ValkyrieID.Server/wwwroot/css/site.css; keep both in sync, see
+ * layout.md). Light is the default; dark applies with data-theme="dark", or with no explicit choice when the system
+ * prefers dark. index.html starts with data-theme="dark" so the page never flashes light before turning dark;
+ * ThemeService applies the stored choice at startup. Text pairs reach 4.5:1, controls and focus 3:1.
+ * The teal primary and the gold accent come from the logo; gold is decorative only and never carries text.
+ * The admin UI doesn't load /theme.css: it always uses the built-in colors and wallpapers (layout.md, Phase 11c).
+ */
+:root {
+  color-scheme: light;
+  --vid-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --vid-font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
+  --vid-radius-sm: 0.375rem;
+  --vid-radius: 0.5rem;
+  --vid-radius-lg: 0.75rem;
+  --vid-primary: #0f766e;
+  --vid-primary-text: #ffffff;
+  --vid-accent: #b8862f;
+  --vid-background: #fafafa;
+  --vid-surface: #ffffff;
+  --vid-surface-raised: #ffffff;
+  --vid-surface-hover: #f4f4f5;
+  --vid-text: #18181b;
+  --vid-muted: #52525b;
+  --vid-divider: #e4e4e7;
+  --vid-border: #71717a;
+  --vid-error: #b91c1c;
+  --vid-error-background: #fef2f2;
+  --vid-ok: #15803d;
+  --vid-ok-background: #f0fdf4;
+  --vid-warn: #a16207;
+  --vid-warn-background: #fefce8;
+  --vid-info: #1d4ed8;
+  --vid-info-background: #eff6ff;
+  --vid-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%);
+  --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
+  --vid-backdrop: rgb(9 9 11 / 50%);
+  /* Root-relative: the admin UI is always served at /admin/ (index.html base href), from public/img. */
+  --vid-background-image: url('/admin/img/wall-light.png');
+  --vid-glass: color-mix(in srgb, var(--vid-surface) 50%, transparent);
+  --vid-glass-border: rgb(255 255 255 / 60%);
+  --vid-glass-blur: 12px;
+  /*
+   * On see-through glass the backdrop varies, so muted text, control borders and links move toward the text color
+   * there to keep 4.5:1 and 3:1 over the wallpaper.
+   */
+  --vid-glass-muted: color-mix(in srgb, var(--vid-muted) 60%, var(--vid-text));
+  --vid-glass-control-border: color-mix(in srgb, var(--vid-border) 55%, var(--vid-text));
+  --vid-glass-link: color-mix(in srgb, var(--vid-primary) 75%, var(--vid-text));
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 85%, transparent);
+  --vid-wordmark: #1f2937;
+  --vid-wordmark-muted: #4b5059;
+  --vid-primary-hover: color-mix(in srgb, var(--vid-primary) 85%, #000000);
+  --vid-link: var(--vid-primary);
+  --vid-focus: var(--vid-primary);
+  --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 10%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --vid-background: #0a0a0b;
+    --vid-surface: #141416;
+    --vid-surface-raised: #1c1c1f;
+    --vid-surface-hover: #232327;
+    --vid-text: #ededef;
+    --vid-muted: #a1a1aa;
+    --vid-divider: #27272a;
+    --vid-border: #71717a;
+    --vid-error: #f87171;
+    --vid-error-background: #2a1215;
+    --vid-ok: #4ade80;
+    --vid-ok-background: #0f2417;
+    --vid-warn: #facc15;
+    --vid-warn-background: #2a2207;
+    --vid-info: #93c5fd;
+    --vid-info-background: #0f1d33;
+    --vid-shadow: none;
+    --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
+    --vid-backdrop: rgb(0 0 0 / 70%);
+    --vid-accent: #d4a84b;
+    --vid-background-image: url('/admin/img/wall-dark.png');
+    --vid-glass: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+      transparent
+    );
+    --vid-glass-border: rgb(255 255 255 / 12%);
+    --vid-glass-link: var(--vid-link);
+    --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+    --vid-wordmark: #e8eaed;
+    --vid-wordmark-muted: #a8adb5;
+    --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+    --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+    --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --vid-background: #0a0a0b;
+  --vid-surface: #141416;
+  --vid-surface-raised: #1c1c1f;
+  --vid-surface-hover: #232327;
+  --vid-text: #ededef;
+  --vid-muted: #a1a1aa;
+  --vid-divider: #27272a;
+  --vid-border: #71717a;
+  --vid-error: #f87171;
+  --vid-error-background: #2a1215;
+  --vid-ok: #4ade80;
+  --vid-ok-background: #0f2417;
+  --vid-warn: #facc15;
+  --vid-warn-background: #2a2207;
+  --vid-info: #93c5fd;
+  --vid-info-background: #0f1d33;
+  --vid-shadow: none;
+  --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
+  --vid-backdrop: rgb(0 0 0 / 70%);
+  --vid-accent: #d4a84b;
+  --vid-background-image: url('/admin/img/wall-dark.png');
+  --vid-glass: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+    transparent
+  );
+  --vid-glass-border: rgb(255 255 255 / 12%);
+  --vid-glass-link: var(--vid-link);
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+  --vid-wordmark: #e8eaed;
+  --vid-wordmark-muted: #a8adb5;
+  --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+  --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
+  --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
+}

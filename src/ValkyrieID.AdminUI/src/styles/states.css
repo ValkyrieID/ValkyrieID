@@ -1,0 +1,57 @@
+/* Loading and empty states. */
+.state {
+  margin: 1rem 0;
+}
+
+.state-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--vid-muted);
+}
+
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--vid-divider);
+  border-top-color: var(--vid-primary);
+  border-radius: 50%;
+  animation: vid-spin 0.8s linear infinite;
+}
+
+@keyframes vid-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.state-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  border-top: 1px solid var(--vid-divider);
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.state-empty svg {
+  color: var(--vid-muted);
+}
+
+.state-empty p {
+  margin: 0;
+}
+
+.state-title {
+  font-weight: 600;
+}
+
+.state-hint {
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+}
+
+.state-empty > :is(a, button) {
+  margin-top: 0.5rem;
+}

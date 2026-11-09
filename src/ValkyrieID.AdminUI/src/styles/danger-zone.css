@@ -1,0 +1,56 @@
+/*
+ * Danger zone: destructive actions in their own section, after a divider, with a red heading and a warning mark
+ * (not color alone), one row per action with its consequence; the buttons are outlined red with a mark as well.
+ */
+.danger-zone {
+  max-width: 48rem;
+  margin-top: 2.5rem;
+}
+
+.app-main .danger-zone {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+/*
+ * On glass the red moves toward the text color, like muted text and links (--vid-glass-*), so the heading keeps
+ * 4.5:1 over any part of the wallpaper.
+ */
+.danger-zone > h2:first-child {
+  margin-top: 0;
+  color: color-mix(in srgb, var(--vid-error) 75%, var(--vid-text));
+}
+
+.danger-zone > h2:first-child::before {
+  content: '⚠\FE0E  ' / '';
+}
+
+.danger-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.danger-item h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.danger-item p {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+}
+
+.danger-item > div {
+  flex: 1 1 18rem;
+}
+
+button.danger::before {
+  content: '⚠\FE0E' / '';
+  margin-right: 0.375rem;
+}

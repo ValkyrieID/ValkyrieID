@@ -1,0 +1,73 @@
+/* Tables and lists: divided rows on the glass, not boxed again (as the account lists). */
+
+.table-wrap {
+  /* Contains visually hidden (absolutely positioned) header text, so it scrolls with the table. */
+  position: relative;
+  overflow-x: auto;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+table.data th,
+table.data td {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+table.data th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--vid-muted);
+}
+
+table.data tbody tr:hover {
+  background: color-mix(in srgb, var(--vid-surface-hover) 50%, transparent);
+}
+
+table.data td.wrap {
+  overflow-wrap: anywhere;
+  max-width: 20rem;
+}
+
+table.data td.nowrap {
+  white-space: nowrap;
+}
+
+table.data td.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+table.data input {
+  min-width: 12rem;
+}
+
+/* A list row's main link with a muted second line (display name, email). */
+.cell-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cell-sub {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+  overflow-wrap: anywhere;
+}
+
+.badges,
+.codes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.375rem;
+}
+
+.badges .badge {
+  margin-left: 0;
+}

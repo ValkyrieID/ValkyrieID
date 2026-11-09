@@ -52,6 +52,7 @@ Act as an OpenID Connect / OAuth 2.0 security expert. Before writing protocol, a
 - **Zoneless** app; don't add zone.js.
 - Standalone components, `@if` / `@for` / `@switch`, `inject()` instead of constructor injection.
 - Keep templates readable: a template longer than 25 lines goes in its own `.html` file next to the component (`templateUrl`), not inline in the `.ts` file. Split an inline template out as soon as it grows past that.
+- Admin UI styles live in `src/styles/`, one file per component or feature, imported in cascade order by `src/styles.css` (tokens, base, shared, features, then forced colors and reduced motion last) and bundled into one global stylesheet. They're global because the admin CSP is `style-src 'self'`, which blocks the `<style>` elements Angular adds for component styles: don't use `styleUrl` / `styles` in `@Component`.
 - TypeScript `strict`; no `any`.
 - Target WCAG 2.2 AA: labels, keyboard navigation, contrast.
 

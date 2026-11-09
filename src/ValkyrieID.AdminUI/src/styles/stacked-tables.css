@@ -1,0 +1,95 @@
+/*
+ * Small screens: tables marked appStack (StackTableDirective, which sets the ARIA table roles) become one card per
+ * row, each cell a line with its column label; the header row stays available to assistive technology.
+ */
+@media (max-width: 47.99rem) {
+  table.data.stack,
+  table.data.stack tbody,
+  table.data.stack tr,
+  table.data.stack td {
+    display: block;
+    width: 100%;
+  }
+
+  table.data.stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  table.data.stack tr {
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--vid-divider);
+  }
+
+  table.data.stack td {
+    position: relative;
+    min-height: 1.75rem;
+    padding: 0.25rem 0.25rem 0.25rem 0;
+    border: 0;
+  }
+
+  table.data.stack td[data-label] {
+    padding-left: 38%;
+  }
+
+  table.data.stack td[data-label]::before {
+    content: attr(data-label);
+    content: attr(data-label) / '';
+    position: absolute;
+    top: 0.25rem;
+    left: 0;
+    width: calc(38% - 0.75rem);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--vid-muted);
+    overflow-wrap: anywhere;
+  }
+
+  table.data.stack td.wrap {
+    max-width: none;
+  }
+
+  table.data.stack input {
+    min-width: 0;
+  }
+
+  table.audit.stack tr:has(+ tr.audit-detail) {
+    border-bottom: 0;
+  }
+
+  table.audit.stack td.disclosure {
+    position: absolute;
+    top: 0.625rem;
+    right: 0;
+    z-index: 1;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  table.audit.stack tr {
+    position: relative;
+  }
+
+  table.audit.stack tr:not(.audit-detail) > td:not(.disclosure) {
+    padding-right: 2.5rem;
+  }
+
+  table.audit.stack tr.audit-detail > td {
+    padding: 0 0.5rem 0.5rem;
+  }
+
+  table.audit .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  table.audit .facts dt {
+    min-height: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+}

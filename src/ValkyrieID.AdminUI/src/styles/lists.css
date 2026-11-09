@@ -1,0 +1,57 @@
+/* Definition lists (facts) and chips. */
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0;
+  max-width: 48rem;
+  margin: 0;
+}
+
+.facts dt,
+.facts dd {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.facts dt {
+  padding-right: 1.5rem;
+  color: var(--vid-muted);
+  font-weight: 500;
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Narrow screens: the term above its value, so long values (full IDs) get the whole width. */
+@media (max-width: 30rem) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts dt {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.875rem;
+  background: var(--vid-surface);
+  border: 1px solid var(--vid-divider);
+  border-radius: 999px;
+}

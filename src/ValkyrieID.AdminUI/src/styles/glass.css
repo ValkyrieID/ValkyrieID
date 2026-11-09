@@ -1,0 +1,44 @@
+/*
+ * Wallpaper and glass (layout.md, Phases 11b and 11c): the same see-through frosted glass as the account pages.
+ * On glass, muted text, control borders and links use the --vid-glass-* variants, and inputs a mostly opaque fill,
+ * so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper. Without backdrop-filter support the glass is
+ * the plain surface. Dialogs stay opaque (--vid-surface-raised) for readability over the page.
+ */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    var(--vid-background-image) center / cover no-repeat,
+    var(--vid-background);
+}
+
+.app-bar,
+.app-nav,
+.app-main,
+.landing,
+.theme-switch {
+  --vid-muted: var(--vid-glass-muted);
+  --vid-border: var(--vid-glass-control-border);
+  --vid-link: var(--vid-glass-link);
+  background: var(--vid-glass);
+  border: 1px solid var(--vid-glass-border);
+  -webkit-backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+}
+
+:is(.app-main, .landing)
+  :is(input:not([type='checkbox'], [type='radio'], [readonly]), select, textarea) {
+  background: var(--vid-glass-input);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html :is(.app-bar, .app-nav, .app-main, .landing, .theme-switch),
+  html
+    :is(.app-main, .landing)
+    :is(input:not([type='checkbox'], [type='radio'], [readonly]), select, textarea) {
+    background: var(--vid-surface);
+  }
+}

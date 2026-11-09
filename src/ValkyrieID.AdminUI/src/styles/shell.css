@@ -1,0 +1,186 @@
+/* Shell: skip link, top bar, navigation, and the main panel. */
+
+/* Shell: a glass top bar, grouped glass navigation, and the page on one glass panel, like the account layout. */
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  color: var(--vid-text);
+  background: var(--vid-surface-raised);
+  border: 2px solid var(--vid-focus);
+  border-radius: var(--vid-radius-sm);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-width: 0 0 1px;
+}
+
+.app-home {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+}
+
+.app-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-user {
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+  overflow-wrap: anywhere;
+}
+
+.app-bar-end button.app-signout {
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+}
+
+.app-body {
+  flex: 1;
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  width: 100%;
+  max-width: 84rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/*
+ * On small screens each group is one row, its label beside its links, so every route stays visible without a menu
+ * button; from 48rem the navigation is a sticky sidebar.
+ */
+.app-nav {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border-radius: var(--vid-radius-lg);
+}
+
+.nav-group {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+}
+
+.nav-group:first-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nav-group + .nav-group {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.nav-label {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vid-muted);
+}
+
+.app-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav a {
+  display: block;
+  padding: 0.375rem 0.75rem;
+  color: var(--vid-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+}
+
+.app-nav a:hover {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+}
+
+/* The current page is marked by weight and an inset bar as well as color (WCAG 1.4.1). */
+.app-nav a[aria-current='page'] {
+  color: var(--vid-link);
+  font-weight: 600;
+  background: var(--vid-accent-tint);
+  box-shadow: inset 0 -2px 0 var(--vid-primary);
+}
+
+.app-main {
+  min-width: 0;
+  padding: 1.5rem 1.25rem;
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+@media (min-width: 48rem) {
+  .app-bar {
+    padding: 0.75rem 1.5rem;
+  }
+
+  .app-body {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    gap: 2.5rem;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .app-nav {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+  }
+
+  .nav-group,
+  .nav-group:first-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav-group + .nav-group {
+    margin-top: 0.25rem;
+    padding-top: 0.5rem;
+  }
+
+  .app-nav ul {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .app-main {
+    padding: 2rem;
+  }
+
+  .app-nav a[aria-current='page'] {
+    box-shadow: inset 3px 0 0 var(--vid-primary);
+  }
+}

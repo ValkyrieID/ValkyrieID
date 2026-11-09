@@ -1,0 +1,61 @@
+/* Landing: the signed-out, sign-in error, and signing-in card. */
+
+/* Signed out, sign-in error, and signing in: the logo and a glass card on the wallpaper. */
+
+.landing {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: calc(100% - 2rem);
+  max-width: 28rem;
+  margin: 12vh auto 2rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background:
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--vid-primary) 16%, transparent),
+      transparent 60%
+    ),
+    var(--vid-glass);
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+/* Decorative teal-to-gold highlight along the top edge of the card. */
+.landing::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--vid-primary),
+    var(--vid-accent),
+    transparent
+  );
+  opacity: 0.8;
+}
+
+/* A teal and gold glow around the logo, as in the logo itself. */
+.landing img {
+  width: 6rem;
+  height: auto;
+  filter: drop-shadow(0 0 1.25rem color-mix(in srgb, var(--vid-primary) 45%, transparent))
+    drop-shadow(0 0 2.5rem color-mix(in srgb, var(--vid-accent) 30%, transparent));
+}
+
+.landing h1,
+.landing p {
+  margin: 0;
+}
+
+.landing .alert {
+  width: 100%;
+  text-align: left;
+}

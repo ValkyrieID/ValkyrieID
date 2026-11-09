@@ -1,0 +1,85 @@
+/*
+ * Badges: text plus a shape, never color alone (WCAG 1.4.1). The marks are decorative (empty alternative text):
+ * ✓ enabled/active/success, ! warning/failure, – disabled/retired/expired, ○ pending, ◆ built in, ⊘ locked.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.25rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  white-space: nowrap;
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+  border: 1px solid var(--vid-divider);
+  border-radius: 999px;
+}
+
+.badge::before {
+  font-weight: 700;
+}
+
+.badge:is(.ok, .active) {
+  color: var(--vid-ok);
+  background: var(--vid-ok-background);
+  border-color: color-mix(in srgb, var(--vid-ok) 35%, transparent);
+}
+
+.badge:is(.ok, .active)::before {
+  content: '✓' / '';
+}
+
+.badge.warn {
+  color: var(--vid-warn);
+  background: var(--vid-warn-background);
+  border-color: color-mix(in srgb, var(--vid-warn) 35%, transparent);
+}
+
+.badge.warn::before {
+  content: '!' / '';
+}
+
+.badge:is(.off, .retired) {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+  border-style: dashed;
+  border-color: var(--vid-border);
+}
+
+.badge:is(.off, .retired)::before {
+  content: '–' / '';
+}
+
+.badge.pending {
+  color: var(--vid-info);
+  background: var(--vid-info-background);
+  border-color: color-mix(in srgb, var(--vid-info) 35%, transparent);
+}
+
+.badge.pending::before {
+  content: '○' / '';
+}
+
+.badge.builtin {
+  color: var(--vid-link);
+  background: var(--vid-accent-tint);
+  border-color: currentColor;
+}
+
+.badge.builtin::before {
+  content: '◆' / '';
+  font-size: 0.625rem;
+}
+
+.badge.locked {
+  color: var(--vid-warn);
+  background: var(--vid-warn-background);
+  border-color: color-mix(in srgb, var(--vid-warn) 35%, transparent);
+}
+
+.badge.locked::before {
+  content: '⊘' / '';
+}

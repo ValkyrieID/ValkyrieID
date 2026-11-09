@@ -1,0 +1,50 @@
+/* Forced colors (Windows high contrast): system colors and visible markers. */
+
+@media (forced-colors: active) {
+  /* The wallpaper is decorative; content sits on the system canvas. */
+  body::before,
+  .landing::before {
+    display: none;
+  }
+
+  .theme-switch button[aria-pressed='true'] {
+    forced-color-adjust: none;
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .app-nav a[aria-current='page'] {
+    outline: 2px solid Highlight;
+  }
+
+  .nav-group + .nav-group,
+  .link-list,
+  .link-list li,
+  .activity,
+  .activity li,
+  .danger-item,
+  .state-empty,
+  table.data th,
+  table.data td,
+  table.data.stack tr {
+    border-color: CanvasText;
+  }
+
+  /* The expanded audit row and the active key keep a visible marker without the tint. */
+  table.audit tr.expanded,
+  table.audit tr.audit-detail {
+    outline: 1px solid CanvasText;
+  }
+
+  table.data tr.row-active {
+    box-shadow: inset 3px 0 0 CanvasText;
+  }
+
+  /* Decorative icons in their system color rather than the teal, which forced colors doesn't replace on SVG. */
+  .metric-icon,
+  .state-empty svg {
+    color: CanvasText;
+    background: Canvas;
+  }
+}

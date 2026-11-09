@@ -1,7 +1,7 @@
 import { Directive, ElementRef, afterEveryRender, inject } from '@angular/core';
 
 /**
- * Lets a `table.data` stack below 48rem: each row becomes a card and each cell a "label: value" line (styles.css).
+ * Lets a `table.data` stack below 48rem: each row becomes a card and each cell a "label: value" line (styles/stacked-tables.css).
  * Changing a table's `display` can drop its semantics in some browsers, so this sets the explicit ARIA table roles,
  * and copies each column header's text to the cells' `data-label` for the visual labels. A header with only visually
  * hidden text (e.g. "Actions") gives no visual label; a cell spanning every column (an expanded detail row) neither.

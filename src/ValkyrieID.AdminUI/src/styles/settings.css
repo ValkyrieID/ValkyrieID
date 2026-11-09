@@ -1,0 +1,85 @@
+/* Settings: setting fields and the section list. */
+
+.settings .setting {
+  margin-bottom: 1.5rem;
+}
+
+.settings .setting .hint p {
+  margin: 0.25rem 0 0;
+}
+
+.settings .setting .hint .badge {
+  margin-left: 0;
+}
+
+.settings .duration {
+  margin: 0;
+}
+
+.settings .duration .field:first-child {
+  flex: 1 1 8rem;
+}
+
+.settings .duration .field:last-child {
+  flex: 0 1 10rem;
+}
+
+/* Settings sections: a divided list of links with a chevron, like the account overview. */
+.link-list {
+  max-width: 48rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.link-list li {
+  border-bottom: 1px solid var(--vid-divider);
+}
+
+.link-list a {
+  position: relative;
+  display: block;
+  padding: 0.875rem 2.5rem 0.875rem 0.75rem;
+  color: var(--vid-text);
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+  transition: background-color 120ms ease;
+}
+
+/* Decorative chevron; empty alternative text keeps it out of the accessible name. */
+.link-list a::after {
+  content: '›' / '';
+  position: absolute;
+  top: 50%;
+  right: 0.875rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--vid-muted);
+  transform: translateY(-50%);
+}
+
+.link-list a:hover {
+  background: var(--vid-surface-hover);
+}
+
+.link-list-title {
+  display: block;
+  font-weight: 600;
+  color: var(--vid-link);
+}
+
+.link-list a:hover .link-list-title {
+  text-decoration: underline;
+}
+
+.link-list-text {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+}
+
+.link-list .badge {
+  margin: 0.375rem 0 0;
+}

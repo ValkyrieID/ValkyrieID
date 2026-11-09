@@ -1,0 +1,103 @@
+/* Buttons: at least 24x24 CSS px targets (WCAG 2.5.8); the same look as the account pages. */
+
+button,
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: var(--vid-primary-text);
+  background: var(--vid-primary);
+  border: 1px solid transparent;
+  border-radius: var(--vid-radius-sm);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+button:hover,
+a.button:hover {
+  background: var(--vid-primary-hover);
+}
+
+button.secondary,
+a.button.secondary {
+  color: var(--vid-text);
+  background: var(--vid-surface);
+  border-color: var(--vid-border);
+}
+
+button.secondary:hover,
+a.button.secondary:hover {
+  background: var(--vid-surface-hover);
+}
+
+button.danger {
+  color: var(--vid-error);
+  background: var(--vid-surface);
+  border-color: var(--vid-error);
+}
+
+button.danger:hover {
+  background: var(--vid-error-background);
+}
+
+button.link {
+  min-height: 1.5rem;
+  padding: 0 0.25rem;
+  color: var(--vid-link);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  font-weight: 400;
+}
+
+button.link:hover {
+  background: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.form .actions,
+form > .actions:last-child {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+/* A square icon-only button (copy, expand): 1.75rem, above the 24px minimum target (WCAG 2.5.8). */
+button.icon-button {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0;
+  color: var(--vid-text);
+  background: transparent;
+  border: 1px solid var(--vid-border);
+  border-radius: var(--vid-radius-sm);
+}
+
+button.icon-button:hover {
+  background: var(--vid-surface-hover);
+}
+
+button.icon-button svg {
+  display: block;
+}

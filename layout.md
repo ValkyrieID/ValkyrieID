@@ -33,7 +33,7 @@ Principles:
 - the admin UI uses the same wallpaper and glass as the account pages: a glass top bar, a grouped glass sidebar whose active item gets the teal tint and a marker, and the page on a glass panel (11c, 11d)
 - dark theme on neutral charcoal surfaces (not pure black, not navy)
 
-Shared tokens (CSS custom properties, `--vid-*`, defined in both `site.css` and the Angular `styles.css`):
+Shared tokens (CSS custom properties, `--vid-*`, defined in both `site.css` and the Angular `src/styles/tokens.css`):
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
@@ -63,7 +63,7 @@ Derived tokens (`--vid-link`, `--vid-focus`, `--vid-primary-hover`, `--vid-accen
 
 The logo (a teal winged shield with a gold edge) and both wallpapers live in `assets/branding`; the served copies are in `src/ValkyrieID.Server/wwwroot/img` and the admin UI's `public` folder.
 
-The server-rendered and Angular styles use the same token names and values, including the glass tokens and rules; keep `site.css` and `styles.css` in sync. Branding overrides keep working on the Razor pages: the branding colors apply to the light theme, and optional `Branding:Dark*` colors apply to the dark theme. Operators remain responsible for the contrast of custom colors. The admin UI is not branded: it doesn't load `/theme.css` and always uses the built-in colors and wallpapers.
+The server-rendered and Angular styles use the same token names and values, including the glass tokens and rules; keep `site.css` and the admin UI's `src/styles/tokens.css` and `src/styles/glass.css` in sync. Branding overrides keep working on the Razor pages: the branding colors apply to the light theme, and optional `Branding:Dark*` colors apply to the dark theme. Operators remain responsible for the contrast of custom colors. The admin UI is not branded: it doesn't load `/theme.css` and always uses the built-in colors and wallpapers.
 
 ## Theme behavior
 
@@ -168,6 +168,14 @@ Done.
 - **IDs:** `app-id` shows UUIDs as their first 8 characters (`admin:01a1c0fd…`) and other long values as their first 12, with the full value as visually hidden text and a copy button (Clipboard API only; hidden without it; announces "… copied."). Detail views show the value in full.
 - **Small screens:** below 48rem, tables marked `appStack` (`StackTableDirective`) become one card per row with the column name beside each value (`data-label`, generated content with empty alternative text). The directive sets explicit ARIA table roles, so the semantics survive `display: block`; the header row stays available to assistive technology.
 - **Measured** on the rendered pages (text hidden through the CSSOM, worst backdrop pixel under each text node and icon), light and dark at 1440×900, 1920×1080, 390 px, and 320 px: lowest text pair 4.76:1 (badges), icons 7.32:1, no horizontal overflow. No new surface needed an opaque fill.
+
+### Done: follow-ups
+
+- **Styles layout:** the admin UI's styles are split into one file per component or feature under `src/ValkyrieID.AdminUI/src/styles/` (`tokens`, `base`, `brand`, `glass`, `shell`, `landing`, `page-header`, `sections`, `forms`, `buttons`, `id`, `states`, `tables`, `audit`, `stacked-tables`, `lists`, `dashboard`, `badges`, `signing-keys`, `pager`, `settings`, `messages`, `danger-zone`, `dialogs`, `forced-colors`, `reduced-motion`). `src/styles.css` imports them in cascade order (tokens, base, shared, features, then forced colors and reduced motion last), and the build bundles them into one stylesheet served from `'self'`. They stay global, with no component `styleUrl` or nonce, because the admin CSP is `style-src 'self'`. The split didn't change the built stylesheet (byte-identical).
+- **Dead CSS removed:** `.details` (the old audit table) and `input[readonly]` (no admin template has a read-only input).
+- **Account danger zone heading:** `site.css` uses the admin UI's glass-adjusted red (`color-mix(in srgb, var(--vid-error) 75%, var(--vid-text))`); plain red measured 4.07:1 in dark over the wallpaper, now at least 4.98:1.
+- **Active signing key on small screens:** the stacked row is indented past its green marker bar, so the column labels no longer sit on it (measured 1.05:1 before).
+- **Contrast script:** `npm run measure-contrast` in `tests/ValkyrieID.A11yTests` repeats the measurement above on the admin and account pages (see `docs/accessibility`).
 
 ## Phase 11e: Responsive polish and verification
 
