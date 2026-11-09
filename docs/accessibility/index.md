@@ -30,6 +30,8 @@ The admin UI adds the following, since it changes pages without reloading them:
 - Request errors are shown in a summary that gets the focus. Confirmations ("Saved.") are announced through the live region.
 - Confirmations of destructive actions are native modal `<dialog>`s: the focus starts on **Cancel**, stays inside the dialog, `Esc` closes it, and the focus returns to the button that opened it.
 - Targets are at least 24×24 CSS px, or spaced so that a 24 px circle around each doesn't overlap another (2.5.8).
+- The navigation is grouped (Identity, Applications, System); each group is a list named by its visible label, so screen readers announce the group, and every page is still a plain link. On narrow screens every link stays visible, with no menu button to open.
+- The admin UI uses the same wallpaper and see-through glass as the account pages, always with the built-in colors and wallpapers (it isn't branded). Measured on the rendered admin pages (top bar, navigation, page content with tables and forms, and dashboard tiles) in light and dark at 1440×900, 1920×1080, and 390 px, at the least favorable point (light / dark): text 12.8:1 / 8.5:1, muted text and table headers 8.0:1 / 5.5:1, links 5.5:1 / 5.5:1, control borders 6.5:1 / 4.3:1, focus outline 4.0:1 / 5.5:1, input text 17.0:1 / 14.5:1. Dialogs are opaque.
 
 ## Branding
 

@@ -1,36 +1,51 @@
 @switch (auth.status()) {
   @case ('signed-in') {
     <a class="skip-link" href="#main" (click)="skipToContent($event)">Skip to content</a>
-    <header class="topbar">
-      <a class="brand" routerLink="/">
-        <img src="android-chrome-192x192.png" alt="" width="40" height="40" />
-        <span>ValkyrieID Admin</span>
+    <header class="app-bar">
+      <a class="app-home" routerLink="/">
+        <span class="brand">
+          <!-- Decorative: the product name next to it is the accessible name (WCAG 1.1.1). -->
+          <img src="android-chrome-192x192.png" alt="" width="32" height="32" />
+          <span class="product-name"
+            ><span class="visually-hidden">ValkyrieID</span
+            ><span aria-hidden="true">Valkyrie<span class="product-name-suffix">id</span></span>
+            <span class="product-area">Admin</span></span
+          >
+        </span>
       </a>
-      <div class="topbar-actions">
+      <div class="app-bar-end">
         <app-theme-switch />
-        <div class="account">
-          <span>{{ auth.displayName() }}</span>
-          <button type="button" class="secondary" (click)="signOut()">Sign out</button>
-        </div>
+        <span class="app-user"
+          ><span class="visually-hidden">Signed in as </span>{{ auth.displayName() }}</span
+        >
+        <button type="button" class="secondary app-signout" (click)="signOut()">Sign out</button>
       </div>
     </header>
-    <div class="layout">
-      <nav class="sidebar" aria-label="Main">
-        <ul>
-          @for (item of nav; track item.path) {
-            <li>
-              <a
-                [routerLink]="item.path"
-                routerLinkActive="active"
-                [routerLinkActiveOptions]="{ exact: item.exact }"
-                ariaCurrentWhenActive="page"
-                >{{ item.label }}</a
-              >
-            </li>
-          }
-        </ul>
+    <div class="app-body">
+      <!-- Grouped links; each list is named by its group label, so the groups are announced. -->
+      <nav class="app-nav" aria-label="Main">
+        @for (group of nav; track group.id) {
+          <div class="nav-group">
+            @if (group.label) {
+              <p class="nav-label" [id]="'nav-' + group.id">{{ group.label }}</p>
+            }
+            <ul [attr.aria-labelledby]="group.label ? 'nav-' + group.id : null">
+              @for (item of group.items; track item.path) {
+                <li>
+                  <a
+                    [routerLink]="item.path"
+                    routerLinkActive="active"
+                    [routerLinkActiveOptions]="{ exact: item.exact }"
+                    ariaCurrentWhenActive="page"
+                    >{{ item.label }}</a
+                  >
+                </li>
+              }
+            </ul>
+          </div>
+        }
       </nav>
-      <main id="main" #main tabindex="-1">
+      <main id="main" class="app-main" #main tabindex="-1">
         @if (auth.forbidden()) {
           <h1>Not authorized</h1>
           <p>

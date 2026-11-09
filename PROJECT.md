@@ -214,6 +214,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - runtime settings and branding (§10)
 - Includes an audit log viewer.
 - Light, dark, and system themes with a theme control in the top bar, sharing the login pages' theme cookie (§8.1). The page starts dark and switches to light once the app has read the preference, so it never flashes light before turning dark.
+- Same look as the account pages: the built-in wallpaper with frosted-glass surfaces (top bar, grouped sidebar navigation, page content), see [layout.md](layout.md). Not branded: the branding settings (§8.1) apply to the sign-in and account pages only.
 - Talks exclusively to the **Admin REST API**.
 - Served under `/admin` with its own CSP (`script-src 'self'`, `connect-src 'self'`, no inline scripts or styles, no framing). Tokens are kept in memory only; with no refresh tokens, it renews them by a top-level `prompt=none` redirect through the SSO session. Uses `oidc-client-ts`, plus the RFC 9207 `iss` check and ID token claim checks it lacks.
 - `AdminUI:Enabled=false` turns it off (`/admin` answers 404, its client is disabled), for installations managed with the CLI only.
@@ -494,10 +495,12 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
       - wallpaper with frosted-glass surfaces on every Razor page: a brand lockup beside a glass card for sign-in, 2FA, recovery, password, email, logout, setup, and protocol error pages; app-style layout for the account pages
       - `Branding:DarkBackgroundImage` for a separate dark-theme wallpaper
       - CSS-only entry animation and view transitions, off with reduced motion
-    - **11c: Angular admin shell and navigation**
+    - **11c: Angular admin shell and navigation** *(done 2026-11-09)*
       - top bar, branding, sidebar, theme control, responsive navigation, and preserved accessibility behavior
-    - **11d: Angular page content and data presentation**
-      - dashboard, lists, forms, settings, status patterns, responsive tables, and audit-log details
+      - the account pages' wallpaper and frosted glass for the top bar, sidebar, and content; the "Valkyrie id" wordmark; navigation grouped into labelled lists; the admin UI stays unbranded
+    - **11d: Angular page content and data presentation** *(glass look done 2026-11-09; the rest open)*
+      - done: page content on glass panels with the account pages' patterns for headers, divided lists, forms, buttons, badges, and notices; dialogs and menus stay opaque; tables stay on glass (measured)
+      - open: dashboard, lists, forms, settings, status patterns, responsive tables, and audit-log details
     - **11e: responsive polish and verification**
       - desktop/mobile review, theme review, accessibility checks, regression tests, and documentation
 12. **Protocol additions** *(deferred: from phase 10; after v0.1.0)*:

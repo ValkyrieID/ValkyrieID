@@ -6,6 +6,8 @@
  * layout.md). Light is the default; dark applies with data-theme="dark", or with no explicit choice when the system
  * prefers dark. index.html starts with data-theme="dark" so the page never flashes light before turning dark;
  * ThemeService applies the stored choice at startup. Text pairs reach 4.5:1, controls and focus 3:1.
+ * The teal primary and the gold accent come from the logo; gold is decorative only and never carries text.
+ * The admin UI doesn't load /theme.css: it always uses the built-in colors and wallpapers (layout.md, Phase 11c).
  */
 :root {
   color-scheme: light;
@@ -36,6 +38,21 @@
   --vid-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 6%);
   --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
   --vid-backdrop: rgb(9 9 11 / 50%);
+  /* Root-relative: the admin UI is always served at /admin/ (index.html base href), from public/img. */
+  --vid-background-image: url('/admin/img/wall-light.png');
+  --vid-glass: color-mix(in srgb, var(--vid-surface) 50%, transparent);
+  --vid-glass-border: rgb(255 255 255 / 60%);
+  --vid-glass-blur: 12px;
+  /*
+   * On see-through glass the backdrop varies, so muted text, control borders and links move toward the text color
+   * there to keep 4.5:1 and 3:1 over the wallpaper.
+   */
+  --vid-glass-muted: color-mix(in srgb, var(--vid-muted) 60%, var(--vid-text));
+  --vid-glass-control-border: color-mix(in srgb, var(--vid-border) 55%, var(--vid-text));
+  --vid-glass-link: color-mix(in srgb, var(--vid-primary) 75%, var(--vid-text));
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 85%, transparent);
+  --vid-wordmark: #1f2937;
+  --vid-wordmark-muted: #4b5059;
   --vid-primary-hover: color-mix(in srgb, var(--vid-primary) 85%, #000000);
   --vid-link: var(--vid-primary);
   --vid-focus: var(--vid-primary);
@@ -65,6 +82,17 @@
     --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
     --vid-backdrop: rgb(0 0 0 / 70%);
     --vid-accent: #d4a84b;
+    --vid-background-image: url('/admin/img/wall-dark.png');
+    --vid-glass: color-mix(
+      in srgb,
+      color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+      transparent
+    );
+    --vid-glass-border: rgb(255 255 255 / 12%);
+    --vid-glass-link: var(--vid-link);
+    --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+    --vid-wordmark: #e8eaed;
+    --vid-wordmark-muted: #a8adb5;
     --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
     --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
@@ -93,6 +121,17 @@
   --vid-shadow-raised: 0 12px 32px rgb(0 0 0 / 50%);
   --vid-backdrop: rgb(0 0 0 / 70%);
   --vid-accent: #d4a84b;
+  --vid-background-image: url('/admin/img/wall-dark.png');
+  --vid-glass: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--vid-surface), #6b8a8c 35%) 45%,
+    transparent
+  );
+  --vid-glass-border: rgb(255 255 255 / 12%);
+  --vid-glass-link: var(--vid-link);
+  --vid-glass-input: color-mix(in srgb, var(--vid-surface) 80%, transparent);
+  --vid-wordmark: #e8eaed;
+  --vid-wordmark-muted: #a8adb5;
   --vid-link: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-focus: color-mix(in srgb, var(--vid-primary) 40%, #ffffff);
   --vid-accent-tint: color-mix(in srgb, var(--vid-primary) 22%, transparent);
@@ -109,12 +148,14 @@ html {
   font-size: 100%;
   line-height: 1.5;
   color: var(--vid-text);
-  background: var(--vid-background);
+  background-color: var(--vid-background);
   -webkit-font-smoothing: antialiased;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 ::selection {
@@ -122,7 +163,7 @@ body {
 }
 
 h1 {
-  font-size: 1.625rem;
+  font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
@@ -132,7 +173,6 @@ h1 {
 h2 {
   font-size: 1.125rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
   margin: 2rem 0 0.75rem;
 }
 
@@ -164,177 +204,44 @@ code {
   border: 0;
 }
 
-.skip-link {
-  position: absolute;
-  left: 1rem;
-  top: -4rem;
-  z-index: 10;
-  padding: 0.5rem 1rem;
-  color: var(--vid-primary-text);
-  background: var(--vid-primary);
-  border-radius: var(--vid-radius-sm);
-}
+/* Brand: logo and the "Valkyrie id" wordmark, as on the account pages. */
 
-.skip-link:focus {
-  top: 0.5rem;
-}
-
-/* Layout (the full shell redesign is phase 11c) */
-
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 3.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--vid-surface);
-  border-bottom: 1px solid var(--vid-divider);
-}
-
-.topbar .brand {
+.brand {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  color: var(--vid-text);
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
-  text-decoration: none;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
-.topbar .brand img {
-  width: 2rem;
+.brand img {
+  display: block;
+  width: auto;
   height: 2rem;
 }
 
-.topbar-actions,
-.topbar .account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.topbar .account {
-  color: var(--vid-muted);
-  font-size: 0.875rem;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 14rem minmax(0, 1fr);
-  min-height: calc(100vh - 3.5rem);
-}
-
-.sidebar {
-  padding: 0.75rem 0.5rem;
-  background: var(--vid-surface);
-  border-right: 1px solid var(--vid-divider);
-}
-
-.sidebar ul {
-  display: grid;
-  gap: 0.125rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sidebar a {
-  display: block;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.9375rem;
-  color: var(--vid-muted);
-  text-decoration: none;
-  border-radius: var(--vid-radius-sm);
-}
-
-.sidebar a:hover {
-  color: var(--vid-text);
-  background: var(--vid-surface-hover);
-}
-
-/* Weight and the marker show the current page, not color alone (WCAG 1.4.1). */
-.sidebar a.active {
-  color: var(--vid-text);
+.product-name {
   font-weight: 600;
-  background: var(--vid-accent-tint);
-  box-shadow: inset 3px 0 0 var(--vid-primary);
+  font-size: 1rem;
+  letter-spacing: -0.01em;
 }
 
-main {
-  padding: 1.5rem 2rem 3rem;
-  max-width: 80rem;
+/* The wordmark is visual only (aria-hidden); the small one uses --vid-muted for "id" (4.5:1), like site.css. */
+.product-name > [aria-hidden] {
+  color: var(--vid-wordmark);
 }
 
-main:focus {
-  outline: none;
-}
-
-@media (max-width: 48rem) {
-  /* minmax(0, …): wide content (tables, code) scrolls or wraps inside its container instead of widening the page. */
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--vid-divider);
-  }
-
-  .sidebar ul {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  main {
-    padding: 1rem;
-  }
-}
-
-.landing {
-  display: grid;
-  justify-items: center;
-  gap: 1rem;
-  max-width: 32rem;
-  margin: 10vh auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-.landing h1 {
-  margin: 0;
-}
-
-.page-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.page-header h1 {
-  margin: 0;
-}
-
-section {
-  margin-top: 1.5rem;
-}
-
-.muted,
-.hint,
-.optional {
-  color: var(--vid-muted);
+.product-name-suffix {
+  margin-left: 0.18em;
   font-weight: 400;
+  color: var(--vid-muted);
 }
 
-.hint {
-  margin: 0.375rem 0 0;
-  font-size: 0.875rem;
+.product-area {
+  margin-left: 0.375rem;
+  padding-left: 0.5rem;
+  font-weight: 500;
+  color: var(--vid-text);
+  border-left: 1px solid var(--vid-divider);
 }
 
 /* Theme switch: a group of toggle buttons; the pressed one is the current choice. */
@@ -343,17 +250,15 @@ section {
   display: inline-flex;
   gap: 0.125rem;
   padding: 0.125rem;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
   border-radius: var(--vid-radius);
 }
 
 .theme-switch button {
   display: inline-grid;
   place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  min-height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
   padding: 0;
   color: var(--vid-muted);
   background: transparent;
@@ -373,6 +278,336 @@ section {
   font-weight: 600;
   background: var(--vid-surface-hover);
   border-color: var(--vid-border);
+}
+
+/*
+ * Wallpaper and glass (layout.md, Phases 11b and 11c): the same see-through frosted glass as the account pages.
+ * On glass, muted text, control borders and links use the --vid-glass-* variants, and inputs a mostly opaque fill,
+ * so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper. Without backdrop-filter support the glass is
+ * the plain surface. Dialogs stay opaque (--vid-surface-raised) for readability over the page.
+ */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    var(--vid-background-image) center / cover no-repeat,
+    var(--vid-background);
+}
+
+.app-bar,
+.app-nav,
+.app-main,
+.landing,
+.theme-switch {
+  --vid-muted: var(--vid-glass-muted);
+  --vid-border: var(--vid-glass-control-border);
+  --vid-link: var(--vid-glass-link);
+  background: var(--vid-glass);
+  border: 1px solid var(--vid-glass-border);
+  -webkit-backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--vid-glass-blur)) saturate(1.3);
+}
+
+:is(.app-main, .landing)
+  :is(input:not([type='checkbox'], [type='radio'], [readonly]), select, textarea) {
+  background: var(--vid-glass-input);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html :is(.app-bar, .app-nav, .app-main, .landing, .theme-switch),
+  html
+    :is(.app-main, .landing)
+    :is(input:not([type='checkbox'], [type='radio'], [readonly]), select, textarea) {
+    background: var(--vid-surface);
+  }
+}
+
+/* Shell: a glass top bar, grouped glass navigation, and the page on one glass panel, like the account layout. */
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  color: var(--vid-text);
+  background: var(--vid-surface-raised);
+  border: 2px solid var(--vid-focus);
+  border-radius: var(--vid-radius-sm);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-width: 0 0 1px;
+}
+
+.app-home {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+}
+
+.app-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-user {
+  font-size: 0.875rem;
+  color: var(--vid-muted);
+  overflow-wrap: anywhere;
+}
+
+.app-bar-end button.app-signout {
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+}
+
+.app-body {
+  flex: 1;
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  width: 100%;
+  max-width: 84rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/*
+ * On small screens each group is one row, its label beside its links, so every route stays visible without a menu
+ * button; from 48rem the navigation is a sticky sidebar.
+ */
+.app-nav {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border-radius: var(--vid-radius-lg);
+}
+
+.nav-group {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+}
+
+.nav-group:first-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.nav-group + .nav-group {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+.nav-label {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vid-muted);
+}
+
+.app-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav a {
+  display: block;
+  padding: 0.375rem 0.75rem;
+  color: var(--vid-muted);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--vid-radius-sm);
+}
+
+.app-nav a:hover {
+  color: var(--vid-text);
+  background: var(--vid-surface-hover);
+}
+
+/* The current page is marked by weight and an inset bar as well as color (WCAG 1.4.1). */
+.app-nav a[aria-current='page'] {
+  color: var(--vid-link);
+  font-weight: 600;
+  background: var(--vid-accent-tint);
+  box-shadow: inset 0 -2px 0 var(--vid-primary);
+}
+
+.app-main {
+  min-width: 0;
+  padding: 1.5rem 1.25rem;
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+@media (min-width: 48rem) {
+  .app-bar {
+    padding: 0.75rem 1.5rem;
+  }
+
+  .app-body {
+    grid-template-columns: 13rem minmax(0, 1fr);
+    gap: 2.5rem;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .app-nav {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+  }
+
+  .nav-group,
+  .nav-group:first-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav-group + .nav-group {
+    margin-top: 0.25rem;
+    padding-top: 0.5rem;
+  }
+
+  .app-nav ul {
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .app-main {
+    padding: 2rem;
+  }
+
+  .app-nav a[aria-current='page'] {
+    box-shadow: inset 3px 0 0 var(--vid-primary);
+  }
+}
+
+/* Signed out, sign-in error, and signing in: the logo and a glass card on the wallpaper. */
+
+.landing {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: calc(100% - 2rem);
+  max-width: 28rem;
+  margin: 12vh auto 2rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background:
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--vid-primary) 16%, transparent),
+      transparent 60%
+    ),
+    var(--vid-glass);
+  border-radius: var(--vid-radius-lg);
+  box-shadow: var(--vid-shadow-raised);
+}
+
+/* Decorative teal-to-gold highlight along the top edge of the card. */
+.landing::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--vid-primary),
+    var(--vid-accent),
+    transparent
+  );
+  opacity: 0.8;
+}
+
+/* A teal and gold glow around the logo, as in the logo itself. */
+.landing img {
+  width: 6rem;
+  height: auto;
+  filter: drop-shadow(0 0 1.25rem color-mix(in srgb, var(--vid-primary) 45%, transparent))
+    drop-shadow(0 0 2.5rem color-mix(in srgb, var(--vid-accent) 30%, transparent));
+}
+
+.landing h1,
+.landing p {
+  margin: 0;
+}
+
+.landing .alert {
+  width: 100%;
+  text-align: left;
+}
+
+/* Page headers: title and the main action on one row; detail pages add a lead line. */
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.app-main > :first-child,
+.app-main > :first-child > :first-child {
+  margin-top: 0;
+}
+
+section {
+  margin-top: 2rem;
+}
+
+.app-main section > h2:first-child {
+  margin-top: 0;
+}
+
+.muted,
+.hint,
+.optional {
+  color: var(--vid-muted);
+  font-weight: 400;
+}
+
+.hint {
+  margin: 0.375rem 0 0;
+  font-size: 0.875rem;
 }
 
 /* Forms */
@@ -397,7 +632,11 @@ textarea {
   border-radius: var(--vid-radius-sm);
 }
 
-input[aria-invalid='true'] {
+input[readonly] {
+  background: var(--vid-surface-hover);
+}
+
+:is(input, select, textarea)[aria-invalid='true'] {
   border-color: var(--vid-error);
   border-width: 2px;
 }
@@ -439,7 +678,7 @@ fieldset {
 }
 
 fieldset.group {
-  margin: 0 0 1rem;
+  margin: 0 0 1.5rem;
 }
 
 legend {
@@ -491,7 +730,7 @@ legend {
   grid-column: 1 / -1;
 }
 
-/* Buttons: at least 24x24 CSS px targets (WCAG 2.5.8). */
+/* Buttons: at least 24x24 CSS px targets (WCAG 2.5.8); the same look as the account pages. */
 
 button,
 a.button {
@@ -501,46 +740,45 @@ a.button {
   min-height: 2.5rem;
   padding: 0.5rem 1rem;
   font: inherit;
-  font-size: 0.9375rem;
   font-weight: 600;
+  text-align: center;
+  text-decoration: none;
   color: var(--vid-primary-text);
   background: var(--vid-primary);
-  border: 1px solid var(--vid-primary);
+  border: 1px solid transparent;
   border-radius: var(--vid-radius-sm);
   cursor: pointer;
-  text-decoration: none;
   transition:
     background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
+    color 120ms ease,
+    border-color 120ms ease;
 }
 
 button:hover,
 a.button:hover {
   background: var(--vid-primary-hover);
-  border-color: var(--vid-primary-hover);
 }
 
-button.secondary {
+button.secondary,
+a.button.secondary {
   color: var(--vid-text);
   background: var(--vid-surface);
   border-color: var(--vid-border);
 }
 
-button.secondary:hover {
+button.secondary:hover,
+a.button.secondary:hover {
   background: var(--vid-surface-hover);
-  border-color: var(--vid-border);
 }
 
 button.danger {
-  color: #ffffff;
-  background: #b91c1c;
-  border-color: #b91c1c;
+  color: var(--vid-error);
+  background: var(--vid-surface);
+  border-color: var(--vid-error);
 }
 
 button.danger:hover {
-  background: #991b1b;
-  border-color: #991b1b;
+  background: var(--vid-error-background);
 }
 
 button.link {
@@ -553,6 +791,10 @@ button.link {
   font-weight: 400;
 }
 
+button.link:hover {
+  background: none;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -561,19 +803,22 @@ button:disabled {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
-/* Tables and lists */
+.form > .actions,
+form > .actions:last-child {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--vid-divider);
+}
+
+/* Tables and lists: divided rows on the glass, not boxed again (as the account lists). */
 
 .table-wrap {
   /* Contains visually hidden (absolutely positioned) header text, so it scrolls with the table. */
   position: relative;
   overflow-x: auto;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
-  border-radius: var(--vid-radius);
 }
 
 table.data {
@@ -584,21 +829,21 @@ table.data {
 
 table.data th,
 table.data td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 0.75rem;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--vid-divider);
 }
 
-table.data tbody tr:last-child td {
-  border-bottom: 0;
-}
-
 table.data th {
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--vid-muted);
-  background: var(--vid-surface-hover);
+}
+
+table.data tbody tr:hover {
+  background: color-mix(in srgb, var(--vid-surface-hover) 50%, transparent);
 }
 
 table.data td.wrap {
@@ -629,16 +874,27 @@ table.data input {
 
 .facts {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1.5rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0;
+  max-width: 48rem;
+  margin: 0;
+}
+
+.facts dt,
+.facts dd {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--vid-divider);
 }
 
 .facts dt {
-  font-weight: 600;
+  padding-right: 1.5rem;
+  color: var(--vid-muted);
+  font-weight: 500;
 }
 
 .facts dd {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .chips {
@@ -657,13 +913,16 @@ table.data input {
   font-size: 0.875rem;
   background: var(--vid-surface);
   border: 1px solid var(--vid-divider);
-  border-radius: 1rem;
+  border-radius: 999px;
 }
+
+/* Dashboard: count tiles as divided glass-on-glass links. */
 
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 1rem;
+  margin: 0 0 1rem;
   padding: 0;
   list-style: none;
 }
@@ -676,13 +935,14 @@ table.data input {
   padding: 1rem 1.25rem;
   color: var(--vid-text);
   text-decoration: none;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
+  background: var(--vid-glass-input);
+  border: 1px solid var(--vid-glass-border);
   border-radius: var(--vid-radius);
-  box-shadow: var(--vid-shadow);
+  transition: background-color 120ms ease;
 }
 
 .cards a:hover {
+  background: var(--vid-surface);
   border-color: var(--vid-border);
 }
 
@@ -690,6 +950,7 @@ table.data input {
   font-size: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--vid-link);
   font-variant-numeric: tabular-nums;
 }
 
@@ -698,31 +959,31 @@ table.data input {
   margin-left: 0.25rem;
   padding: 0 0.5rem;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.5rem;
   color: var(--vid-text);
   background: var(--vid-surface-hover);
   border: 1px solid var(--vid-divider);
-  border-radius: 1rem;
+  border-radius: 999px;
 }
 
 .badge.ok {
   color: var(--vid-ok);
   background: var(--vid-ok-background);
-  border-color: color-mix(in srgb, var(--vid-ok) 30%, transparent);
+  border-color: color-mix(in srgb, var(--vid-ok) 35%, transparent);
 }
 
 .badge.warn {
   color: var(--vid-warn);
   background: var(--vid-warn-background);
-  border-color: color-mix(in srgb, var(--vid-warn) 30%, transparent);
+  border-color: color-mix(in srgb, var(--vid-warn) 35%, transparent);
 }
 
 .pager {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin: 1rem 0;
+  margin: 1rem 0 0;
 }
 
 /* Settings */
@@ -751,18 +1012,18 @@ table.data input {
   flex: 0 1 10rem;
 }
 
+/* Settings sections: a divided list, like the account overview. */
 .settings-list {
   max-width: 48rem;
+  margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--vid-divider);
 }
 
 .settings-list li {
-  margin-bottom: 0.75rem;
-  padding: 0.875rem 1rem;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
-  border-radius: var(--vid-radius);
+  padding: 0.875rem 0.75rem;
+  border-bottom: 1px solid var(--vid-divider);
 }
 
 .settings-list a {
@@ -771,18 +1032,58 @@ table.data input {
 
 .settings-list p {
   margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--vid-muted);
 }
 
-/* Messages */
+/* Messages: an icon plus text, never color alone (WCAG 1.4.1). The icons have empty alternative text. */
+
+.alert,
+.notice {
+  position: relative;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  border-radius: var(--vid-radius-sm);
+}
 
 .alert {
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
   color: var(--vid-error);
   background: var(--vid-error-background);
   border: 1px solid color-mix(in srgb, var(--vid-error) 35%, transparent);
   border-left: 4px solid var(--vid-error);
-  border-radius: var(--vid-radius-sm);
+}
+
+.notice {
+  color: var(--vid-text);
+  background: var(--vid-info-background);
+  border: 1px solid color-mix(in srgb, var(--vid-info) 35%, transparent);
+  border-left: 4px solid var(--vid-info);
+}
+
+.alert::before,
+.notice::before {
+  position: absolute;
+  top: 0.875rem;
+  left: 0.875rem;
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--vid-surface);
+}
+
+.alert::before {
+  content: '!' / '';
+  background: var(--vid-error);
+}
+
+.notice::before {
+  content: 'i' / '';
+  font-family: Georgia, serif;
+  background: var(--vid-info);
 }
 
 .alert-title {
@@ -795,13 +1096,13 @@ table.data input {
   margin: 0.25rem 0 0;
 }
 
-.notice {
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  background: var(--vid-surface);
-  border: 1px solid var(--vid-divider);
-  border-left: 4px solid var(--vid-primary);
-  border-radius: var(--vid-radius-sm);
+.alert > :first-child,
+.notice > :first-child {
+  margin-top: 0;
+}
+
+.notice > :last-child {
+  margin-bottom: 0;
 }
 
 .notice h2 {
@@ -818,11 +1119,18 @@ table.data input {
 }
 
 .danger-zone {
-  margin-top: 3rem;
-  padding-top: 1rem;
+  max-width: 48rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--vid-divider);
 }
 
+.danger-zone > h2:first-child {
+  margin-top: 0;
+  color: var(--vid-error);
+}
+
+/* Dialogs stay opaque over the glass for readability (layout.md, Phase 11d). */
 dialog {
   max-width: 32rem;
   padding: 1.5rem;
@@ -846,16 +1154,36 @@ app-confirm-button {
 }
 
 @media (forced-colors: active) {
-  .theme-switch button[aria-pressed='true'],
-  .sidebar a.active {
+  /* The wallpaper is decorative; content sits on the system canvas. */
+  body::before,
+  .landing::before {
+    display: none;
+  }
+
+  .theme-switch button[aria-pressed='true'] {
     forced-color-adjust: none;
     color: HighlightText;
     background: Highlight;
+    border-color: Highlight;
+  }
+
+  .app-nav a[aria-current='page'] {
+    outline: 2px solid Highlight;
+  }
+
+  .nav-group + .nav-group,
+  .settings-list,
+  .settings-list li,
+  table.data th,
+  table.data td {
+    border-color: CanvasText;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     transition: none !important;
     animation: none !important;
   }

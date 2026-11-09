@@ -37,9 +37,20 @@ describe('App shell', () => {
   it('signs out', () => {
     const { root, auth } = render('signed-in');
 
-    (root.querySelector('.account button') as HTMLButtonElement).click();
+    (root.querySelector('button.app-signout') as HTMLButtonElement).click();
 
     expect(auth.signOut).toHaveBeenCalled();
+  });
+
+  it('groups the navigation into named lists', () => {
+    const { root } = render('signed-in');
+
+    const lists = [...root.querySelectorAll('nav[aria-label="Main"] ul[aria-labelledby]')];
+    const names = lists.map(
+      (list) => root.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent,
+    );
+    expect(names).toEqual(['Identity', 'Applications', 'System']);
+    expect(root.querySelectorAll('nav[aria-label="Main"] a')).toHaveLength(9);
   });
 
   it('explains when the user is not an admin', () => {

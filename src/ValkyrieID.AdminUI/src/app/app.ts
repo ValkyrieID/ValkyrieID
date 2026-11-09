@@ -28,16 +28,38 @@ export class App {
   private readonly main = viewChild<ElementRef<HTMLElement>>('main');
 
   protected readonly nav = [
-    { path: '/', label: 'Dashboard', exact: true },
-    { path: '/users', label: 'Users', exact: false },
-    { path: '/roles', label: 'Roles', exact: false },
-    { path: '/groups', label: 'Groups', exact: false },
-    { path: '/clients', label: 'Clients', exact: false },
-    { path: '/resources', label: 'API resources', exact: false },
-    { path: '/signing-keys', label: 'Signing keys', exact: false },
-    { path: '/audit', label: 'Audit log', exact: false },
-    { path: '/settings', label: 'Settings', exact: false },
-  ];
+    {
+      id: 'overview',
+      label: null,
+      items: [{ path: '/', label: 'Dashboard', exact: true }],
+    },
+    {
+      id: 'identity',
+      label: 'Identity',
+      items: [
+        { path: '/users', label: 'Users', exact: false },
+        { path: '/roles', label: 'Roles', exact: false },
+        { path: '/groups', label: 'Groups', exact: false },
+      ],
+    },
+    {
+      id: 'applications',
+      label: 'Applications',
+      items: [
+        { path: '/clients', label: 'Clients', exact: false },
+        { path: '/resources', label: 'API resources', exact: false },
+      ],
+    },
+    {
+      id: 'system',
+      label: 'System',
+      items: [
+        { path: '/signing-keys', label: 'Signing keys', exact: false },
+        { path: '/audit', label: 'Audit log', exact: false },
+        { path: '/settings', label: 'Settings', exact: false },
+      ],
+    },
+  ] as const;
 
   constructor() {
     // After client-side navigation, move focus to the new page and announce its title, like a page load would.

@@ -30,7 +30,7 @@ Principles:
 - small radii (6 px for controls, 8 px for cards), a 4/8 px spacing grid, the system font stack, and a monospace stack for identifiers and keys
 - a compact type scale with clear weight steps; muted text for secondary information
 - every control (input, select, button) shares one height, radius, and border; primary, secondary, subtle, and danger buttons have distinct roles, and hover, active, disabled, and focus states are visible in both themes
-- the admin sidebar uses the page surface with a thin divider (no colored bar), implemented in 11c
+- the admin UI uses the same wallpaper and glass as the account pages: a glass top bar, a grouped glass sidebar whose active item gets the teal tint and a marker, and the page on a glass panel (11c, 11d)
 - dark theme on neutral charcoal surfaces (not pure black, not navy)
 
 Shared tokens (CSS custom properties, `--vid-*`, defined in both `site.css` and the Angular `styles.css`):
@@ -51,8 +51,8 @@ Shared tokens (CSS custom properties, `--vid-*`, defined in both `site.css` and 
 | `--vid-focus` | `--vid-primary` | primary mixed with white | Focus rings |
 | `--vid-accent-tint` | 10 % primary | 22 % primary | Active navigation, selection |
 | `--vid-accent` | `#b8862f` | `#d4a84b` | Gold, decorative only (logo glow, card edge); never text or controls |
-| `--vid-background-image` | `img/wall-light.png` | `img/wall-dark.png` | Razor page wallpaper; overridden by `Branding:BackgroundImage` / `Branding:DarkBackgroundImage` |
-| `--vid-glass` | 50 % surface | 45 % slate-teal (surface mixed with `#6b8a8c`) | See-through frosted glass on the wallpaper (Razor pages), with a 12 px backdrop blur; plain surface without `backdrop-filter` |
+| `--vid-background-image` | `img/wall-light.png` | `img/wall-dark.png` | Page wallpaper (Razor pages and admin UI); on the Razor pages overridden by `Branding:BackgroundImage` / `Branding:DarkBackgroundImage` |
+| `--vid-glass` | 50 % surface | 45 % slate-teal (surface mixed with `#6b8a8c`) | See-through frosted glass on the wallpaper (Razor pages and admin UI), with a 12 px backdrop blur; plain surface without `backdrop-filter` |
 | `--vid-glass-border` | 60 % white | 12 % white | Glass surface edge |
 | `--vid-glass-muted`, `--vid-glass-control-border`, `--vid-glass-link` | muted, border, and primary moved toward the text color | same, link unchanged | Replace `--vid-muted`, `--vid-border`, and `--vid-link` on glass, so they keep 4.5:1 and 3:1 over the wallpaper |
 | `--vid-glass-input` | 85 % surface | 80 % surface | Input fill on glass (mostly opaque) |
@@ -63,7 +63,7 @@ Derived tokens (`--vid-link`, `--vid-focus`, `--vid-primary-hover`, `--vid-accen
 
 The logo (a teal winged shield with a gold edge) and both wallpapers live in `assets/branding`; the served copies are in `src/ValkyrieID.Server/wwwroot/img` and the admin UI's `public` folder.
 
-The server-rendered and Angular styles use the same token names. Branding overrides keep working: the branding colors apply to the light theme, and optional `Branding:Dark*` colors apply to the dark theme. Operators remain responsible for the contrast of custom colors.
+The server-rendered and Angular styles use the same token names and values, including the glass tokens and rules; keep `site.css` and `styles.css` in sync. Branding overrides keep working on the Razor pages: the branding colors apply to the light theme, and optional `Branding:Dark*` colors apply to the dark theme. Operators remain responsible for the contrast of custom colors. The admin UI is not branded: it doesn't load `/theme.css` and always uses the built-in colors and wallpapers.
 
 ## Theme behavior
 
@@ -99,7 +99,7 @@ Every page sits on a full-page wallpaper, with content on frosted-glass surfaces
 ### Wallpaper and glass
 
 - **Wallpaper:** fills the page behind every Razor page (cover, centered, fixed). The light theme shows `Branding:BackgroundImage`, or the built-in `wall-light.png`; the dark theme shows `Branding:DarkBackgroundImage`, then `Branding:BackgroundImage`, then the built-in `wall-dark.png`. It is decorative (a CSS background, no markup, no text in the image) and hidden in forced-colors mode.
-- **Glass:** the sign-in card, the account top bar, navigation, and content, and the theme switch are see-through frosted glass (`--vid-glass` with `backdrop-filter: blur()` and a thin `--vid-glass-border`); the wallpaper's lines and nodes show softly through it. The sign-in card adds a faint teal glow in its top-left corner. On glass, muted text, control borders and links use the `--vid-glass-*` variants and inputs a mostly opaque fill, so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper (measured on the rendered pages). Without `backdrop-filter` support, the glass is the plain surface. The Angular admin UI keeps solid surfaces. The see-through glass is tuned and measured for the built-in wallpapers; when a branding background image applies to a theme, `/theme.css` makes that theme's glass mostly opaque (88 % surface), so text keeps its contrast over any image.
+- **Glass:** the sign-in card, the account top bar, navigation, and content, and the theme switch are see-through frosted glass (`--vid-glass` with `backdrop-filter: blur()` and a thin `--vid-glass-border`); the wallpaper's lines and nodes show softly through it. The sign-in card adds a faint teal glow in its top-left corner. On glass, muted text, control borders and links use the `--vid-glass-*` variants and inputs a mostly opaque fill, so text keeps 4.5:1 and controls 3:1 over any part of the wallpaper (measured on the rendered pages). Without `backdrop-filter` support, the glass is the plain surface. The Angular admin UI adopts the same wallpaper and glass in phases 11c and 11d. The see-through glass is tuned and measured for the built-in wallpapers; when a branding background image applies to a theme, `/theme.css` makes that theme's glass mostly opaque (88 % surface), so text keeps its contrast over any image.
 
 ### Sign-in layout (lockup and glass card)
 
@@ -137,17 +137,29 @@ Used by `/account` and its sub-pages (profile, email, password, two-factor, sess
 
 ## Phase 11c: Angular admin shell and navigation
 
-- Refresh the top bar, branding, user controls, sidebar, active navigation, and content gutters. The sidebar uses the page surface with a thin divider; the active item gets the teal tint and a marker.
-- Restyle the theme control added in 11a to fit the new shell.
-- Group navigation where that improves scanning without hiding routes from keyboard or screen-reader users.
-- Replace awkward mobile navigation wrapping with a responsive navigation pattern that remains discoverable and usable.
-- Preserve the skip link, route focus management, live announcements, and current semantic navigation structure.
+The admin shell matches the account layout (Phase 11b), with the same tokens, glass rules, and measurements. Done.
+
+- **Wallpaper and glass:** the built-in light and dark wallpapers (`public/img`) fill the page; the top bar, sidebar, page content, and theme switch are the same see-through glass as on the account pages, with the `--vid-glass-*` variants on glass and the plain surface without `backdrop-filter`. The admin UI is not branded (no `/theme.css`), so the glass is always the measured see-through glass.
+- **Top bar:** the logo and the "Valkyrie id" wordmark (visual only; assistive technology reads "ValkyrieID") with an "Admin" label, the theme switch, the signed-in user, and Sign out.
+- **Navigation:** a glass panel with Dashboard and three labelled groups (Identity: users, roles, groups; Applications: clients, API resources; System: signing keys, audit log, settings). Each group is a list named by its label (`aria-labelledby`), so screen readers announce the groups; every route stays a plain link. The current page has `aria-current="page"`, the teal tint, weight, and a marker.
+- **Responsive:** from 48rem the navigation is a sticky sidebar beside the content; below, each group is one row (label beside its links) above the content, so every route stays visible without a menu button.
+- **Signed-out, sign-in error, and signing-in states:** the logo and title on a glass card on the wallpaper, like the sign-in card.
+- The skip link, route focus management, live announcements, and the dark-first theme startup are unchanged.
 
 ## Phase 11d: Angular page content and data presentation
 
+### Done: glass look
+
+- Page content sits on one glass panel; sections, lists, settings sections, and table rows are separated by dividers, not boxed again. Headers, forms, inputs (mostly opaque `--vid-glass-input`), buttons, badges, alerts, and notices use the same patterns as the account pages; alerts and notices have an icon as well as color.
+- Dashboard tiles are a more opaque glass (`--vid-glass-input`).
+- Dialogs and menus stay opaque (`--vid-surface-raised`) for readability over the page.
+- Tables sit directly on the glass. Measured on the rendered pages (content hidden through the CSSOM, worst backdrop pixel per surface, light and dark at 1440×900, 1920×1080, and 390 px), every text pair keeps 4.5:1 and every control 3:1, so table bodies need no opaque fill. If a later change lowers the measured ratios, give the table body an opaque fill instead of weakening the tokens.
+
+### Open
+
 - Redesign dashboard metric cards and the recent-activity summary.
-- Standardize list, detail, create, and settings page headers and action placement.
-- Create reusable patterns for forms, buttons, badges, notices, loading states, empty states, and errors.
+- Standardize list, detail, create, and settings page headers and action placement beyond the shared styles.
+- Add patterns for loading and empty states.
 - Improve users, clients, API resources, roles, groups, signing keys, and settings pages.
 - Make built-in entities, enabled/disabled states, signing-key states, and destructive actions visually distinct.
 - Redesign the audit table so the default row is compact and long identifiers/details are available through expansion or a detail view.

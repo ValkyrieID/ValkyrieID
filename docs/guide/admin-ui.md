@@ -29,6 +29,12 @@ By default, admins must sign in with [two-factor authentication](/guide/two-fact
 - **Sign out** ends your ValkyrieID session (not just the admin UI) and notifies the other apps you signed in to.
 - The **System / Light / Dark** switch in the top bar changes the color theme. The choice is shared with the sign-in and account pages; see [Themes](/reference/configuration#themes).
 
+## Layout
+
+The admin UI looks like the account pages: the built-in wallpaper with a frosted-glass top bar (product, theme switch, signed-in user, Sign out), a glass navigation, and each page on a glass panel. The navigation groups the pages into **Identity** (users, roles, groups), **Applications** (clients, API resources), and **System** (signing keys, audit log, settings); from 48rem wide it's a sidebar, on narrower screens it sits above the page with every link visible. Confirmation dialogs are opaque.
+
+[Branding](/reference/configuration#branding) only applies to the sign-in and account pages; the admin UI always uses ValkyrieID's own colors and wallpapers.
+
 ## Security
 
 - The admin UI is served by the same server, on the same origin as the Admin API. The API sends no CORS headers, so no other website can call it. Both send `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy: same-origin`, so other sites can't keep a handle on an admin window or load its responses.
