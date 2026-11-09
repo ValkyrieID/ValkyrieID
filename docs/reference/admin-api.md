@@ -53,7 +53,8 @@ For automation, sign in as an admin user with the authorization code flow. You c
 - JSON with camelCase property names. Times are ISO 8601 in UTC. Lifetimes are in seconds; `null` means the global setting.
 - Entities are addressed by their `id` (a GUID), also clients and API resources, whose `clientId` and `name` can contain characters that aren't safe in a URL path.
 - Request bodies are strict: unknown properties, missing required properties, and `null` for required values are rejected with `400`.
-- `PUT` replaces the editable fields of an entity. Actions such as `enable` or `unlock` are `POST` requests to a sub-path. Both return the entity as it is afterwards.
+- `POST` to a collection creates an entity and answers `201 Created` with a `Location` header and the new entity. `DELETE` answers `204 No Content`.
+- `PUT` replaces the editable fields of an entity. Actions such as `enable` or `unlock` are `POST` requests to a sub-path. Both return the entity as it is afterwards, except where the tables below say otherwise.
 - If two admins edit the same entity at once, the last change wins. The audit log records both.
 
 ### Errors
@@ -98,7 +99,7 @@ Every change is written to the [audit log](#audit-log) with the actor `admin:<su
 | `GET /users/{id}` | A user with roles, groups, custom claims, lockout, and 2FA state. |
 | `PUT /users/{id}` | Set `userName`, `email`, `emailVerified`, `displayName`, `givenName`, and `familyName`. |
 | `DELETE /users/{id}` | Delete a user. Their sessions are revoked first, with back-channel logout. |
-| `POST /users/{id}/password` | Set a new password (`{ "password": "..." }`). Unlocks the account and revokes all its sessions and refresh tokens. With SMTP, the user gets a notice. |
+| `POST /users/{id}/password` | Set a new password (`{ "password": "..." }`). Unlocks the account and revokes all its sessions and refresh tokens. With SMTP, the user gets a notice. Answers `204`. |
 | `POST /users/{id}/enable`, `/disable` | Disabling revokes the user's sessions and refresh tokens. |
 | `POST /users/{id}/unlock` | Clear a lockout. |
 | `POST /users/{id}/reset-2fa` | Turn off 2FA and delete the TOTP secret and recovery codes; revokes the user's sessions. |
@@ -106,7 +107,7 @@ Every change is written to the [audit log](#audit-log) with the actor `admin:<su
 | `POST /users/{id}/send-verification` | Email a verification link (`202`). `409` without SMTP, without an address, or if it's already verified. |
 | `PUT /users/{id}/roles/{roleId}`, `DELETE ...` | Assign or remove a role. The user's sessions must sign in again. |
 | `PUT /users/{id}/groups/{groupId}`, `DELETE ...` | Add to or remove from a group. |
-| `POST /users/{id}/claims`, `DELETE /users/{id}/claims/{claimId}` | Add (`{ "type": "department", "value": "finance" }`) or remove a custom claim. |
+| `POST /users/{id}/claims`, `DELETE /users/{id}/claims/{claimId}` | Add (`{ "type": "department", "value": "finance" }`) or remove a custom claim. Adding answers `201` with the claim. |
 | `GET /users/{id}/sessions` | Active sessions, with the clients that signed in with each. |
 | `DELETE /users/{id}/sessions/{sid}`, `DELETE /users/{id}/sessions` | Revoke one or all sessions (force sign-out): back-channel logout, and the sessions' refresh tokens are revoked. |
 
@@ -134,12 +135,12 @@ Names are 1-100 characters and unique, ignoring case. They are emitted in the `r
 | Request | Description |
 |---|---|
 | `GET /clients` | List clients (`q` searches the client id and display name). Secrets are listed by id and expiry only. |
-| `POST /clients` | Create a client. Returns the client and, for a confidential client, its first secret. |
+| `POST /clients` | Create a client. Answers `201` with `{ "client": { ... }, "secret": { "id", "secret", "expiresAt" } }`; `secret` is the first secret of a confidential client and `null` for a public one. |
 | `GET /clients/{id}` | A client. |
 | `PUT /clients/{id}` | Replace the client's configuration. |
 | `DELETE /clients/{id}` | Delete a client with its secrets and refresh tokens. |
 | `POST /clients/{id}/enable`, `/disable` | Disabled clients can't authenticate or start sign-ins; disabling revokes their refresh tokens. |
-| `POST /clients/{id}/secrets` | Add a secret (`{ "description": "2026-Q4", "expiresDays": 90 }`, both optional). |
+| `POST /clients/{id}/secrets` | Add a secret (`{ "description": "2026-Q4", "expiresDays": 90 }`, both optional). Answers `201` with the [new secret](#clients). |
 | `DELETE /clients/{id}/secrets/{secretId}` | Remove a secret. |
 
 ```json
@@ -182,7 +183,7 @@ Secrets are returned **once**, in the response that creates them, and stored onl
 | `POST /resources/{id}/enable`, `/disable` | Tokens can't be issued for scopes of a disabled resource, and it can't call introspection. |
 | `POST /resources/{id}/scopes` | Add a scope. |
 | `PUT /resources/{id}/scopes/{scopeId}`, `DELETE ...` | Change a scope's description, or remove it. |
-| `POST /resources/{id}/secrets`, `DELETE /resources/{id}/secrets/{secretId}` | Add or remove a secret for the [introspection endpoint](/reference/endpoints#introspection-endpoint). |
+| `POST /resources/{id}/secrets`, `DELETE /resources/{id}/secrets/{secretId}` | Add or remove a secret for the [introspection endpoint](/reference/endpoints#introspection-endpoint). Adding answers `201` with the new secret, as for clients. |
 
 Scope names can't be changed. A scope, or a resource with its scopes, can't be removed while a client is allowed to request it (`409` names the clients); remove the scope from those clients first.
 
@@ -191,7 +192,7 @@ Scope names can't be changed. A scope, or a resource with its scopes, can't be r
 | Request | Description |
 |---|---|
 | `GET /signing-keys` | Keys with their `status`: `pending` (published in JWKS, not signing yet), `active`, or `retired` (still published for tokens it signed). |
-| `POST /signing-keys/rotate` | Start a rotation now. |
+| `POST /signing-keys/rotate` | Start a rotation now. Returns the key list. |
 
 A manual rotation follows the same [lifecycle](/operations/key-rotation#lifecycle) as a scheduled one: the new key is published at once and signs tokens after `SigningKeys:PublishLead`. While a key is pending, another rotation is refused with `409`. Private keys are never returned.
 
@@ -201,7 +202,7 @@ The [runtime settings](/reference/configuration#runtime-settings), grouped in se
 
 | Request | Description |
 |---|---|
-| `GET /settings` | All sections. |
+| `GET /settings` | All sections: `{ "sections": [ ... ] }`, each shaped as below. |
 | `GET /settings/{section}` | One section. |
 | `PATCH /settings/{section}` | Change some settings of a section; the others stay as they are. Returns the section. |
 | `POST /settings/smtp/test` | Send a test email to your own address right away, with the current settings. |

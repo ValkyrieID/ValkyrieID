@@ -20,11 +20,11 @@ features:
   - title: Small footprint
     details: A single container with low memory use and minimal dependencies.
   - title: Spec compliant
-    details: Targets the OpenID Foundation conformance suite (Basic OP profile).
+    details: Passes the OpenID Foundation conformance plans (Basic OP, Config OP, RP-Initiated and Back-Channel Logout).
   - title: Simple to operate
     details: SQLite or PostgreSQL, automatic migrations, and health endpoints out of the box.
 ---
 
-::: warning Work in progress
-ValkyrieID is under active development and not ready for production use yet.
+::: warning Pre-1.0
+ValkyrieID hasn't reached 1.0 yet: configuration and APIs may change between 0.x releases. Read the [changelog](https://github.com/ValkyrieID/valkyrieid/blob/main/CHANGELOG.md) and [back up](/operations/backups) before upgrading.
 :::

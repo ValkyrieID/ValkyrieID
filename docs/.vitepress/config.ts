@@ -42,6 +42,9 @@ export default defineConfig({
       {
         text: 'Operations',
         items: [
+          { text: 'Production checklist', link: '/operations/production-checklist' },
+          { text: 'Backups', link: '/operations/backups' },
+          { text: 'Upgrades', link: '/operations/upgrades' },
           { text: 'Master encryption key', link: '/operations/master-key' },
           { text: 'Signing key rotation', link: '/operations/key-rotation' },
           { text: 'Reverse proxy', link: '/operations/reverse-proxy' },

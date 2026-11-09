@@ -9,4 +9,4 @@ Both return `200 Healthy` when healthy and `503 Unhealthy` otherwise. Use `/heal
 
 Requests to `/health/*` are excluded from tracing.
 
-They answer over plain HTTP even while the issuer is `https`, so container probes can call them directly. In the Docker image, the health check is the [`valkyrieid healthcheck`](/reference/cli#health-check) command, since the image has no shell or `curl`.
+They answer over plain HTTP, although every other request needs HTTPS, so container probes can call them directly. In the Docker image, the health check is the [`valkyrieid healthcheck`](/reference/cli#health-check) command, since the image has no shell or `curl`.

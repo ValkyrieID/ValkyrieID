@@ -12,6 +12,11 @@ if (HealthCheckCommand.IsCommand(args))
     return await HealthCheckCommand.RunAsync(HealthCheckCommand.LoadConfiguration(), args, Console.Out, Console.Error);
 }
 
+if (CliApp.TryRunWithoutHost(args, Console.Out, Console.Error) is { } exitCode)
+{
+    return exitCode;
+}
+
 // Maintenance commands (e.g. `valkyrieid client create ...`) take their own arguments; configuration then
 // comes from appsettings.json and environment variables only.
 var isCli = CliApp.IsCommand(args);

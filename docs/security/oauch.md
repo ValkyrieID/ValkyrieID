@@ -21,8 +21,8 @@ Of 147 test cases, 93 passed (including the authorization code and access token 
 | Are access tokens invalidated after exchanging the same authorization code multiple times | Not implemented | **Accepted** ([spec deviation](#accepted-findings), RFC 6749 §4.1.2). The replay is denied and audited, and the refresh tokens from the code are revoked; self-contained access tokens can't be revoked and expire within their lifetime. |
 | Are invalid scopes / response types automatically redirected back | Redirected | **Accepted.** RFC 6749 §4.1.2.1 and OIDC Core §3.1.2.6 require the error to be returned to a valid redirect URI. Redirect URIs are registered by administrators only and matched exactly, so they are trusted (RFC 9700 §4.11.2). |
 | Can access tokens be revoked | No | **Accepted** (spec deviation RFC 7009 §2). |
-| Are bearer tokens disabled (sender-constrained tokens) | No | **Accepted** (spec deviation RFC 9700 §2.2.1); DPoP is planned for phase 11b. |
-| JWT / asymmetric client authentication | Not supported | **Accepted** (spec deviation RFC 9700 §2.5); `private_key_jwt` is planned for phase 11a. |
+| Are bearer tokens disabled (sender-constrained tokens) | No | **Accepted** (spec deviation RFC 9700 §2.2.1); DPoP is planned for phase 13b. |
+| JWT / asymmetric client authentication | Not supported | **Accepted** (spec deviation RFC 9700 §2.5); `private_key_jwt` is planned for phase 13a. |
 | RFC 7523, RFC 8628, RFC 8705 supported | No | Not applicable: JWT client authentication (11a), the device grant, and mTLS aren't offered. |
 | Plain PKCE, deprecated TLS versions, access tokens in the query string | Not supported | Good: these are deprecated features, and ValkyrieID rejects them. |
 

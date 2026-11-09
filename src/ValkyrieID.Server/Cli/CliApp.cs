@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace ValkyrieID.Server.Cli;
 
 /// <summary>
@@ -9,6 +11,46 @@ internal static class CliApp
     private static readonly HashSet<string> Commands = new(StringComparer.Ordinal) { "client", "resource", "user", "session", "admin", "settings", "help" };
 
     public static bool IsCommand(string[] args) => args.Length > 0 && Commands.Contains(args[0]);
+
+    /// <summary>
+    /// Handles arguments that must not build the host (which would migrate the database or start the server):
+    /// <c>--help</c>, <c>-h</c>, <c>--version</c>, <c>--help</c> after a command, and an unknown command.
+    /// </summary>
+    /// <returns>The exit code, or <see langword="null"/> when the host should be built.</returns>
+    public static int? TryRunWithoutHost(string[] args, TextWriter output, TextWriter error)
+    {
+        if (args.Length == 0)
+        {
+            return null;
+        }
+
+        if (args[0] is "--version")
+        {
+            output.WriteLine(Version);
+            return 0;
+        }
+
+        if (args.Any(arg => arg is "--help" or "-h") && (args[0].StartsWith('-') || Commands.Contains(args[0])))
+        {
+            output.WriteLine(Usage);
+            return 0;
+        }
+
+        // Anything else starting with "-" or containing "=" is server configuration (e.g. --urls, urls=...); a bare
+        // word must be a command.
+        if (!args[0].StartsWith('-') && !args[0].Contains('=', StringComparison.Ordinal) && !Commands.Contains(args[0]))
+        {
+            error.WriteLine($"error: unknown command '{args[0]}'. Run 'valkyrieid help' for the list of commands.");
+            return 1;
+        }
+
+        return null;
+    }
+
+    public static string Version =>
+        typeof(CliApp).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(CliApp).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
 
     /// <param name="input">Source of passwords; defaults to the console.</param>
     public static async Task<int> RunAsync(
@@ -65,6 +107,10 @@ internal static class CliApp
 
     public const string Usage = """
         Usage: valkyrieid <command> [arguments]
+
+        Without a command, valkyrieid starts the server.
+          --help, -h, help        show this help
+          --version               show the version
 
         Container health check (exits 0 when the running server is healthy):
           healthcheck [--ready|--live] [--url <http-url>] [--timeout <seconds>]

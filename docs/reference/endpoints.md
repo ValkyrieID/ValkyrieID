@@ -25,18 +25,26 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 |---|---|
 | `/setup` | First-run setup wizard. Only available while no user exists; returns `404` afterwards. See [First run](/guide/first-run). |
 | `/account/login` | Sign in with a username or email address and password. Accepts a local `returnUrl`; other URLs are ignored. `prompt=login` shows the form even when a session exists; `login_hint` pre-fills the username. |
+| `/account/login/2fa` | Second sign-in step: the authenticator code. Counts against `RateLimits:TwoFactor`. |
+| `/account/login/recovery` | Second sign-in step with a recovery code instead. |
+| `/account/login/enroll` | Set up two-factor authentication during sign-in, when it is required and not set up yet. |
+| `/account/verify-required` | Shown after sign-in when [`Email:VerificationAtSignIn`](/reference/configuration#email-links) asks for a verified address; sends the verification link. Only with SMTP. |
 | `/account/logout` | Asks for confirmation, then ends the session. Also shows sign-out requests from applications; see [End session endpoint](#end-session-endpoint). |
 | `/account` | The signed-in user's account: links to the pages below. See [Your account](/guide/account). |
 | `/account/profile` | Change the display, given, and family name. |
 | `/account/password` | Change the password; signs out other sessions and revokes all refresh tokens. |
 | `/account/two-factor` | Turn two-factor authentication on or off, and get new recovery codes. |
-| `/account/sessions` | List and sign out the user's own sessions. |
+| `/account/sessions` | List the user's own sessions, and sign out one of them or all others. |
 | `/account/email` | Show the email address, send a verification link, and change the address. Only with SMTP. |
 | `/account/forgot-password` | Request a password reset link. Only with SMTP. |
 | `/account/reset-password` | Choose a new password with a link from a reset email; signs out all sessions. Only with SMTP. |
 | `/account/verify-email` | Verify the email address with a link. Only with SMTP. |
 | `/account/confirm-email` | Confirm an email change with the link sent to the new address. Only with SMTP. |
-| `POST /account/theme` | <a id="theme"></a>Stores the [theme](/reference/configuration#themes) choice (`Theme` = `system`, `light`, or `dark`) from the theme switch on every page, and answers `303 See Other` to the local `ReturnUrl` (other URLs go to `/account`). Needs the page's anti-forgery token, works signed in or out, and counts against `RateLimits:Account`. `system` deletes the cookie. |
+| `POST /account/theme` | <a id="theme"></a>Stores the [theme](/reference/configuration#themes) choice (`Theme` = `system`, `light`, or `dark`) from the theme switch on every page, and answers `303 See Other` to the local `ReturnUrl` (other URLs go to `/account`). Needs the page's anti-forgery token, works signed in or out, and counts against `RateLimits:Account`. `system` deletes the cookie. A missing or unknown `Theme` gets `400`; `GET` gets `404`. |
+| `GET /theme.css` | The stylesheet generated from the [branding colors](/reference/configuration#branding), with an `ETag` (`304` when unchanged) and `Cache-Control: no-cache`. |
+| `GET /branding/…` | Files from [`Branding:Directory`](/reference/configuration#branding), only when it is set. |
+
+Pages marked "Only with SMTP" answer `404` while SMTP isn't configured.
 
 Every response carries these headers:
 
@@ -47,7 +55,7 @@ Every response carries these headers:
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `no-referrer` |
 
-`Strict-Transport-Security` is added to HTTPS responses outside the `Development` environment (see [HSTS](/reference/configuration#hsts)). Requests that don't arrive over HTTPS are refused with `400` while the issuer is `https`.
+`Strict-Transport-Security` is added to HTTPS responses outside the `Development` environment (see [HSTS](/reference/configuration#hsts)). Requests that don't arrive over HTTPS are refused with `400`, except the [health endpoints](/reference/health).
 
 Browsers apply `form-action` to the redirects that follow a form post too. Sign-in pages whose `returnUrl` is an authorization request add the origin of its redirect URI, but only when that URI is registered for the enabled client; the sign-out confirmation adds the origin of a validated `post_logout_redirect_uri`. A `form_post` response allows only its redirect URI's origin. The admin UI under `/admin` has [its own policy](/guide/admin-ui).
 
@@ -55,11 +63,13 @@ Pages are sent with `Cache-Control: no-store`. A redirect answering a form `POST
 
 ## Discovery
 
-Returns the issuer and endpoint URLs, plus:
+Returns the issuer and endpoint URLs, plus the fields below. It is sent with `Cache-Control: public, max-age=3600`.
 
 | Field | Value |
 |---|---|
 | `scopes_supported` | `openid`, `profile`, `email`, `roles`, `groups`, `offline_access` |
+| `subject_types_supported` | `public` |
+| `claims_supported` | `iss`, `sub`, `aud`, `exp`, `iat`, `auth_time`, `nonce`, `amr`, `sid`, `at_hash`, `name`, `given_name`, `family_name`, `preferred_username`, `updated_at`, `email`, `email_verified`, `roles`, `groups` |
 | `response_types_supported` | `code` |
 | `response_modes_supported` | `query`, `form_post` |
 | `grant_types_supported` | `authorization_code`, `client_credentials`, `refresh_token` |
@@ -76,7 +86,7 @@ Returns the issuer and endpoint URLs, plus:
 
 ## JWKS
 
-Returns the public RSA keys (`kty`, `use`, `alg`, `kid`, `n`, `e`). This includes keys that are not used yet and retired keys whose tokens may still be valid. See [Signing key rotation](/operations/key-rotation).
+Returns the public RSA keys (`kty`, `use`, `alg`, `kid`, `n`, `e`). This includes keys that are not used yet and retired keys whose tokens may still be valid. See [Signing key rotation](/operations/key-rotation). It is sent with `Cache-Control: public` and a `max-age` of `SigningKeys:CheckInterval`, at most 1 hour.
 
 ## Authorization endpoint
 

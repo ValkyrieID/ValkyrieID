@@ -3,17 +3,26 @@
 The `valkyrieid` binary runs maintenance commands against the configured database without starting the web server. Configuration comes from `appsettings.json` and environment variables, as for the server, but not from command-line arguments. Pending migrations are applied first when `Database:AutoMigrate` is enabled.
 
 ```sh
-# Docker (a running container already has the configuration)
-docker exec -it valkyrieid dotnet /app/valkyrieid.dll client list
-# or a one-off container on the same volume
-docker run --rm -e MasterKey__Current=... -e Issuer__Url=... -v valkyrieid-data:/data \
-  ghcr.io/valkyrieid/valkyrieid client list
+# Docker Compose (the running container already has the configuration)
+docker compose exec valkyrieid dotnet /app/valkyrieid.dll client list
+# or a one-off container with the same configuration and volume
+docker compose run --rm valkyrieid client list
 
 # dotnet publish output
 ./valkyrieid client list
 ```
 
 Every change is written to the audit log with the actor `cli`. The same changes can be made over HTTP with the [Admin API](/reference/admin-api); both share the same validation.
+
+## General
+
+| Command | Description |
+|---|---|
+| *(none)* | Start the server. Arguments starting with `-` or containing `=` (e.g. `--urls http://+:8080`) are server configuration. |
+| `help`, `--help`, `-h` | Print the list of commands. `--help` after a command prints the same list. |
+| `--version` | Print the version. |
+
+`--help`, `--version`, and an unknown command (which fails with exit code `1`) don't open the database or need the master key. Other commands exit with `0` on success and `1` on an error, printed to standard error as `error: …`.
 
 ## Users
 
@@ -48,7 +57,7 @@ Passwords must satisfy the [password policy](/reference/configuration#passwords)
 
 Revoking a session signs the user out immediately, revokes the refresh tokens issued from it, and notifies its clients by [back-channel logout](/reference/endpoints#back-channel-logout). Disabling a user or resetting their password revokes their sessions the same way.
 
-A running server delivers the notifications within `BackChannelLogout:PollInterval` (1 minute by default), because the CLI can't wake it directly.
+With [Redis](/reference/configuration#redis), running servers are notified when the command finishes and send the notifications right away; without it, they do so within `BackChannelLogout:PollInterval` (1 minute by default).
 
 ## Admin recovery
 
@@ -79,7 +88,7 @@ Show and change the [runtime settings](/reference/configuration#runtime-settings
 | `settings set Smtp:Password` | Store the SMTP password, read like a [password](#passwords) (never as an argument). It is encrypted with the master key. |
 | `settings reset <key\|section>` | Remove stored values, so the defaults apply. |
 
-Settings set in configuration can't be changed here. Values are validated like in the Admin API. Running servers pick up the change within `Settings:ReloadInterval`.
+Settings set in configuration can't be changed here. Values are validated like in the Admin API. Running servers pick up the change right away with [Redis](/reference/configuration#redis), and otherwise within `Settings:ReloadInterval`.
 
 If stored settings keep the server from starting (for example after a configuration change made them invalid), fix them with `settings set` or `settings reset`: the CLI doesn't validate them on startup.
 
@@ -166,6 +175,6 @@ Alternatively, give each secret an expiry with `--expires-days`.
 
 | Command | Description |
 |---|---|
-| `healthcheck [--ready\|--live] [--url <url>] [--timeout <seconds>]` | Call `/health/ready` (default) or `/health/live` of the server running on this machine over loopback; exit with `0` when it answers `200`, `1` otherwise. |
+| `healthcheck [--ready\|--live] [--url <url>] [--timeout <seconds>]` | Call `/health/ready` (default) or `/health/live` of the server running on this machine over loopback; exit with `0` when it answers `200`, `1` otherwise. `--timeout` defaults to 5 seconds (at most 300). |
 
 Unlike the other commands, `healthcheck` doesn't open the database or need the master key; it only reads the listening address (`ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_URLS`, or `Kestrel:Endpoints`) and `ReverseProxy:PathBase`. It is the [container health check](/guide/docker#health-check).

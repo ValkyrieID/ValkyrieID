@@ -1,4 +1,3 @@
-using System.Net;
 using Microsoft.Extensions.Options;
 
 namespace ValkyrieID.Server.Configuration;
@@ -29,22 +28,18 @@ internal sealed class IssuerOptionsValidator : IValidateOptions<IssuerOptions>
                 "Issuer:Url is required, e.g. https://id.example.com (environment variable Issuer__Url).");
         }
 
-        // OIDC Discovery §3 / RFC 8414 §2: the issuer is an https URL with no query or fragment.
-        // Plain http is accepted only for loopback hosts (local development and tests).
+        // OIDC Core §2 (iss), OIDC Discovery §3, and RFC 8414 §2: the issuer MUST be an https URL with no query or
+        // fragment. No exception for loopback hosts: development uses https://localhost too.
         if (!Uri.TryCreate(options.Url, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && IsLoopback(uri)))
+            || uri.Scheme != Uri.UriSchemeHttps
             || uri.Query.Length > 0
             || uri.Fragment.Length > 0
             || uri.UserInfo.Length > 0)
         {
             return ValidateOptionsResult.Fail(
-                "Issuer:Url must be an absolute https URL without query, fragment, or user info "
-                + "(http is only allowed for localhost).");
+                "Issuer:Url must be an absolute https URL without query, fragment, or user info.");
         }
 
         return ValidateOptionsResult.Success;
     }
-
-    private static bool IsLoopback(Uri uri) =>
-        uri.IsLoopback || (IPAddress.TryParse(uri.IdnHost, out var ip) && IPAddress.IsLoopback(ip));
 }

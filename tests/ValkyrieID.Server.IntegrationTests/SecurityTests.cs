@@ -69,13 +69,10 @@ public abstract class SecurityTests
     }
 
     [Fact]
-    public async Task Health_checks_and_loopback_http_issuers_stay_reachable_over_http()
+    public async Task Health_checks_stay_reachable_over_http()
     {
         await using var factory = CreateFactory();
         Assert.Equal(HttpStatusCode.OK, (await factory.CreateHttpClient().GetAsync("/health/live", CancellationToken)).StatusCode);
-
-        await using var development = CreateFactory(new() { ["Issuer:Url"] = "http://localhost:5102" });
-        Assert.Equal(HttpStatusCode.OK, (await development.CreateHttpClient().GetAsync("/.well-known/openid-configuration", CancellationToken)).StatusCode);
     }
 
     [Fact]

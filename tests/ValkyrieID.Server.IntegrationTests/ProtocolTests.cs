@@ -28,6 +28,10 @@ public abstract class ProtocolTests
     [InlineData("https://id.example.test/?tenant=1")]
     [InlineData("https://id.example.test/#fragment")]
     [InlineData("https://user@id.example.test")]
+    // OIDC Core §2, OIDC Discovery §3, RFC 8414 §2: the issuer MUST use https, also on loopback hosts.
+    [InlineData("http://localhost:5102")]
+    [InlineData("http://127.0.0.1:8080/")]
+    [InlineData("http://[::1]:8080")]
     public async Task Startup_fails_without_a_valid_issuer(string? issuer)
     {
         await using var factory = CreateFactory(settings: new() { ["Issuer:Url"] = issuer });
@@ -35,18 +39,6 @@ public abstract class ProtocolTests
         var exception = Assert.ThrowsAny<Exception>(() => factory.Server);
 
         Assert.Contains("Issuer:Url", exception.ToString(), StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("http://localhost:5102")]
-    [InlineData("http://127.0.0.1:8080/")]
-    public async Task Http_issuer_is_allowed_for_loopback(string issuer)
-    {
-        await using var factory = CreateFactory(settings: new() { ["Issuer:Url"] = issuer });
-
-        var document = await ReadJsonAsync(await factory.CreateClient().GetAsync("/.well-known/openid-configuration", CancellationToken));
-
-        Assert.Equal(issuer.TrimEnd('/'), document.GetProperty("issuer").GetString());
     }
 
     [Fact]

@@ -21,16 +21,76 @@ The build restores NuGet and npm packages in locked mode (`packages.lock.json`, 
 
 ## Quick start
 
-```sh
-docker run -d --name valkyrieid -p 127.0.0.1:8080:8080 -v valkyrieid-data:/data \
-  -e Issuer__Url=http://localhost:8080 \
-  -e MasterKey__Current="$(openssl rand -base64 32)" \
-  ghcr.io/valkyrieid/valkyrieid
+ValkyrieID only runs over HTTPS: an OpenID Connect issuer must be an `https` URL (OIDC Discovery §3, RFC 8414 §2), also on your own machine. This quick start puts [Caddy](https://caddyserver.com) in front of it with a locally issued certificate, at `https://localhost:8443`.
+
+In an empty directory, create `compose.yaml`:
+
+```yaml
+services:
+  valkyrieid:
+    image: ghcr.io/valkyrieid/valkyrieid
+    restart: unless-stopped
+    environment:
+      Issuer__Url: https://localhost:8443
+      MasterKey__Current: ${VALKYRIEID_MASTER_KEY:?set VALKYRIEID_MASTER_KEY in .env}
+      ReverseProxy__KnownProxies__0: 172.30.0.10   # the Caddy container
+    volumes:
+      - valkyrieid-data:/data
+    networks:
+      internal:
+        ipv4_address: 172.30.0.20
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8443:8443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    networks:
+      internal:
+        ipv4_address: 172.30.0.10
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  valkyrieid-data:
+    name: valkyrieid-data
+  caddy-data:
 ```
 
-Then open `http://localhost:8080/setup` to [create the first administrator](/guide/first-run). The first start logs an EF Core warning (SQLite) or error (PostgreSQL) while creating the database; [both are expected](/guide/first-run#log-messages-on-the-first-start).
+and `Caddyfile`:
 
-This is for trying ValkyrieID locally: an `http` issuer is only accepted for `localhost`, and the master key above is lost with your shell history. For anything else, run it [behind a TLS-terminating proxy](#behind-a-reverse-proxy) and keep the [master key](/operations/master-key) in a secret store.
+```
+localhost:8443 {
+	tls internal
+	reverse_proxy valkyrieid:8080
+}
+```
+
+Generate the [master key](/operations/master-key) into `.env` and start both containers:
+
+```sh
+echo "VALKYRIEID_MASTER_KEY=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+Then open `https://localhost:8443/setup` to [create the first administrator](/guide/first-run). The first start logs an EF Core warning (SQLite) or error (PostgreSQL) while creating the database; [both are expected](/guide/first-run#log-messages-on-the-first-start).
+
+Caddy signs the certificate with its own local authority, so the browser warns about it. Accept the warning, or trust Caddy's root certificate on your machine:
+
+```sh
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt caddy-root.crt
+```
+
+and import `caddy-root.crt` as a trusted root (for example in your browser's certificate settings). Apps that sign in with ValkyrieID need to trust it too.
+
+This is for trying ValkyrieID locally. Keep `.env` safe: it holds the master key, and without it the data in the volume can't be used. For a public server, see [behind a reverse proxy](#behind-a-reverse-proxy) and the [production checklist](/operations/production-checklist).
 
 ## Defaults
 
@@ -55,7 +115,7 @@ mkdir -p ./data && sudo chown 1654:1654 ./data
 
 ## Behind a reverse proxy
 
-In production, a proxy terminates TLS and forwards to port `8080` over a private network. While the issuer is `https`, ValkyrieID refuses every request that didn't arrive over HTTPS (except the health endpoints), so the proxy **must** be trusted with `ReverseProxy__KnownProxies` (or `ReverseProxy__KnownNetworks`). Otherwise its `X-Forwarded-Proto: https` header is ignored and every request gets `400 HTTPS is required`. See [reverse proxy](/operations/reverse-proxy) for the details.
+In production, a proxy terminates TLS and forwards to port `8080` over a private network. ValkyrieID refuses every request that didn't arrive over HTTPS (except the health endpoints), so the proxy **must** be trusted with `ReverseProxy__KnownProxies` (or `ReverseProxy__KnownNetworks`). Otherwise its `X-Forwarded-Proto: https` header is ignored and every request gets `400 HTTPS is required`. See [reverse proxy](/operations/reverse-proxy) for the details.
 
 This Compose example uses [Caddy](https://caddyserver.com), which obtains a certificate automatically and sends `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`. Fixed addresses let ValkyrieID trust exactly the Caddy container; ValkyrieID's port isn't published, so clients can only reach it through Caddy. To put an app behind ValkyrieID with Caddy, see [Protect an app](/guide/protect-an-app).
 
@@ -171,11 +231,11 @@ Add `POSTGRES_PASSWORD` to `.env`. The image has no Kerberos libraries; `GSS Enc
 
 ## Health check
 
-The image's `HEALTHCHECK` runs `valkyrieid healthcheck` (exec form, no shell), which calls [`/health/ready`](/reference/health) over loopback and exits with `0` when it answers `200`, `1` otherwise. It doesn't touch the database or the master key itself, and works with an `https` issuer (the health endpoints answer over plain HTTP) and with `ReverseProxy__PathBase`.
+The image's `HEALTHCHECK` runs `valkyrieid healthcheck` (exec form, no shell), which calls [`/health/ready`](/reference/health) over loopback and exits with `0` when it answers `200`, `1` otherwise. It doesn't touch the database or the master key itself, and works over plain HTTP (the health endpoints are the only ones that answer there) and with `ReverseProxy__PathBase`.
 
 ```sh
-docker inspect --format '{{.State.Health.Status}}' valkyrieid
-docker exec valkyrieid dotnet /app/valkyrieid.dll healthcheck --live
+docker compose ps valkyrieid          # STATUS shows (healthy)
+docker compose exec valkyrieid dotnet /app/valkyrieid.dll healthcheck --live
 ```
 
 | Option | Description |
@@ -193,19 +253,18 @@ The address comes from `ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_URLS`, or `Kestrel:E
 
 ## CLI commands
 
-The [CLI](/reference/cli) runs in the same image. In a running container, the environment is already set:
+The [CLI](/reference/cli) runs in the same image. In the running container, the environment is already set:
 
 ```sh
-docker exec -it valkyrieid dotnet /app/valkyrieid.dll user list
-docker exec -it valkyrieid dotnet /app/valkyrieid.dll admin reset-password alice
+docker compose exec valkyrieid dotnet /app/valkyrieid.dll user list
+docker compose exec valkyrieid dotnet /app/valkyrieid.dll admin reset-password alice
 ```
 
 ## Volumes and backups
 
-Everything ValkyrieID stores is in the database: with SQLite, the `/data` volume; with PostgreSQL, the database server. Back it up regularly, and keep the [master key](/operations/master-key) with the backup: signing keys, TOTP secrets, and the SMTP password in the database can't be decrypted without it.
+With SQLite, everything ValkyrieID stores is in the `/data` volume; with PostgreSQL, it's in the database server. Only the files in [`Branding:Directory`](/reference/configuration#branding) live elsewhere, if you use them. Back up the database regularly, and keep the [master key](/operations/master-key) with the backup: signing keys, TOTP secrets, and the SMTP password in the database can't be decrypted without it.
 
-- **SQLite:** stop the container and copy the volume, or take an online copy with `sqlite3 /path/to/valkyrieid.db ".backup backup.db"` from a container or host that mounts the volume (the image itself has no `sqlite3`).
-- **PostgreSQL:** `pg_dump`.
+See [Backups](/operations/backups) for consistent backups while the container runs, restoring, and what to keep, and [Upgrades](/operations/upgrades) before pulling a new image.
 
 ## Footprint
 

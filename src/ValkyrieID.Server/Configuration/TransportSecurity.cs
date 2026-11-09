@@ -61,20 +61,13 @@ internal static class TransportSecurityExtensions
 
     /// <summary>
     /// RFC 6749 §3.1 and §3.2: the authorization server MUST require TLS for the authorization and token endpoints
-    /// (also OIDC Core §16.17). With an https issuer, every request that didn't arrive over https is refused instead
-    /// of redirected, since its credentials or codes have already crossed the network. Behind a TLS-terminating
-    /// proxy, the proxy must be trusted (ReverseProxy:KnownProxies) so X-Forwarded-Proto is applied. Health checks
-    /// stay reachable over http for container probes.
+    /// (also OIDC Core §16.17). The issuer is always https (IssuerOptionsValidator), so every request that didn't
+    /// arrive over https is refused instead of redirected, since its credentials or codes have already crossed the
+    /// network. Behind a TLS-terminating proxy, the proxy must be trusted (ReverseProxy:KnownProxies) so
+    /// X-Forwarded-Proto is applied. Health checks stay reachable over http for container probes.
     /// </summary>
-    public static IApplicationBuilder UseRequireHttps(this WebApplication app)
-    {
-        var issuer = app.Services.GetRequiredService<IOptions<IssuerOptions>>().Value;
-        if (!issuer.Issuer.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-        {
-            return app;
-        }
-
-        return app.Use((context, next) =>
+    public static IApplicationBuilder UseRequireHttps(this WebApplication app) =>
+        app.Use((context, next) =>
         {
             if (context.Request.IsHttps || context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase))
             {
@@ -88,7 +81,6 @@ internal static class TransportSecurityExtensions
                 : ProtocolPages.Error(message);
             return result.ExecuteAsync(context);
         });
-    }
 
     /// <summary>
     /// RFC 9700 §4.12: a redirect answering a POST that may carry the user's credentials (login, 2FA, password forms,

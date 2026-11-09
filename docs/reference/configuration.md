@@ -4,12 +4,24 @@ ValkyrieID reads configuration from `appsettings.json`, `appsettings.{Environmen
 
 Nested keys are separated by `:` in JSON and command-line arguments, and by `__` (double underscore) in environment variables. For example, `Database:Provider` becomes `Database__Provider`.
 
+The server validates its configuration at startup and refuses to start if a value is invalid; the limits are given in the tables below.
+
+## Hosting
+
+Standard ASP.NET Core settings, listed because the container image and the [`healthcheck`](/reference/cli#health-check) command use them.
+
+| Key | Default | Description |
+|---|---|---|
+| `ASPNETCORE_HTTP_PORTS` | `8080` in the [image](/guide/docker#defaults) | Port(s) to listen on over plain HTTP. `ASPNETCORE_URLS` or `Kestrel:Endpoints` can be used instead. |
+| `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables a development-only master key and the [OpenAPI document](/reference/admin-api); never use it in production. |
+| `AllowedHosts` | `*` | Host header filtering. The issuer and every URL ValkyrieID builds come from `Issuer:Url`, never from the `Host` header. |
+
 ## Runtime settings
 
 Settings marked **runtime** in the tables below can also be changed while the server runs: in the [admin UI](/guide/admin-ui) (**Settings**), through the [Admin API](/reference/admin-api#settings), or with the [`settings` CLI commands](/reference/cli#settings). They are stored in the database and apply without a restart.
 
 - **Configuration takes precedence.** A runtime setting that is set in `appsettings.json`, an environment variable, or on the command line can't be changed at runtime. The admin UI shows it as *set by configuration*, read-only. Remove it from the configuration to manage it in the admin UI.
-- **Changes are validated as a whole**, with the same rules as at startup, before anything is saved. Every change is written to the audit log (`settings.updated`) with the old and new values; secrets appear only as `(secret)`.
+- **Changes are validated as a whole**, with the same rules as at startup (for the runtime sections), before anything is saved. Every change is written to the audit log (`settings.updated`) with the old and new values; secrets appear only as `(secret)`.
 - **Secrets** (the SMTP password) are encrypted with the [master key](/operations/master-key), never returned by the API, and included in `admin reencrypt`.
 - **Other instances and the CLI**: the server that makes a change applies it at once. With [Redis](#redis), other instances are notified and apply it within moments. Every instance also checks for changes every `Settings:ReloadInterval` and applies them then (the fallback if a notification is lost, and the only way without Redis). If stored settings are invalid together with an instance's configuration (for example after an environment variable changed), that instance keeps its previous settings and logs an error; on startup, it refuses to start, like for any invalid configuration. The CLI can still run to fix them (`settings reset`).
 - **Already issued** tokens, sessions, and links keep the lifetime they were issued with.
@@ -23,8 +35,8 @@ Settings marked **runtime** in the tables below can also be changed while the se
 | Key | Default | Description |
 |---|---|---|
 | `Database:Provider` | `Sqlite` | `Sqlite` or `PostgreSql`. |
-| `Database:ConnectionString` | `Data Source=data/valkyrieid.db` | Provider-specific connection string. For SQLite, the directory is created if it doesn't exist. |
-| `Database:AutoMigrate` | `true` | Apply pending migrations on startup. Set to `false` to apply migrations manually. |
+| `Database:ConnectionString` | `Data Source=data/valkyrieid.db` | Provider-specific connection string. The default is relative to the working directory; the [image](/guide/docker#defaults) sets `Data Source=/data/valkyrieid.db`. For SQLite, the directory is created if it doesn't exist. |
+| `Database:AutoMigrate` | `true` | Apply pending migrations on startup and before every CLI command. Leave it on: ValkyrieID ships no separate migration tool, so with `false` migrations can only be applied from a source checkout with `dotnet ef`. See [Upgrades](/operations/upgrades#database-migrations). |
 
 PostgreSQL example:
 
@@ -40,7 +52,7 @@ Redis is only needed to run [more than one instance](/operations/multi-instance)
 | Key | Default | Description |
 |---|---|---|
 | `Redis:ConnectionString` | *(none)* | A [StackExchange.Redis configuration string](https://stackexchange.github.io/StackExchange.Redis/Configuration), e.g. `redis:6379,password=...,ssl=true`; for Redis Cluster or Sentinel, list several nodes. Setting it stores authorization codes and rate-limit counters in Redis and notifies other instances of changes. Supply the password through an environment variable or secret store. |
-| `Redis:KeyPrefix` | `valkyrieid:` | Prefix for every key and channel, so several deployments can share one Redis. No whitespace or braces (braces would act as a Redis Cluster hash tag). |
+| `Redis:KeyPrefix` | `valkyrieid:` | Prefix for every key and channel, so several deployments can share one Redis. 1 to 100 characters, no whitespace or braces (braces would act as a Redis Cluster hash tag). |
 
 When Redis is configured but unreachable, the server fails closed: requests that need it get `503` (or `temporarily_unavailable` at the authorization endpoint), and [readiness](/reference/health) reports unhealthy.
 
@@ -57,17 +69,17 @@ The server fails to start if `MasterKey:Current` is missing or invalid. See [Mas
 
 | Key | Default | Description |
 |---|---|---|
-| `Issuer:Url` | *(required)* | Public issuer URL, e.g. `https://id.example.com`. Must be `https` (plain `http` is accepted only for `localhost` / loopback), without query, fragment, or user info. |
+| `Issuer:Url` | *(required)* | Public issuer URL, e.g. `https://id.example.com`. Must be `https`, also for `localhost` (OIDC Core §2, OIDC Discovery §3, RFC 8414 §2), without query, fragment, or user info. |
 
 The issuer is published in discovery and in the `iss` claim. Every endpoint URL is derived from it. It is never derived from request headers, so set it to the URL clients use, including when running behind a reverse proxy.
 
-While the issuer is `https`, requests that don't arrive over HTTPS are refused with `400`, except the [health endpoints](/reference/health). Behind a TLS-terminating proxy, configure it as a [trusted proxy](#reverse-proxy).
+Requests that don't arrive over HTTPS are refused with `400`, except the [health endpoints](/reference/health). Behind a TLS-terminating proxy, configure it as a [trusted proxy](#reverse-proxy).
 
 ## HSTS
 
 | Key | Default | Description |
 |---|---|---|
-| `Hsts:MaxAge` | `365.00:00:00` | `max-age` of the `Strict-Transport-Security` header. |
+| `Hsts:MaxAge` | `365.00:00:00` | `max-age` of the `Strict-Transport-Security` header. Greater than zero. |
 | `Hsts:IncludeSubDomains` | `false` | Add `includeSubDomains`. Only enable it when every subdomain of the issuer's host serves HTTPS. |
 | `Hsts:Preload` | `false` | Add `preload`, for submission to the browsers' preload lists. Requires `Hsts:IncludeSubDomains` and a `MaxAge` of at least 365 days. |
 
@@ -80,8 +92,8 @@ The header is sent on HTTPS responses outside the `Development` environment, and
 | `ReverseProxy:KnownProxies:0`, `:1`, … | *(none)* | IP addresses of proxies whose forwarded headers are trusted. |
 | `ReverseProxy:KnownNetworks:0`, `:1`, … | *(none)* | Trusted proxy networks in CIDR notation, e.g. `10.0.0.0/8`. |
 | `ReverseProxy:ForwardedHeaders` | `XForwardedFor, XForwardedProto` | Forwarded headers to apply. `XForwardedHost` can be added; the issuer is never affected. |
-| `ReverseProxy:ForwardLimit` | `1` | How many proxy hops in `X-Forwarded-For` to process. |
-| `ReverseProxy:PathBase` | *(none)* | Path prefix to serve under when the proxy doesn't strip it, e.g. `/auth`. Must equal the path of `Issuer:Url`. |
+| `ReverseProxy:ForwardLimit` | `1` | How many proxy hops in `X-Forwarded-For` to process. At least 1. |
+| `ReverseProxy:PathBase` | *(none)* | Path prefix to serve under when the proxy doesn't strip it, e.g. `/auth`. Starts with `/`, without a trailing `/`, `?`, or `#`. Must equal the path of `Issuer:Url`. |
 
 Forwarded headers are ignored unless at least one proxy or network is configured. See [Reverse proxy](/operations/reverse-proxy).
 
@@ -105,7 +117,7 @@ Turning a switch back on re-enables the built-in entries at the next start.
 | `Tokens:RefreshTokenSlidingLifetime` | `14.00:00:00` | **Runtime.** A refresh token expires when unused this long. Clients can override it. |
 | `Tokens:RefreshTokenAbsoluteLifetime` | `30.00:00:00` | **Runtime.** A refresh token family ends this long after the original sign-in, however often it is refreshed. At least the sliding lifetime. Clients can override it. |
 
-Authorization codes always live 60 seconds and can be redeemed once. They are kept in memory, so a restart invalidates codes that haven't been redeemed yet; the user simply signs in again.
+Lifetimes must be greater than zero. Authorization codes always live 60 seconds and can be redeemed once. They are kept in memory, so a restart invalidates codes that haven't been redeemed yet; the user simply signs in again.
 
 Refresh tokens are stored (hashed) in the database. Families past their absolute lifetime are deleted hourly. See [Refresh tokens](/reference/endpoints#refresh-token-grant).
 
@@ -118,20 +130,20 @@ Refresh tokens are stored (hashed) in the database. Families past their absolute
 | `SigningKeys:RsaKeySize` | `2048` | RSA key size in bits (2048 to 8192, multiple of 1024). |
 | `SigningKeys:CheckInterval` | `00:05:00` | How often keys are rotated and reloaded. Also the JWKS `Cache-Control` max-age (capped at 1 hour). |
 
-See [Signing key rotation](/operations/key-rotation).
+`CheckInterval` is at least 1 second, `PublishLead` at least `CheckInterval`, and `RotationInterval` longer than `PublishLead`. See [Signing key rotation](/operations/key-rotation).
 
 ## Passwords
 
 | Key | Default | Description |
 |---|---|---|
 | `PasswordPolicy:MinimumLength` | `8` | **Runtime.** Minimum length in characters (Unicode code points). At least 8. |
-| `PasswordPolicy:MaximumLength` | `128` | **Runtime.** Maximum length (64 to 1024). |
+| `PasswordPolicy:MaximumLength` | `128` | **Runtime.** Maximum length (64 to 1024, at least `MinimumLength`). |
 | `PasswordPolicy:RequireUppercase` | `false` | **Runtime.** Require an uppercase letter. |
 | `PasswordPolicy:RequireLowercase` | `false` | **Runtime.** Require a lowercase letter. |
 | `PasswordPolicy:RequireDigit` | `false` | **Runtime.** Require a digit. |
 | `PasswordPolicy:RequireNonAlphanumeric` | `false` | **Runtime.** Require a character that isn't a letter or digit. |
 | `PasswordPolicy:CheckBreachedPasswords` | `false` | **Runtime.** Reject passwords that appear in [Have I Been Pwned](https://haveibeenpwned.com/Passwords). |
-| `PasswordPolicy:BreachedPasswordApiUrl` | `https://api.pwnedpasswords.com/range/` | Range API base URL, e.g. a self-hosted mirror. Configuration only. |
+| `PasswordPolicy:BreachedPasswordApiUrl` | `https://api.pwnedpasswords.com/range/` | Range API base URL (absolute `https`), e.g. a self-hosted mirror. Configuration only. |
 
 The defaults follow NIST SP 800-63B, which recommends length and a breached-password check over composition rules. A password can never equal the username or email address.
 
@@ -165,8 +177,8 @@ Each password check briefly uses the configured memory, so peak memory grows wit
 
 | Key | Default | Description |
 |---|---|---|
-| `Lockout:MaxFailedAttempts` | `5` | **Runtime.** Consecutive failed sign-in attempts (wrong passwords and wrong 2FA or recovery codes) that lock an account. |
-| `Lockout:Duration` | `00:15:00` | **Runtime.** How long the account stays locked. |
+| `Lockout:MaxFailedAttempts` | `5` | **Runtime.** Consecutive failed sign-in attempts (wrong passwords and wrong 2FA or recovery codes) that lock an account. At least 1. |
+| `Lockout:Duration` | `00:15:00` | **Runtime.** How long the account stays locked. Greater than zero. |
 
 While an account is locked, every login attempt fails with the same message as a wrong password. Unlock an account early with [`admin unlock`](/reference/cli#admin-recovery).
 
@@ -184,11 +196,11 @@ Admins can also require it per user with [`user require-2fa`](/reference/cli#use
 
 | Key | Default | Description |
 |---|---|---|
-| `Session:Lifetime` | `08:00:00` | **Runtime.** Absolute lifetime of the single sign-on session. It isn't extended by activity. Applies to new sessions. |
+| `Session:Lifetime` | `08:00:00` | **Runtime.** Absolute lifetime of the single sign-on session. It isn't extended by activity. At least 1 minute. Applies to new sessions. |
 
 The session cookie is `__Host-valkyrie.session` (`Secure`, `HttpOnly`, `SameSite=Lax`). It is a browser-session cookie, so it is also dropped when the browser closes. Each session is stored in the database and checked on every request, so revoking it, disabling the user, resetting the password or changing roles signs the user out immediately.
 
-Because the cookie is `Secure`, sign-in only works over HTTPS (or `http://localhost` in browsers that treat it as secure).
+Because the cookie is `Secure`, sign-in only works over HTTPS.
 
 Administrators list and revoke sessions with the [`session` commands](/reference/cli#sessions).
 
@@ -197,8 +209,8 @@ Administrators list and revoke sessions with the [`session` commands](/reference
 | Key | Default | Description |
 |---|---|---|
 | `BackChannelLogout:RequestTimeout` | `00:00:05` | Timeout of each request to a client (1 to 60 seconds). A sign-out waits at most this long for the clients before redirecting the browser. |
-| `BackChannelLogout:RetryDelays` | `00:00:10`, `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, `408`, `429`, or `5xx`. After the last one the notification is abandoned. Set as an array, e.g. `BackChannelLogout__RetryDelays__0=00:00:15`; at most 20 entries. |
-| `BackChannelLogout:PollInterval` | `00:01:00` | How often each instance checks for pending notifications queued by another process, such as the CLI or another instance. Notifications queued by the instance itself are sent right away; with [Redis](#redis), other instances are woken right away too. |
+| `BackChannelLogout:RetryDelays` | `00:00:10`, `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, `408`, `429`, or `5xx`. After the last one the notification is abandoned. Set as an array, e.g. `BackChannelLogout__RetryDelays__0=00:00:15`; at most 20 entries, each greater than zero and at most 1 day. |
+| `BackChannelLogout:PollInterval` | `00:01:00` | At least 1 second. How often each instance checks for pending notifications queued by another process, such as the CLI or another instance. Notifications queued by the instance itself are sent right away; with [Redis](#redis), other instances are woken right away too. |
 
 See [Back-channel logout](/reference/endpoints#back-channel-logout).
 
@@ -209,14 +221,14 @@ Email features ([password reset, email verification, email change](/guide/email)
 | Key | Default | Description |
 |---|---|---|
 | `Smtp:Host` | *(none)* | **Runtime.** The SMTP server. Unset turns the email features off. |
-| `Smtp:Port` | `587` | **Runtime.** |
+| `Smtp:Port` | `587` | **Runtime.** 1 to 65535. |
 | `Smtp:Security` | `StartTls` | **Runtime.** `StartTls` (upgrade the connection; fail if the server doesn't offer it), `Tls` (TLS from the start, usually port 465), or `None` (only allowed for `localhost` or a loopback address). The server certificate is always validated. |
 | `Smtp:UserName` / `Smtp:Password` | *(none)* | **Runtime.** Credentials; set both or neither. In configuration, supply the password through an environment variable or secret store; set at runtime, it is stored encrypted with the master key. |
 | `Smtp:FromAddress` | *(none)* | **Runtime.** Sender address. Required when `Smtp:Host` is set. |
-| `Smtp:FromName` | `Branding:ProductName` | **Runtime.** Sender display name. |
+| `Smtp:FromName` | `Branding:ProductName` | **Runtime.** Sender display name, at most 100 characters. |
 | `Smtp:Timeout` | `00:00:30` | Timeout of each SMTP operation (1 second to 5 minutes). |
-| `Smtp:RetryDelays` | `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, or `4xx` reply. After the last one the email is abandoned. Set as an array, e.g. `Smtp__RetryDelays__0=00:01:00`; at most 20 entries. |
-| `Smtp:PollInterval` | `00:01:00` | How often each instance checks for emails queued by another process (the CLI or another instance). With [Redis](#redis), instances are also woken right away. |
+| `Smtp:RetryDelays` | `00:00:30`, `00:02:00`, `00:10:00`, `01:00:00` | Delays before each retry after a network error, timeout, or `4xx` reply. After the last one the email is abandoned. Set as an array, e.g. `Smtp__RetryDelays__0=00:01:00`; at most 20 entries, each greater than zero and at most 1 day. |
+| `Smtp:PollInterval` | `00:01:00` | At least 1 second. How often each instance checks for emails queued by another process (the CLI or another instance). With [Redis](#redis), instances are also woken right away. |
 
 Check the settings with **Send test email** on the admin UI's SMTP settings page, or with [`admin send-test-email`](/reference/cli#admin-recovery).
 
@@ -241,28 +253,28 @@ Check the settings with **Send test email** on the admin UI's SMTP settings page
 | `RateLimits:Email:PermitLimit` / `:Window` | `5` / `00:05:00` | Submissions of the [email](/guide/email) forms (forgot password, reset password, verify email, change email) per client IP address. |
 | `RateLimits:Account:PermitLimit` / `:Window` | `30` / `00:01:00` | Other account form submissions (profile, sessions, sign-out, theme) per client IP address. |
 
-Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 clients are counted per `/64` prefix, since a single client usually has a whole `/64` to choose addresses from. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
+Each `PermitLimit` is at least 1 and each `Window` greater than zero. Rejected requests get `429 Too Many Requests` with a `Retry-After` header. IPv6 clients are counted per `/64` prefix, since a single client usually has a whole `/64` to choose addresses from. Without Redis, counters are kept in memory per instance; with [Redis](#redis), all instances share them, so the limits apply to the whole deployment. If Redis is unreachable, these requests get `503 Service Unavailable` with `Retry-After` instead of being counted per instance. Behind a reverse proxy, configure [trusted proxies](#reverse-proxy) so limits apply per client rather than per proxy.
 
 ## Branding
 
 | Key | Default | Description |
 |---|---|---|
-| `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and next to the logo. The built-in name is shown as the "Valkyrie id" wordmark. |
-| `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. Configuration only. |
+| `Branding:ProductName` | `ValkyrieID` | **Runtime.** Shown in page titles and next to the logo, 1 to 100 characters. The built-in name is shown as the "Valkyrie id" wordmark. |
+| `Branding:Directory` | *(none)* | Directory with branding files, served under `/branding/`. Must exist at startup. It is outside the database, so include it in [backups](/operations/backups). Configuration only. |
 | `Branding:Logo` | *(none)* | **Runtime.** Logo file name in `Branding:Directory`. Without one, the ValkyrieID logo is shown next to the product name. |
 | `Branding:BackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory`. It fills the page behind the sign-in and account pages (see [Page layouts](#page-layouts)), in both themes unless `Branding:DarkBackgroundImage` is set; without one, the built-in light wallpaper is shown. |
 | `Branding:DarkBackgroundImage` | *(none)* | **Runtime.** Image file name in `Branding:Directory` for the dark theme. Without one, the dark theme uses `Branding:BackgroundImage`, or the built-in dark wallpaper. |
 | `Branding:CustomCss` | *(none)* | **Runtime.** Stylesheet file name in `Branding:Directory`, loaded after the built-in styles. |
-| `Branding:PrimaryColor` | `#0f766e` | **Runtime.** Buttons, links, and focus outlines in the light theme. |
-| `Branding:BackgroundColor` | `#fafafa` | **Runtime.** Page background in the light theme, shown behind the wallpaper while it loads. |
-| `Branding:SurfaceColor` | `#ffffff` | **Runtime.** Card and glass background in the light theme. |
-| `Branding:TextColor` | `#18181b` | **Runtime.** Text in the light theme. |
-| `Branding:DarkPrimaryColor` | `#0f766e` | **Runtime.** Buttons in the dark theme; links and focus outlines use a lighter tint of it. |
-| `Branding:DarkBackgroundColor` | `#0a0a0b` | **Runtime.** Page background in the dark theme, shown behind the wallpaper while it loads. |
-| `Branding:DarkSurfaceColor` | `#141416` | **Runtime.** Card and glass background in the dark theme. |
-| `Branding:DarkTextColor` | `#ededef` | **Runtime.** Text in the dark theme. |
+| `Branding:PrimaryColor` | *(none: `#0f766e`)* | **Runtime.** Buttons, links, and focus outlines in the light theme. |
+| `Branding:BackgroundColor` | *(none: `#fafafa`)* | **Runtime.** Page background in the light theme, shown behind the wallpaper while it loads. |
+| `Branding:SurfaceColor` | *(none: `#ffffff`)* | **Runtime.** Card and glass background in the light theme. |
+| `Branding:TextColor` | *(none: `#18181b`)* | **Runtime.** Text in the light theme. |
+| `Branding:DarkPrimaryColor` | *(none: `#0f766e`)* | **Runtime.** Buttons in the dark theme; links and focus outlines use a lighter tint of it. |
+| `Branding:DarkBackgroundColor` | *(none: `#0a0a0b`)* | **Runtime.** Page background in the dark theme, shown behind the wallpaper while it loads. |
+| `Branding:DarkSurfaceColor` | *(none: `#141416`)* | **Runtime.** Card and glass background in the dark theme. |
+| `Branding:DarkTextColor` | *(none: `#ededef`)* | **Runtime.** Text in the dark theme. |
 
-Colors must be hex (`#0f766e`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths; at runtime, they are chosen from the images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
+The colors are unset by default (the Admin API shows `null`), and the built-in palette given in brackets applies. Colors must be hex (`#0f766e`), named (`teal`), `rgb()` or `hsl()` values. File names must be plain names without paths (letters, digits, `.`, `_`, `-`; at most 100 characters) and need `Branding:Directory`; at runtime, they are chosen from the images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.avif`, `.svg`, `.ico`) and stylesheets (`.css`) in `Branding:Directory`. The server doesn't start if a value is invalid.
 
 ### Themes
 
@@ -300,5 +312,6 @@ Logs are written to the console as JSON by default (`Logging:Console:FormatterNa
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | *(none)* | OTLP endpoint. OpenTelemetry is enabled only when this is set. |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` | `grpc` or `http/protobuf`. |
 | `OTEL_EXPORTER_OTLP_HEADERS` | *(none)* | Extra headers, e.g. for authentication. |
+| `OTEL_SERVICE_NAME` | `valkyrieid` | Service name reported with traces and metrics. |
 
 The other standard `OTEL_*` environment variables are also supported. See [Observability](/operations/observability).
