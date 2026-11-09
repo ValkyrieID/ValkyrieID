@@ -1,0 +1,106 @@
+<div class="table-wrap">
+  <table class="data audit" appStack>
+    <thead>
+      <tr>
+        <th scope="col"><span class="visually-hidden">Details</span></th>
+        <th scope="col">Time</th>
+        <th scope="col">Event</th>
+        <th scope="col">Result</th>
+        <th scope="col">Actor</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (entry of entries(); track entry.id) {
+        @let open = expanded().has(entry.id);
+        <tr [class.expanded]="open">
+          <td class="disclosure">
+            <button
+              type="button"
+              class="icon-button"
+              [attr.aria-expanded]="open"
+              [attr.aria-controls]="open ? detailId(entry) : null"
+              (click)="toggle(entry.id)"
+            >
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+                <path
+                  d="M6 3.5l4.5 4.5L6 12.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="visually-hidden"
+                >Details of {{ entry.eventType }}, {{ entry.timestamp | date: 'medium' }}</span
+              >
+            </button>
+          </td>
+          <td class="nowrap">
+            <time [attr.datetime]="entry.timestamp">{{ entry.timestamp | date: 'short' }}</time>
+          </td>
+          <td>
+            <code>{{ entry.eventType }}</code>
+          </td>
+          <td>
+            @if (entry.success) {
+              <span class="badge ok">Success</span>
+            } @else {
+              <span class="badge warn">Failure</span>
+            }
+          </td>
+          <td>
+            @if (entry.actor; as actor) {
+              <app-id [value]="actor" label="actor" [allowCopy]="false" />
+            } @else {
+              –
+            }
+          </td>
+        </tr>
+        @if (open) {
+          <tr class="audit-detail">
+            <td colspan="5" [id]="detailId(entry)">
+              <dl class="facts">
+                <dt>Time</dt>
+                <dd>
+                  <time [attr.datetime]="entry.timestamp">{{
+                    entry.timestamp | date: 'full'
+                  }}</time>
+                </dd>
+                <dt>Entry ID</dt>
+                <dd><app-id [value]="entry.id" label="entry ID" [full]="true" /></dd>
+                <dt>Actor</dt>
+                <dd>
+                  @if (entry.actor; as actor) {
+                    <app-id [value]="actor" label="actor" [full]="true" />
+                  } @else {
+                    –
+                  }
+                </dd>
+                <dt>Subject</dt>
+                <dd>
+                  @if (entry.subjectId; as subject) {
+                    <app-id [value]="subject" label="subject ID" [full]="true" />
+                    <a [routerLink]="['/users', subject]">Open user</a>
+                  } @else {
+                    –
+                  }
+                </dd>
+                <dt>Client</dt>
+                <dd>{{ entry.clientId ?? '–' }}</dd>
+                <dt>IP address</dt>
+                <dd>{{ entry.ipAddress ?? '–' }}</dd>
+                @if (entry.details; as details) {
+                  @for (item of details | keyvalue; track item.key) {
+                    <dt>{{ item.key }}</dt>
+                    <dd>{{ format(item.value) }}</dd>
+                  }
+                }
+              </dl>
+            </td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>

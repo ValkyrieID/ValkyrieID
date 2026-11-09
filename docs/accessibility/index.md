@@ -10,7 +10,6 @@ ValkyrieID's sign-in and account pages and its admin UI target [WCAG 2.2](https:
 - **Known limitations:**
   - Custom branding colors, images, and stylesheets are the operator's responsibility: ValkyrieID doesn't check their contrast (see [Branding](#branding)).
   - The QR code for setting up two-factor authentication is an image. The same key is shown as text next to it for users who can't scan it.
-  - The audit log viewer and other admin tables scroll horizontally on narrow screens, which WCAG allows for data tables (1.4.10).
 - **Feedback:** report accessibility problems as [GitHub issues](https://github.com/ValkyrieID/valkyrieid/issues).
 
 ## How the pages are built
@@ -32,6 +31,12 @@ The admin UI adds the following, since it changes pages without reloading them:
 - Targets are at least 24×24 CSS px, or spaced so that a 24 px circle around each doesn't overlap another (2.5.8).
 - The navigation is grouped (Identity, Applications, System); each group is a list named by its visible label, so screen readers announce the group, and every page is still a plain link. On narrow screens every link stays visible, with no menu button to open.
 - The admin UI uses the same wallpaper and see-through glass as the account pages, always with the built-in colors and wallpapers (it isn't branded). Measured on the rendered admin pages (top bar, navigation, page content with tables and forms, and dashboard tiles) in light and dark at 1440×900, 1920×1080, and 390 px, at the least favorable point (light / dark): text 12.8:1 / 8.5:1, muted text and table headers 8.0:1 / 5.5:1, links 5.5:1 / 5.5:1, control borders 6.5:1 / 4.3:1, focus outline 4.0:1 / 5.5:1, input text 17.0:1 / 14.5:1. Dialogs are opaque.
+- **Page structure:** every page has the same header (back link, one `<h1>`, status badges, a description, the main action). Loading is a `role="status"` message ("Loading…") with a decorative spinner that stops with reduced motion. Empty lists say so and offer the next step (clear the search, or create the first entry).
+- **Status without color alone (1.4.1):** badges combine text with a mark (✓, !, –, ○, ◆, ⊘) and, for disabled and retired states, a dashed border. Destructive actions sit in a **Danger zone** with a heading marked ⚠ and buttons marked ⚠, and always ask for confirmation.
+- **Shortened IDs:** long identifiers show their first 8 characters; the full value is visually hidden text, so screen readers read it, never only a `title`. The copy button is named "Copy user ID" (or similar), copies the full value, and announces the result through the live region.
+- **Audit log details:** each entry has a disclosure button (`aria-expanded`, `aria-controls`; named "Details of _event_, _time_") that shows a detail row below it with every identifier in full. It works with Enter and Space.
+- **Small screens (1.4.10):** below 48rem, tables become one card per row with each value's column name beside it, so nothing scrolls horizontally down to 320 px. The tables keep explicit ARIA table roles (`table`, `row`, `columnheader`, `cell`), and the header row stays available to screen readers.
+- **Phase 11d measurement:** the new surfaces were measured the same way (text hidden through the CSSOM, worst backdrop pixel under each text node and icon) on the dashboard, users, clients, API resources, roles, signing keys, settings, audit log with an expanded entry, and a user's danger zone, in light and dark at 1440×900, 1920×1080, 390 px, and 320 px. Lowest values: badges 4.76:1, danger zone heading 4.92:1 (its red moves toward the text color on glass), expanded audit row labels 5.34:1, dashboard activity times 5.87:1, metric labels 7.27:1, icons 7.32:1. No surface needed an opaque fill.
 
 ## Branding
 

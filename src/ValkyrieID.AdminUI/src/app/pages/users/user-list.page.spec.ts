@@ -50,9 +50,9 @@ describe('UserListPage', () => {
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
     expect(row.querySelector('a')?.getAttribute('href')).toBe('/users/u1');
-    expect(row.textContent).toContain('unverified');
-    expect(row.textContent).toContain('disabled');
-    expect(row.textContent).toContain('locked out');
+    expect(row.textContent).toContain('Email unverified');
+    expect(row.textContent).toContain('Disabled');
+    expect(row.textContent).toContain('Locked out');
     expect(row.textContent).toContain('admin');
   });
 
@@ -74,7 +74,7 @@ describe('UserListPage', () => {
     expect(request.request.urlWithParams).toContain('q=bob%20%26%20co');
     request.flush({ items: [], total: 0 });
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No users found.');
+    expect(fixture.nativeElement.textContent).toContain('No users match your search.');
   });
 
   it('has a label for the search field', async () => {

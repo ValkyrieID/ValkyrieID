@@ -1,0 +1,89 @@
+<app-page-header [heading]="title()">
+  <button actions type="button" (click)="startCreate()">
+    {{ kind() === 'roles' ? 'New role' : 'New group' }}
+  </button>
+  <p lead class="lead">
+    {{ title() }} are emitted in the <code>{{ kind() }}</code> claim.
+    @if (kind() === 'roles') {
+      The built-in <code>admin</code> role grants access to this admin UI and the Admin API.
+    }
+  </p>
+</app-page-header>
+<form class="search" role="search" (ngSubmit)="search()">
+  <label [for]="kind() + '-search'">Search</label>
+  <input [id]="kind() + '-search'" name="q" type="search" [(ngModel)]="text" maxlength="200" />
+  <button type="submit">Search</button>
+</form>
+<app-problem [problem]="listProblem()" />
+@if (items.hasValue() ? items.value() : undefined; as page) {
+  @if (page.items.length === 0) {
+    @if (query()) {
+      <app-empty [message]="'No ' + kind() + ' match your search.'">
+        <button type="button" class="secondary" (click)="clear()">Clear search</button>
+      </app-empty>
+    } @else {
+      <app-empty [message]="'No ' + kind() + ' yet.'" />
+    }
+  } @else {
+    <div class="table-wrap">
+      <table class="data" appStack>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Description</th>
+            <th scope="col">Members</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of page.items; track item.id) {
+            <tr>
+              <td>
+                <a class="cell-title" [routerLink]="['/' + kind(), item.id]">{{ item.name }}</a>
+                @if (isBuiltIn(item)) {
+                  <span class="badge builtin">Built-in</span>
+                }
+              </td>
+              <td>{{ item.description ?? '–' }}</td>
+              <td class="numeric">{{ item.members }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <app-pager [total]="page.total" [limit]="limit" [(offset)]="offset" />
+} @else if (items.isLoading()) {
+  <app-loading />
+}
+
+<section aria-labelledby="create-title" class="form-section">
+  <h2 id="create-title">{{ kind() === 'roles' ? 'New role' : 'New group' }}</h2>
+  <app-problem [problem]="problem()" />
+  <form class="form" (ngSubmit)="create()">
+    <div class="field">
+      <label for="named-name">Name</label>
+      <input
+        #nameInput
+        id="named-name"
+        name="name"
+        [(ngModel)]="name"
+        required
+        maxlength="100"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="field">
+      <label for="named-description">Description <span class="optional">(optional)</span></label>
+      <input
+        id="named-description"
+        name="description"
+        [(ngModel)]="description"
+        autocomplete="off"
+      />
+    </div>
+    <div class="actions">
+      <button type="submit" [disabled]="busy() || !name().trim()">Create</button>
+    </div>
+  </form>
+</section>

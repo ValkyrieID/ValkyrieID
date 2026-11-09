@@ -35,6 +35,24 @@ The admin UI looks like the account pages: the built-in wallpaper with a frosted
 
 [Branding](/reference/configuration#branding) only applies to the sign-in and account pages; the admin UI always uses ValkyrieID's own colors and wallpapers.
 
+### Pages
+
+Every page has the same header: a back link (on detail and create pages), the title with status badges, a short description, and the page's main action on the right (for example **New user**, **Enable client**, or **Rotate now**). Errors appear right below the header. Form buttons sit below a divider at the end of the form. Destructive actions (disabling and deleting) are in a separate **Danger zone** section at the end of the page, each with a description of what happens, and always ask for confirmation.
+
+Status badges combine text with a mark, so they don't rely on color: ✓ enabled, active, or success; ! warning or failure; – disabled, retired, or expired; ○ pending; ◆ built in; ⊘ set by configuration. On the signing keys page, the active key comes first, then pending and retired keys.
+
+### Audit log
+
+Each audit entry is one compact row: time, event, result, and actor. Use the arrow button at the start of a row (or focus it and press Enter or Space) to show the entry's details below it: the full time, the entry ID, the actor, the subject (with a link to the user), the client, the IP address, and every detail the event recorded. Use **Result: Failure** to see only failed events.
+
+### Copying IDs
+
+Long identifiers such as user IDs and key IDs are shortened to their first 8 characters, for example `01a1c0fd…`. Screen readers read the full value. The copy button next to an ID copies the full value and confirms with "Copied". The audit log details and the user's **Account** section show IDs in full. Copying needs a secure (HTTPS) connection; without one the button isn't shown.
+
+### Small screens
+
+Below 48rem wide, tables turn into a list of cards: each row is a card, and each value has its column name next to it. Screen readers still read them as tables, with column headers.
+
 ## Security
 
 - The admin UI is served by the same server, on the same origin as the Admin API. The API sends no CORS headers, so no other website can call it. Both send `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy: same-origin`, so other sites can't keep a handle on an admin window or load its responses.

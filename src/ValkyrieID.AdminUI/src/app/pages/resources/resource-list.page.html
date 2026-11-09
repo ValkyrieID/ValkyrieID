@@ -1,0 +1,78 @@
+<app-page-header heading="API resources">
+  <a actions class="button" routerLink="/resources/new">New API resource</a>
+  <p lead class="lead">
+    An API resource is an API protected with ValkyrieID tokens. Its name is the token audience
+    (<code>aud</code>); its scopes are what clients can request.
+  </p>
+</app-page-header>
+<form class="search" role="search" (ngSubmit)="search()">
+  <label for="resource-search">Search by name</label>
+  <input id="resource-search" name="q" type="search" [(ngModel)]="text" maxlength="200" />
+  <button type="submit">Search</button>
+</form>
+<app-problem [problem]="problem()" />
+@if (resources.hasValue() ? resources.value() : undefined; as page) {
+  @if (page.items.length === 0) {
+    @if (query()) {
+      <app-empty message="No API resources match your search.">
+        <button type="button" class="secondary" (click)="clear()">Clear search</button>
+      </app-empty>
+    } @else {
+      <app-empty message="No API resources yet.">
+        <a class="button" routerLink="/resources/new">Create the first API resource</a>
+      </app-empty>
+    }
+  } @else {
+    <div class="table-wrap">
+      <table class="data" appStack>
+        <thead>
+          <tr>
+            <th scope="col">API resource</th>
+            <th scope="col">Scopes</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (resource of page.items; track resource.id) {
+            <tr>
+              <td>
+                <a class="cell-title" [routerLink]="['/resources', resource.id]">{{
+                  resource.name
+                }}</a>
+                @if (resource.displayName) {
+                  <span class="cell-sub">{{ resource.displayName }}</span>
+                }
+              </td>
+              <td>
+                @if (resource.scopes.length === 0) {
+                  –
+                } @else {
+                  <span class="codes">
+                    @for (scope of resource.scopes; track scope.id) {
+                      <code>{{ scope.name }}</code>
+                    }
+                  </span>
+                }
+              </td>
+              <td>
+                <span class="badges">
+                  @if (resource.enabled) {
+                    <span class="badge ok">Enabled</span>
+                  } @else {
+                    <span class="badge off">Disabled</span>
+                  }
+                  @if (resource.builtIn) {
+                    <span class="badge builtin">Built-in</span>
+                  }
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <app-pager [total]="page.total" [limit]="limit" [(offset)]="offset" />
+} @else if (resources.isLoading()) {
+  <app-loading />
+}

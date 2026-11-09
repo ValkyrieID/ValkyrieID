@@ -10,13 +10,16 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AdminApi } from '../../api/admin-api';
 import { AddSecretRequest, CreatedSecret, ResourceDto, ScopeDto } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
 import { SecretsComponent } from '../../shared/secrets.component';
+import { StackTableDirective } from '../../shared/stack-table.directive';
+import { LoadingComponent } from '../../shared/state.component';
 import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
@@ -24,11 +27,13 @@ import { Notifier, optional, valueOf } from '../../shared/util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
-    RouterLink,
     DatePipe,
     ConfirmButtonComponent,
+    PageHeaderComponent,
     ProblemComponent,
     SecretsComponent,
+    StackTableDirective,
+    LoadingComponent,
   ],
   templateUrl: './resource-detail.page.html',
 })

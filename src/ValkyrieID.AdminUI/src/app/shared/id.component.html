@@ -1,0 +1,46 @@
+@if (short() === value()) {
+  <code>{{ value() }}</code>
+} @else {
+  <code
+    ><span aria-hidden="true">{{ short() }}</span
+    ><span class="visually-hidden">{{ value() }}</span></code
+  >
+}
+@if (copyable()) {
+  <button type="button" class="icon-button" [attr.aria-label]="'Copy ' + label()" (click)="copy()">
+    @if (copied()) {
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <path
+          d="M3 8.5l3 3 7-7"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    } @else {
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <rect
+          x="5.5"
+          y="5.5"
+          width="8"
+          height="8"
+          rx="1.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path
+          d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+      </svg>
+    }
+  </button>
+  @if (copied()) {
+    <span class="id-copied" aria-hidden="true">Copied</span>
+  }
+}

@@ -18,7 +18,9 @@ import {
   SmtpTestResult,
 } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
+import { LoadingComponent } from '../../shared/state.component';
 import { Notifier, valueOf } from '../../shared/util';
 import {
   DURATION_UNITS,
@@ -38,7 +40,7 @@ import {
 @Component({
   selector: 'app-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ProblemComponent],
+  imports: [RouterLink, PageHeaderComponent, ProblemComponent, LoadingComponent],
   templateUrl: './settings.page.html',
 })
 export class SettingsPage {

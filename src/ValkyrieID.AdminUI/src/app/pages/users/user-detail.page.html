@@ -1,16 +1,35 @@
-<p><a routerLink="/users">Users</a></p>
-@if (loadProblem()) {
-  <h1>User</h1>
-}
-<app-problem [problem]="loadProblem()" />
 @if (user.hasValue() ? user.value() : undefined; as u) {
-  <h1>{{ u.userName }}</h1>
-  <p class="muted">
-    User id <code>{{ u.id }}</code> · created {{ u.createdAt | date: 'medium' }}
-    @if (u.passwordChangedAt) {
-      · password changed {{ u.passwordChangedAt | date: 'medium' }}
+  <app-page-header [heading]="u.userName" back="/users" backLabel="Users">
+    <span status class="badges">
+      @if (u.enabled) {
+        <span class="badge ok">Enabled</span>
+      } @else {
+        <span class="badge off">Disabled</span>
+      }
+      @if (u.lockedOut) {
+        <span class="badge warn">Locked out</span>
+      }
+      @if (u.twoFactorEnabled) {
+        <span class="badge ok">2FA</span>
+      }
+    </span>
+    @if (!u.enabled) {
+      <button
+        actions
+        type="button"
+        [disabled]="busy()"
+        (click)="action('enable', 'The user was enabled.')"
+      >
+        Enable user
+      </button>
     }
-  </p>
+    <p lead class="lead">
+      Created {{ u.createdAt | date: 'medium' }}
+      @if (u.passwordChangedAt) {
+        · password changed {{ u.passwordChangedAt | date: 'medium' }}
+      }
+    </p>
+  </app-page-header>
 
   <app-problem [problem]="problem()" />
 
@@ -74,12 +93,22 @@
   <section id="account" aria-labelledby="account-title">
     <h2 id="account-title">Account</h2>
     <dl class="facts">
+      <dt>User ID</dt>
+      <dd><app-id [value]="u.id" label="user ID" [full]="true" /></dd>
       <dt>Status</dt>
-      <dd>{{ u.enabled ? 'Enabled' : 'Disabled' }}</dd>
+      <dd>
+        @if (u.enabled) {
+          <span class="badge ok">Enabled</span>
+        } @else {
+          <span class="badge off">Disabled</span>
+          <span class="muted">The user can't sign in.</span>
+        }
+      </dd>
       <dt>Lockout</dt>
       <dd>
         @if (u.lockedOut) {
-          Locked out until {{ u.lockoutEnd | date: 'medium' }}
+          <span class="badge warn">Locked out</span>
+          until {{ u.lockoutEnd | date: 'medium' }}
         } @else {
           Not locked out ({{ u.accessFailedCount }} failed attempts)
         }
@@ -93,24 +122,6 @@
       </dd>
     </dl>
     <div class="actions">
-      @if (u.enabled) {
-        <app-confirm-button
-          label="Disable"
-          title="Disable {{ u.userName }}?"
-          message="The user can't sign in, and their sessions and refresh tokens are revoked."
-          [danger]="true"
-          [disabled]="busy()"
-          (confirmed)="action('disable', 'The user was disabled.')"
-        />
-      } @else {
-        <button
-          type="button"
-          [disabled]="busy()"
-          (click)="action('enable', 'The user was enabled.')"
-        >
-          Enable
-        </button>
-      }
       @if (u.lockedOut) {
         <button
           type="button"
@@ -184,7 +195,7 @@
   <section id="roles" aria-labelledby="roles-title">
     <h2 id="roles-title">Roles</h2>
     @if (u.roles.length === 0) {
-      <p>No roles.</p>
+      <p class="muted">No roles.</p>
     } @else {
       <ul class="chips">
         @for (role of u.roles; track role.id) {
@@ -219,7 +230,7 @@
   <section id="groups" aria-labelledby="groups-title">
     <h2 id="groups-title">Groups</h2>
     @if (u.groups.length === 0) {
-      <p>No groups.</p>
+      <p class="muted">No groups.</p>
     } @else {
       <ul class="chips">
         @for (group of u.groups; track group.id) {
@@ -255,7 +266,7 @@
     <p class="hint">Emitted with the profile scope. Standard and protocol claims can't be set.</p>
     @if (u.claims.length > 0) {
       <div class="table-wrap">
-        <table class="data">
+        <table class="data" appStack>
           <thead>
             <tr>
               <th scope="col">Type</th>
@@ -319,10 +330,10 @@
     <h2 id="sessions-title">Sessions</h2>
     @if (sessions.hasValue() ? sessions.value() : undefined; as list) {
       @if (list.length === 0) {
-        <p>No active sessions.</p>
+        <p class="muted">No active sessions.</p>
       } @else {
         <div class="table-wrap">
-          <table class="data">
+          <table class="data" appStack>
             <thead>
               <tr>
                 <th scope="col">Signed in</th>
@@ -373,22 +384,52 @@
         />
       }
     } @else if (sessions.isLoading()) {
-      <p role="status">Loading…</p>
+      <app-loading />
     }
   </section>
 
-  <section aria-labelledby="delete-title" class="danger-zone">
-    <h2 id="delete-title">Delete user</h2>
-    <p>The user's sessions are revoked first. This can't be undone.</p>
-    <app-confirm-button
-      label="Delete user"
-      title="Delete {{ u.userName }}?"
-      message="The user and all their data are deleted. This can't be undone."
-      [danger]="true"
-      [disabled]="busy()"
-      (confirmed)="deleteUser()"
-    />
+  <section aria-labelledby="danger-title" class="danger-zone">
+    <h2 id="danger-title">Danger zone</h2>
+    <div class="danger-item">
+      @if (u.enabled) {
+        <div>
+          <h3>Disable user</h3>
+          <p>The user can't sign in, and their sessions and refresh tokens are revoked.</p>
+        </div>
+        <app-confirm-button
+          label="Disable user"
+          title="Disable {{ u.userName }}?"
+          message="The user can't sign in, and their sessions and refresh tokens are revoked."
+          [danger]="true"
+          [disabled]="busy()"
+          (confirmed)="action('disable', 'The user was disabled.')"
+        />
+      } @else {
+        <div>
+          <h3>Disable user</h3>
+          <p>The user is disabled. Use “Enable user” at the top of the page to allow sign-ins.</p>
+        </div>
+      }
+    </div>
+    <div class="danger-item">
+      <div>
+        <h3>Delete user</h3>
+        <p>The user's sessions are revoked first. This can't be undone.</p>
+      </div>
+      <app-confirm-button
+        label="Delete user"
+        title="Delete {{ u.userName }}?"
+        message="The user and all their data are deleted. This can't be undone."
+        [danger]="true"
+        [disabled]="busy()"
+        (confirmed)="deleteUser()"
+      />
+    </div>
   </section>
-} @else if (user.isLoading()) {
-  <p role="status">Loading…</p>
+} @else {
+  <app-page-header heading="User" back="/users" backLabel="Users" />
+  <app-problem [problem]="loadProblem()" />
+  @if (user.isLoading()) {
+    <app-loading />
+  }
 }

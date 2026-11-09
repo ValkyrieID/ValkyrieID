@@ -1,30 +1,24 @@
-<p><a routerLink="/resources">API resources</a></p>
-@if (loadProblem()) {
-  <h1>API resource</h1>
-}
-<app-problem [problem]="loadProblem()" />
 @if (resource.hasValue() ? resource.value() : undefined; as r) {
-  <div class="page-header">
-    <h1>{{ r.displayName ?? r.name }}</h1>
-    @if (!r.builtIn) {
+  <app-page-header [heading]="r.displayName ?? r.name" back="/resources" backLabel="API resources">
+    <span status class="badges">
       @if (r.enabled) {
-        <app-confirm-button
-          label="Disable"
-          [title]="'Disable ' + r.name + '?'"
-          message="Tokens can't be issued for its scopes, and it can't call the introspection endpoint."
-          [danger]="true"
-          [disabled]="busy()"
-          (confirmed)="setEnabled(false)"
-        />
+        <span class="badge ok">Enabled</span>
       } @else {
-        <button type="button" [disabled]="busy()" (click)="setEnabled(true)">Enable</button>
+        <span class="badge off">Disabled</span>
       }
+      @if (r.builtIn) {
+        <span class="badge builtin">Built-in</span>
+      }
+    </span>
+    @if (!r.builtIn && !r.enabled) {
+      <button actions type="button" [disabled]="busy()" (click)="setEnabled(true)">
+        Enable API resource
+      </button>
     }
-  </div>
-  <p class="muted">
-    Audience <code>{{ r.name }}</code> · created {{ r.createdAt | date: 'medium' }} ·
-    {{ r.enabled ? 'Enabled' : 'Disabled' }}
-  </p>
+    <p lead class="lead">
+      Audience <code>{{ r.name }}</code> · created {{ r.createdAt | date: 'medium' }}
+    </p>
+  </app-page-header>
   @if (r.builtIn) {
     <p class="notice">
       This is the built-in resource of the Admin API. It is managed by the server and can't be
@@ -72,7 +66,7 @@
       Scope names can't be changed. A scope can't be removed while a client may request it.
     </p>
     <div class="table-wrap">
-      <table class="data">
+      <table class="data" appStack>
         <thead>
           <tr>
             <th scope="col">Name</th>
@@ -172,18 +166,46 @@
       />
     </section>
 
-    <section class="danger-zone" aria-labelledby="resource-delete-title">
-      <h2 id="resource-delete-title">Delete API resource</h2>
-      <app-confirm-button
-        label="Delete API resource"
-        [title]="'Delete ' + r.name + '?'"
-        message="The resource, its scopes, and its secrets are deleted. This can't be undone."
-        [danger]="true"
-        [disabled]="busy()"
-        (confirmed)="remove()"
-      />
+    <section class="danger-zone" aria-labelledby="resource-danger-title">
+      <h2 id="resource-danger-title">Danger zone</h2>
+      @if (r.enabled) {
+        <div class="danger-item">
+          <div>
+            <h3>Disable API resource</h3>
+            <p>
+              Tokens can't be issued for its scopes, and it can't call the introspection endpoint.
+            </p>
+          </div>
+          <app-confirm-button
+            label="Disable API resource"
+            [title]="'Disable ' + r.name + '?'"
+            message="Tokens can't be issued for its scopes, and it can't call the introspection endpoint."
+            [danger]="true"
+            [disabled]="busy()"
+            (confirmed)="setEnabled(false)"
+          />
+        </div>
+      }
+      <div class="danger-item">
+        <div>
+          <h3>Delete API resource</h3>
+          <p>The resource, its scopes, and its secrets are deleted.</p>
+        </div>
+        <app-confirm-button
+          label="Delete API resource"
+          [title]="'Delete ' + r.name + '?'"
+          message="The resource, its scopes, and its secrets are deleted. This can't be undone."
+          [danger]="true"
+          [disabled]="busy()"
+          (confirmed)="remove()"
+        />
+      </div>
     </section>
   }
-} @else if (resource.isLoading()) {
-  <p role="status">Loading…</p>
+} @else {
+  <app-page-header heading="API resource" back="/resources" backLabel="API resources" />
+  <app-problem [problem]="loadProblem()" />
+  @if (resource.isLoading()) {
+    <app-loading />
+  }
 }

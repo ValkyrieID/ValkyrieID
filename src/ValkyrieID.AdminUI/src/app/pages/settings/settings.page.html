@@ -1,7 +1,10 @@
 @if (section(); as name) {
-  <p><a routerLink="/settings">All settings</a></p>
-  <h1>{{ meta().title }}</h1>
-  <p>{{ meta().description }}</p>
+  <app-page-header
+    [heading]="meta().title"
+    back="/settings"
+    backLabel="All settings"
+    [lead]="meta().description"
+  />
   <app-problem [problem]="loadProblem() ?? problem()" />
 
   @if (data.hasValue() ? data.value() : undefined; as loaded) {
@@ -168,7 +171,7 @@
             }
             @if (s.locked) {
               <p>
-                <span class="badge warn">Set by configuration</span>
+                <span class="badge locked">Set by configuration</span>
                 Change <code>{{ s.key }}</code> in the server's configuration instead.
               </p>
             } @else if (s.kind !== 'secret') {
@@ -219,25 +222,24 @@
       </section>
     }
   } @else if (data.isLoading()) {
-    <p role="status">Loading…</p>
+    <app-loading />
   }
 } @else {
-  <h1>Settings</h1>
-  <p>
-    These settings are stored in the database and apply without a restart. Settings in the server's
-    configuration (appsettings or environment variables) take precedence and are shown read-only.
-  </p>
+  <app-page-header
+    heading="Settings"
+    lead="These settings are stored in the database and apply without a restart. Settings in the server's configuration (appsettings or environment variables) take precedence and are shown read-only."
+  />
   <app-problem [problem]="loadProblem()" />
-  <ul class="settings-list">
+  <ul class="link-list">
     @for (item of sections; track item.name) {
       <li>
-        <a [routerLink]="['/settings', item.name]">{{ item.title }}</a>
-        <p>{{ item.description }}</p>
-        @if (lockedCount(item.name) > 0) {
-          <p>
-            <span class="badge warn">{{ lockedCount(item.name) }} set by configuration</span>
-          </p>
-        }
+        <a [routerLink]="['/settings', item.name]">
+          <span class="link-list-title">{{ item.title }}</span>
+          <span class="link-list-text">{{ item.description }}</span>
+          @if (lockedCount(item.name) > 0) {
+            <span class="badge locked">{{ lockedCount(item.name) }} set by configuration</span>
+          }
+        </a>
       </li>
     }
   </ul>

@@ -148,6 +148,8 @@ The admin shell matches the account layout (Phase 11b), with the same tokens, gl
 
 ## Phase 11d: Angular page content and data presentation
 
+Done.
+
 ### Done: glass look
 
 - Page content sits on one glass panel; sections, lists, settings sections, and table rows are separated by dividers, not boxed again. Headers, forms, inputs (mostly opaque `--vid-glass-input`), buttons, badges, alerts, and notices use the same patterns as the account pages; alerts and notices have an icon as well as color.
@@ -155,16 +157,17 @@ The admin shell matches the account layout (Phase 11b), with the same tokens, gl
 - Dialogs and menus stay opaque (`--vid-surface-raised`) for readability over the page.
 - Tables sit directly on the glass. Measured on the rendered pages (content hidden through the CSSOM, worst backdrop pixel per surface, light and dark at 1440×900, 1920×1080, and 390 px), every text pair keeps 4.5:1 and every control 3:1, so table bodies need no opaque fill. If a later change lowers the measured ratios, give the table body an opaque fill instead of weakening the tokens.
 
-### Open
+### Done: page content and data presentation
 
-- Redesign dashboard metric cards and the recent-activity summary.
-- Standardize list, detail, create, and settings page headers and action placement beyond the shared styles.
-- Add patterns for loading and empty states.
-- Improve users, clients, API resources, roles, groups, signing keys, and settings pages.
-- Make built-in entities, enabled/disabled states, signing-key states, and destructive actions visually distinct.
-- Redesign the audit table so the default row is compact and long identifiers/details are available through expansion or a detail view.
-- Shorten UUIDs visually while retaining the complete value for accessible text, copying, or inspection.
-- Provide usable small-screen alternatives for dense tables, such as stacked rows or expandable cards.
+- **Page structure:** every page uses one header component (`app-page-header`): an optional back link, the `<h1>` with status badges, a muted lead line, and the primary action on the right. Errors (`app-problem`) follow directly below. Create pages end with the submit button and **Cancel** below a divider (`.form .actions`). Detail pages put disabling and deleting in a **Danger zone** at the end: a ⚠-marked red heading (on glass the red moves toward the text color: 4.92:1 measured) and one row per action with its consequence. Enable stays a normal action in the header.
+- **Loading and empty states:** `app-loading` (a `role="status"` "Loading…" with a decorative spinner, still with reduced motion) and `app-empty` (icon, message, optional hint, and the next step: **Clear search**, or **Create the first …**).
+- **Status badges:** text plus a mark, never color alone: ✓ ok/active (green), ! warn (yellow), – off/retired (neutral, dashed border), ○ pending (blue), ◆ built in (teal), ⊘ locked by configuration. Danger buttons carry ⚠.
+- **Dashboard:** metric tiles with an icon, the value, the label, and a detail line (signing key algorithm, activation date, pending rotation). Recent activity is a compact divided list (result badge, event, time, shortened actor) instead of the audit table.
+- **Lists:** one "main" column per row (link plus a muted second line, e.g. display name and email) instead of many narrow columns; grant types and scopes as code chips; status as badges. Roles and groups have a **New** header action that moves the focus to the form on the page. Signing keys are sorted active, pending, retired, with a legend of the states. Settings sections are a link list with chevrons, like the account overview.
+- **Audit log:** compact rows (time, event, result, shortened actor). A disclosure button (`aria-expanded`, `aria-controls`, named "Details of _event_, _time_") opens a full-width row below with the full time, entry ID, actor, subject (with a link to the user), client, IP address, and details as aligned label/value pairs. Expanded rows get the teal tint (and an outline in forced colors).
+- **IDs:** `app-id` shows UUIDs as their first 8 characters (`admin:01a1c0fd…`) and other long values as their first 12, with the full value as visually hidden text and a copy button (Clipboard API only; hidden without it; announces "… copied."). Detail views show the value in full.
+- **Small screens:** below 48rem, tables marked `appStack` (`StackTableDirective`) become one card per row with the column name beside each value (`data-label`, generated content with empty alternative text). The directive sets explicit ARIA table roles, so the semantics survive `display: block`; the header row stays available to assistive technology.
+- **Measured** on the rendered pages (text hidden through the CSSOM, worst backdrop pixel under each text node and icon), light and dark at 1440×900, 1920×1080, 390 px, and 320 px: lowest text pair 4.76:1 (badges), icons 7.32:1, no horizontal overflow. No new surface needed an opaque fill.
 
 ## Phase 11e: Responsive polish and verification
 

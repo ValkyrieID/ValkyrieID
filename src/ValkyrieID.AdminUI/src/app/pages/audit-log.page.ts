@@ -6,78 +6,23 @@ import { AdminApi } from '../api/admin-api';
 import { AuditEntryDto, AuditFilter, AuditPage } from '../api/models';
 import { Problem, toProblem } from '../api/problem';
 import { ProblemComponent } from '../shared/problem.component';
+import { PageHeaderComponent } from '../shared/page-header.component';
+import { EmptyComponent, LoadingComponent } from '../shared/state.component';
 import { optional } from '../shared/util';
 import { AuditTableComponent } from './audit-table.component';
 
 @Component({
   selector: 'app-audit-log-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, AuditTableComponent, ProblemComponent],
-  template: `
-    <h1>Audit log</h1>
-    <form class="filters" (ngSubmit)="apply()">
-      <div class="field">
-        <label for="audit-type">Event type</label>
-        <input
-          id="audit-type"
-          name="type"
-          [(ngModel)]="type"
-          aria-describedby="audit-type-hint"
-          autocomplete="off"
-        />
-        <p class="hint" id="audit-type-hint">
-          For example user.created, or user. for all user events.
-        </p>
-      </div>
-      <div class="field">
-        <label for="audit-actor">Actor</label>
-        <input
-          id="audit-actor"
-          name="actor"
-          [(ngModel)]="actor"
-          aria-describedby="audit-actor-hint"
-          autocomplete="off"
-        />
-        <p class="hint" id="audit-actor-hint">cli, system, or admin:&lt;user id&gt;.</p>
-      </div>
-      <div class="field">
-        <label for="audit-subject">Subject (user id)</label>
-        <input id="audit-subject" name="subject" [(ngModel)]="subject" autocomplete="off" />
-      </div>
-      <div class="field">
-        <label for="audit-client">Client id</label>
-        <input id="audit-client" name="clientId" [(ngModel)]="clientId" autocomplete="off" />
-      </div>
-      <div class="field">
-        <label for="audit-success">Result</label>
-        <select id="audit-success" name="success" [(ngModel)]="success">
-          <option value="">Any</option>
-          <option value="true">Success</option>
-          <option value="false">Failure</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="audit-from">From</label>
-        <input id="audit-from" name="from" type="datetime-local" [(ngModel)]="from" />
-      </div>
-      <div class="field">
-        <label for="audit-to">Until</label>
-        <input id="audit-to" name="to" type="datetime-local" [(ngModel)]="to" />
-      </div>
-      <div class="actions">
-        <button type="submit">Apply filters</button>
-        <button type="button" class="secondary" (click)="clear()">Clear</button>
-      </div>
-    </form>
-
-    <app-problem [problem]="problem()" />
-    <app-audit-table [entries]="entries()" />
-    @if (loading()) {
-      <p role="status">Loading…</p>
-    } @else if (next()) {
-      <button type="button" class="secondary" (click)="load(false)">Load more</button>
-    }
-  `,
+  imports: [
+    FormsModule,
+    AuditTableComponent,
+    ProblemComponent,
+    PageHeaderComponent,
+    LoadingComponent,
+    EmptyComponent,
+  ],
+  templateUrl: './audit-log.page.html',
 })
 export class AuditLogPage {
   private readonly api = inject(AdminApi);

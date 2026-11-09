@@ -1,0 +1,137 @@
+<app-page-header heading="Dashboard" lead="An overview of this ValkyrieID instance." />
+<ul class="metrics">
+  <li>
+    <a class="metric" routerLink="/users">
+      <svg
+        class="metric-icon"
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle cx="12" cy="8.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <path
+          d="M5 19.5c.8-3.4 3.6-5.5 7-5.5s6.2 2.1 7 5.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span class="metric-value">{{ counts().users }}</span>
+      <span class="metric-label">Users</span>
+    </a>
+  </li>
+  <li>
+    <a class="metric" routerLink="/clients">
+      <svg
+        class="metric-icon"
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <rect
+          x="3.5"
+          y="5"
+          width="17"
+          height="12"
+          rx="1.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+        />
+        <path d="M8 20h8" fill="none" stroke="currentColor" stroke-width="1.75" />
+      </svg>
+      <span class="metric-value">{{ counts().clients }}</span>
+      <span class="metric-label">Clients</span>
+    </a>
+  </li>
+  <li>
+    <a class="metric" routerLink="/resources">
+      <svg
+        class="metric-icon"
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M12 3.5l8 4.5-8 4.5-8-4.5zM4 12.5l8 4.5 8-4.5M4 16.5l8 4.5 8-4.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span class="metric-value">{{ counts().resources }}</span>
+      <span class="metric-label">API resources</span>
+    </a>
+  </li>
+  <li>
+    <a class="metric" routerLink="/signing-keys">
+      <svg
+        class="metric-icon"
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle cx="8" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <path
+          d="M12 12h8.5M17 12v3M20 12v2.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+        />
+      </svg>
+      <span class="metric-value">{{ activeKey()?.algorithm ?? '–' }}</span>
+      <span class="metric-label">Signing key</span>
+      @if (activeKey(); as key) {
+        <span class="metric-detail">Active since {{ key.activatesAt | date: 'mediumDate' }}</span>
+      }
+      @if (pendingKey()) {
+        <span class="badge pending">Rotation pending</span>
+      }
+    </a>
+  </li>
+</ul>
+
+<section aria-labelledby="activity-title" class="activity-section">
+  <div class="section-header">
+    <h2 id="activity-title">Recent activity</h2>
+    <a routerLink="/audit">Open the audit log</a>
+  </div>
+  <app-problem [problem]="auditProblem()" />
+  @if (audit.hasValue() ? audit.value() : undefined; as page) {
+    @if (page.items.length === 0) {
+      <app-empty message="No activity yet." />
+    } @else {
+      <ul class="activity">
+        @for (entry of page.items; track entry.id) {
+          <li>
+            @if (entry.success) {
+              <span class="badge ok">Success</span>
+            } @else {
+              <span class="badge warn">Failure</span>
+            }
+            <code class="activity-event">{{ entry.eventType }}</code>
+            <span class="activity-meta">
+              <time [attr.datetime]="entry.timestamp">{{ entry.timestamp | date: 'short' }}</time>
+              @if (entry.actor; as actor) {
+                <span>by <app-id [value]="actor" label="actor" [allowCopy]="false" /></span>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+    }
+  } @else if (audit.isLoading()) {
+    <app-loading />
+  }
+</section>

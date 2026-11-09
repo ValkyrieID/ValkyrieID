@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AdminApi } from '../../api/admin-api';
 import { CreateClientRequest, CreatedClient } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
 import { SecretRevealComponent } from '../../shared/secret-reveal.component';
 import { Notifier } from '../../shared/util';
@@ -11,10 +12,14 @@ import { ClientFormComponent } from './client-form.component';
 @Component({
   selector: 'app-client-create-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, ClientFormComponent, ProblemComponent, SecretRevealComponent],
+  imports: [ClientFormComponent, PageHeaderComponent, ProblemComponent, SecretRevealComponent],
   template: `
-    <p><a routerLink="/clients">Clients</a></p>
-    <h1>New client</h1>
+    <app-page-header
+      heading="New client"
+      back="/clients"
+      backLabel="Clients"
+      lead="An application that signs users in or calls APIs."
+    />
     @if (created(); as result) {
       <p>
         The client <code>{{ result.client.clientId }}</code> was created.

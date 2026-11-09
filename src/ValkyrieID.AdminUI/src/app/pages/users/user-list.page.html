@@ -1,0 +1,78 @@
+<app-page-header heading="Users" lead="Accounts that can sign in to ValkyrieID.">
+  <a actions class="button" routerLink="/users/new">New user</a>
+</app-page-header>
+<form class="search" role="search" (ngSubmit)="search()">
+  <label for="user-search">Search by username or email</label>
+  <input id="user-search" name="q" type="search" [(ngModel)]="text" maxlength="200" />
+  <button type="submit">Search</button>
+</form>
+<app-problem [problem]="problem()" />
+@if (users.hasValue() ? users.value() : undefined; as page) {
+  @if (page.items.length === 0) {
+    @if (query()) {
+      <app-empty message="No users match your search.">
+        <button type="button" class="secondary" (click)="clear()">Clear search</button>
+      </app-empty>
+    } @else {
+      <app-empty message="No users yet.">
+        <a class="button" routerLink="/users/new">Create the first user</a>
+      </app-empty>
+    }
+  } @else {
+    <div class="table-wrap">
+      <table class="data" appStack>
+        <thead>
+          <tr>
+            <th scope="col">User</th>
+            <th scope="col">Status</th>
+            <th scope="col">Roles</th>
+            <th scope="col">Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of page.items; track user.id) {
+            <tr>
+              <td>
+                <a class="cell-title" [routerLink]="['/users', user.id]">{{ user.userName }}</a>
+                @if (user.displayName || user.email) {
+                  <span class="cell-sub">
+                    {{ user.displayName }}
+                    @if (user.displayName && user.email) {
+                      ·
+                    }
+                    {{ user.email }}
+                  </span>
+                }
+              </td>
+              <td>
+                <span class="badges">
+                  @if (user.enabled) {
+                    <span class="badge ok">Enabled</span>
+                  } @else {
+                    <span class="badge off">Disabled</span>
+                  }
+                  @if (user.lockedOut) {
+                    <span class="badge warn">Locked out</span>
+                  }
+                  @if (user.email && !user.emailVerified) {
+                    <span class="badge">Email unverified</span>
+                  }
+                  @if (user.twoFactorEnabled) {
+                    <span class="badge ok">2FA</span>
+                  } @else if (user.twoFactorRequired) {
+                    <span class="badge warn">2FA required</span>
+                  }
+                </span>
+              </td>
+              <td>{{ user.roles.join(', ') || '–' }}</td>
+              <td class="nowrap">{{ user.createdAt | date: 'mediumDate' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <app-pager [total]="page.total" [limit]="limit" [(offset)]="offset" />
+} @else if (users.isLoading()) {
+  <app-loading />
+}

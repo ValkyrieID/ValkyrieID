@@ -1,0 +1,72 @@
+<app-page-header heading="Clients" lead="Applications that sign users in or call APIs.">
+  <a actions class="button" routerLink="/clients/new">New client</a>
+</app-page-header>
+<form class="search" role="search" (ngSubmit)="search()">
+  <label for="client-search">Search by client id or name</label>
+  <input id="client-search" name="q" type="search" [(ngModel)]="text" maxlength="200" />
+  <button type="submit">Search</button>
+</form>
+<app-problem [problem]="problem()" />
+@if (clients.hasValue() ? clients.value() : undefined; as page) {
+  @if (page.items.length === 0) {
+    @if (query()) {
+      <app-empty message="No clients match your search.">
+        <button type="button" class="secondary" (click)="clear()">Clear search</button>
+      </app-empty>
+    } @else {
+      <app-empty message="No clients yet.">
+        <a class="button" routerLink="/clients/new">Create the first client</a>
+      </app-empty>
+    }
+  } @else {
+    <div class="table-wrap">
+      <table class="data" appStack>
+        <thead>
+          <tr>
+            <th scope="col">Client</th>
+            <th scope="col">Type</th>
+            <th scope="col">Grant types</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (client of page.items; track client.id) {
+            <tr>
+              <td>
+                <a class="cell-title" [routerLink]="['/clients', client.id]">{{
+                  client.clientId
+                }}</a>
+                @if (client.displayName) {
+                  <span class="cell-sub">{{ client.displayName }}</span>
+                }
+              </td>
+              <td>{{ client.type === 'public' ? 'Public' : 'Confidential' }}</td>
+              <td>
+                <span class="codes">
+                  @for (grant of client.grantTypes; track grant) {
+                    <code>{{ grant }}</code>
+                  }
+                </span>
+              </td>
+              <td>
+                <span class="badges">
+                  @if (client.enabled) {
+                    <span class="badge ok">Enabled</span>
+                  } @else {
+                    <span class="badge off">Disabled</span>
+                  }
+                  @if (client.builtIn) {
+                    <span class="badge builtin">Built-in</span>
+                  }
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  <app-pager [total]="page.total" [limit]="limit" [(offset)]="offset" />
+} @else if (clients.isLoading()) {
+  <app-loading />
+}

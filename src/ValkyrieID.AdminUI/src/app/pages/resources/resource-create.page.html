@@ -1,0 +1,48 @@
+<app-page-header
+  heading="New API resource"
+  back="/resources"
+  backLabel="API resources"
+  lead="An API that accepts ValkyrieID access tokens."
+/>
+<app-problem [problem]="problem()" />
+<form class="form" (ngSubmit)="create()">
+  <div class="field">
+    <label for="resource-name">Name</label>
+    <input
+      id="resource-name"
+      name="name"
+      [(ngModel)]="name"
+      required
+      autocomplete="off"
+      autocapitalize="none"
+      spellcheck="false"
+      aria-describedby="resource-name-hint"
+    />
+    <p class="hint" id="resource-name-hint">
+      The audience (<code>aud</code>) of its access tokens, e.g. <code>orders-api</code>. Can't be
+      changed later.
+    </p>
+  </div>
+  <div class="field">
+    <label for="resource-display">Display name <span class="optional">(optional)</span></label>
+    <input id="resource-display" name="displayName" [(ngModel)]="displayName" autocomplete="off" />
+  </div>
+  <div class="field">
+    <label for="resource-scopes">Scopes <span class="optional">(one per line)</span></label>
+    <textarea
+      id="resource-scopes"
+      name="scopes"
+      rows="3"
+      [(ngModel)]="scopes"
+      spellcheck="false"
+      aria-describedby="resource-scopes-hint"
+    ></textarea>
+    <p class="hint" id="resource-scopes-hint">
+      E.g. <code>orders.read</code>. You can add descriptions afterwards.
+    </p>
+  </div>
+  <div class="actions">
+    <button type="submit" [disabled]="busy()">Create API resource</button>
+    <a class="button secondary" routerLink="/resources">Cancel</a>
+  </div>
+</form>

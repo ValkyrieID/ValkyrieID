@@ -51,6 +51,7 @@ Act as an OpenID Connect / OAuth 2.0 security expert. Before writing protocol, a
 - **`ChangeDetectionStrategy.OnPush` on every component.**
 - **Zoneless** app; don't add zone.js.
 - Standalone components, `@if` / `@for` / `@switch`, `inject()` instead of constructor injection.
+- Keep templates readable: a template longer than 25 lines goes in its own `.html` file next to the component (`templateUrl`), not inline in the `.ts` file. Split an inline template out as soon as it grows past that.
 - TypeScript `strict`; no `any`.
 - Target WCAG 2.2 AA: labels, keyboard navigation, contrast.
 

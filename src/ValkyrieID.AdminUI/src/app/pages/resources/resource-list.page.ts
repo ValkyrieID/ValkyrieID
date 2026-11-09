@@ -6,70 +6,25 @@ import { AdminApi } from '../../api/admin-api';
 import { Page, ResourceDto } from '../../api/models';
 import { toProblem } from '../../api/problem';
 import { PagerComponent } from '../../shared/pager.component';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
+import { StackTableDirective } from '../../shared/stack-table.directive';
+import { EmptyComponent, LoadingComponent } from '../../shared/state.component';
 
 @Component({
   selector: 'app-resource-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, PagerComponent, ProblemComponent],
-  template: `
-    <div class="page-header">
-      <h1>API resources</h1>
-      <a class="button" routerLink="/resources/new">New API resource</a>
-    </div>
-    <p class="hint">
-      An API resource is an API protected with ValkyrieID tokens. Its name is the token audience
-      (<code>aud</code>); its scopes are what clients can request.
-    </p>
-    <form class="search" role="search" (ngSubmit)="search()">
-      <label for="resource-search">Search by name</label>
-      <input id="resource-search" name="q" type="search" [(ngModel)]="text" maxlength="200" />
-      <button type="submit">Search</button>
-    </form>
-    <app-problem [problem]="problem()" />
-    @if (resources.hasValue() ? resources.value() : undefined; as page) {
-      @if (page.items.length === 0) {
-        <p>No API resources found.</p>
-      } @else {
-        <div class="table-wrap">
-          <table class="data">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Display name</th>
-                <th scope="col">Scopes</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (resource of page.items; track resource.id) {
-                <tr>
-                  <td>
-                    <a [routerLink]="['/resources', resource.id]">{{ resource.name }}</a>
-                    @if (resource.builtIn) {
-                      <span class="badge">built-in</span>
-                    }
-                  </td>
-                  <td>{{ resource.displayName ?? '–' }}</td>
-                  <td class="wrap">{{ scopeNames(resource) }}</td>
-                  <td>
-                    @if (resource.enabled) {
-                      Enabled
-                    } @else {
-                      <span class="badge warn">disabled</span>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-      <app-pager [total]="page.total" [limit]="limit" [(offset)]="offset" />
-    } @else if (resources.isLoading()) {
-      <p role="status">Loading…</p>
-    }
-  `,
+  imports: [
+    FormsModule,
+    RouterLink,
+    PagerComponent,
+    ProblemComponent,
+    PageHeaderComponent,
+    LoadingComponent,
+    EmptyComponent,
+    StackTableDirective,
+  ],
+  templateUrl: './resource-list.page.html',
 })
 export class ResourceListPage {
   private readonly api = inject(AdminApi);
@@ -84,12 +39,13 @@ export class ResourceListPage {
     this.resources.error() ? toProblem(this.resources.error()) : null,
   );
 
-  protected scopeNames(resource: ResourceDto): string {
-    return resource.scopes.map((s) => s.name).join(', ') || '–';
-  }
-
   protected search(): void {
     this.query.set(this.text().trim());
     this.offset.set(0);
+  }
+
+  protected clear(): void {
+    this.text.set('');
+    this.search();
   }
 }

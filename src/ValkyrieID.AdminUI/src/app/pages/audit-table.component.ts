@@ -1,72 +1,40 @@
 import { DatePipe, KeyValuePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuditEntryDto } from '../api/models';
+import { IdComponent } from '../shared/id.component';
+import { StackTableDirective } from '../shared/stack-table.directive';
 
-/** Audit entries, newest first. */
+let nextId = 0;
+
+/**
+ * Audit entries, newest first. A row shows the time, event, result, and actor; a disclosure button (aria-expanded,
+ * aria-controls) opens a full-width row below it with every identifier in full and the details.
+ */
 @Component({
   selector: 'app-audit-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, KeyValuePipe],
-  template: `
-    @if (entries().length === 0) {
-      <p>No entries.</p>
-    } @else {
-      <div class="table-wrap">
-        <table class="data">
-          <thead>
-            <tr>
-              <th scope="col">Time</th>
-              <th scope="col">Event</th>
-              <th scope="col">Result</th>
-              <th scope="col">Actor</th>
-              <th scope="col">Subject</th>
-              <th scope="col">Client</th>
-              <th scope="col">IP address</th>
-              <th scope="col">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (entry of entries(); track entry.id) {
-              <tr>
-                <td>
-                  <time [attr.datetime]="entry.timestamp">{{
-                    entry.timestamp | date: 'medium'
-                  }}</time>
-                </td>
-                <td>
-                  <code>{{ entry.eventType }}</code>
-                </td>
-                <td>
-                  @if (entry.success) {
-                    Success
-                  } @else {
-                    <span class="badge warn">Failure</span>
-                  }
-                </td>
-                <td class="wrap">{{ entry.actor ?? '–' }}</td>
-                <td class="wrap">{{ entry.subjectId ?? '–' }}</td>
-                <td>{{ entry.clientId ?? '–' }}</td>
-                <td>{{ entry.ipAddress ?? '–' }}</td>
-                <td>
-                  @if (entry.details; as details) {
-                    <dl class="details">
-                      @for (item of details | keyvalue; track item.key) {
-                        <dt>{{ item.key }}</dt>
-                        <dd>{{ format(item.value) }}</dd>
-                      }
-                    </dl>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  `,
+  imports: [DatePipe, KeyValuePipe, RouterLink, IdComponent, StackTableDirective],
+  templateUrl: './audit-table.component.html',
 })
 export class AuditTableComponent {
   readonly entries = input.required<readonly AuditEntryDto[]>();
+
+  protected readonly expanded = signal<ReadonlySet<string>>(new Set());
+  private readonly prefix = `audit-${nextId++}`;
+
+  protected toggle(id: string): void {
+    const next = new Set(this.expanded());
+    if (!next.delete(id)) {
+      next.add(id);
+    }
+
+    this.expanded.set(next);
+  }
+
+  protected detailId(entry: AuditEntryDto): string {
+    return `${this.prefix}-${entry.id}`;
+  }
 
   protected format(value: unknown): string {
     return typeof value === 'string' ? value : JSON.stringify(value);

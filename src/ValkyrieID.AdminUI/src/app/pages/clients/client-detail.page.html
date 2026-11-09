@@ -1,0 +1,100 @@
+@if (client.hasValue() ? client.value() : undefined; as c) {
+  <app-page-header [heading]="c.displayName ?? c.clientId" back="/clients" backLabel="Clients">
+    <span status class="badges">
+      @if (c.enabled) {
+        <span class="badge ok">Enabled</span>
+      } @else {
+        <span class="badge off">Disabled</span>
+      }
+      @if (c.builtIn) {
+        <span class="badge builtin">Built-in</span>
+      }
+    </span>
+    @if (!c.builtIn && !c.enabled) {
+      <button actions type="button" [disabled]="busy()" (click)="setEnabled(true)">
+        Enable client
+      </button>
+    }
+    <p lead class="lead">
+      Client ID <code>{{ c.clientId }}</code> ·
+      {{ c.type === 'public' ? 'Public' : 'Confidential' }} client · created
+      {{ c.createdAt | date: 'medium' }}
+    </p>
+  </app-page-header>
+  @if (c.builtIn) {
+    <p class="notice">
+      This is the built-in client of the admin UI. Its configuration is managed by the server and
+      can't be changed.
+    </p>
+  }
+  <app-problem [problem]="problem()" />
+
+  <section aria-labelledby="config-title">
+    <h2 id="config-title">Configuration</h2>
+    <app-client-form
+      [client]="c"
+      [readOnly]="c.builtIn"
+      [busy]="busy()"
+      [problem]="problem()"
+      (submitted)="save($event)"
+    />
+  </section>
+
+  @if (c.type === 'confidential') {
+    <section aria-labelledby="secrets-title">
+      <h2 id="secrets-title">Secrets</h2>
+      <app-secrets
+        prefix="client"
+        [secrets]="c.secrets"
+        [busy]="busy()"
+        [(created)]="createdSecret"
+        (add)="addSecret($event)"
+        (remove)="removeSecret($event)"
+      />
+    </section>
+  }
+
+  @if (!c.builtIn) {
+    <section class="danger-zone" aria-labelledby="danger-title">
+      <h2 id="danger-title">Danger zone</h2>
+      @if (c.enabled) {
+        <div class="danger-item">
+          <div>
+            <h3>Disable client</h3>
+            <p>
+              The client can't authenticate or start sign-ins, and its refresh tokens are revoked.
+            </p>
+          </div>
+          <app-confirm-button
+            label="Disable client"
+            [title]="'Disable ' + c.clientId + '?'"
+            message="The client can't authenticate or start sign-ins, and its refresh tokens are revoked."
+            [danger]="true"
+            [disabled]="busy()"
+            (confirmed)="setEnabled(false)"
+          />
+        </div>
+      }
+      <div class="danger-item">
+        <div>
+          <h3>Delete client</h3>
+          <p>The client, its secrets, and its refresh tokens are deleted.</p>
+        </div>
+        <app-confirm-button
+          label="Delete client"
+          [title]="'Delete ' + c.clientId + '?'"
+          message="The client, its secrets, and its refresh tokens are deleted. This can't be undone."
+          [danger]="true"
+          [disabled]="busy()"
+          (confirmed)="remove()"
+        />
+      </div>
+    </section>
+  }
+} @else {
+  <app-page-header heading="Client" back="/clients" backLabel="Clients" />
+  <app-problem [problem]="loadProblem()" />
+  @if (client.isLoading()) {
+    <app-loading />
+  }
+}

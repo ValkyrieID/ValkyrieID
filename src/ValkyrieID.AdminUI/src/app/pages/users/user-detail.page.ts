@@ -15,13 +15,27 @@ import { AdminApi, NamedKind } from '../../api/admin-api';
 import { GroupDto, Page, RoleDto, SessionDto, UserDetail } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
+import { IdComponent } from '../../shared/id.component';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
+import { StackTableDirective } from '../../shared/stack-table.directive';
+import { LoadingComponent } from '../../shared/state.component';
 import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
   selector: 'app-user-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, DatePipe, ConfirmButtonComponent, ProblemComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    DatePipe,
+    ConfirmButtonComponent,
+    IdComponent,
+    PageHeaderComponent,
+    ProblemComponent,
+    StackTableDirective,
+    LoadingComponent,
+  ],
   templateUrl: './user-detail.page.html',
 })
 export class UserDetailPage {

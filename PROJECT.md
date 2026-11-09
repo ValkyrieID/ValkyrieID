@@ -498,9 +498,11 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
     - **11c: Angular admin shell and navigation** *(done 2026-11-09)*
       - top bar, branding, sidebar, theme control, responsive navigation, and preserved accessibility behavior
       - the account pages' wallpaper and frosted glass for the top bar, sidebar, and content; the "Valkyrie id" wordmark; navigation grouped into labelled lists; the admin UI stays unbranded
-    - **11d: Angular page content and data presentation** *(glass look done 2026-11-09; the rest open)*
-      - done: page content on glass panels with the account pages' patterns for headers, divided lists, forms, buttons, badges, and notices; dialogs and menus stay opaque; tables stay on glass (measured)
-      - open: dashboard, lists, forms, settings, status patterns, responsive tables, and audit-log details
+    - **11d: Angular page content and data presentation** *(done 2026-11-09)*
+      - page content on glass panels with the account pages' patterns for headers, divided lists, forms, buttons, badges, and notices; dialogs and menus stay opaque; tables stay on glass (measured)
+      - shared page header, loading and empty states, and danger zones; status badges with text and a mark; dashboard metric tiles and a compact activity list
+      - audit log rows with an inline disclosure for full identifiers and details; shortened IDs with the full value as text and a copy button (Clipboard API only)
+      - tables stack into cards below 48rem with explicit ARIA table roles
     - **11e: responsive polish and verification**
       - desktop/mobile review, theme review, accessibility checks, regression tests, and documentation
 12. **Protocol additions** *(deferred: from phase 10; after v0.1.0)*:

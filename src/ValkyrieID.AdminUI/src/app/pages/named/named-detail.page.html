@@ -1,0 +1,79 @@
+@if (item.hasValue() ? item.value() : undefined; as current) {
+  <app-page-header [heading]="current.name" [back]="'/' + kind()" [backLabel]="plural()">
+    @if (builtIn()) {
+      <span status class="badges"><span class="badge builtin">Built-in</span></span>
+    }
+    <p lead class="lead">
+      {{ current.members }} {{ current.members === 1 ? 'member' : 'members' }}
+      @if (current.description) {
+        · {{ current.description }}
+      }
+    </p>
+  </app-page-header>
+  <app-problem [problem]="problem()" />
+  @if (builtIn()) {
+    <p class="notice">This role is built in. It can't be renamed or deleted.</p>
+  } @else {
+    <section aria-labelledby="named-edit-title">
+      <h2 id="named-edit-title">Details</h2>
+      <form class="form" (ngSubmit)="save()">
+        <div class="field">
+          <label for="named-edit-name">Name</label>
+          <input
+            id="named-edit-name"
+            name="name"
+            [(ngModel)]="name"
+            required
+            maxlength="100"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="named-edit-name-hint"
+          />
+          @if (kind() === 'roles') {
+            <p class="hint" id="named-edit-name-hint">
+              Renaming a role signs out its members' sessions.
+            </p>
+          }
+        </div>
+        <div class="field">
+          <label for="named-edit-description"
+            >Description <span class="optional">(optional)</span></label
+          >
+          <input
+            id="named-edit-description"
+            name="description"
+            [(ngModel)]="description"
+            autocomplete="off"
+          />
+        </div>
+        <div class="actions">
+          <button type="submit" [disabled]="busy() || !name().trim()">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="danger-zone" aria-labelledby="named-danger-title">
+      <h2 id="named-danger-title">Danger zone</h2>
+      <div class="danger-item">
+        <div>
+          <h3>Delete {{ singular() }}</h3>
+          <p>{{ deleteMessage() }}</p>
+        </div>
+        <app-confirm-button
+          [label]="'Delete ' + current.name"
+          [title]="'Delete ' + current.name + '?'"
+          [message]="deleteMessage()"
+          [danger]="true"
+          [disabled]="busy()"
+          (confirmed)="remove()"
+        />
+      </div>
+    </section>
+  }
+} @else {
+  <app-page-header [heading]="singularTitle()" [back]="'/' + kind()" [backLabel]="plural()" />
+  <app-problem [problem]="loadProblem()" />
+  @if (item.isLoading()) {
+    <app-loading />
+  }
+}

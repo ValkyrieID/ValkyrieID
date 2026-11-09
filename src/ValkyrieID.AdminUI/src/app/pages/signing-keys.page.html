@@ -1,0 +1,63 @@
+<app-page-header
+  heading="Signing keys"
+  lead="The keys that sign tokens. Their public keys are published in the JWKS; private keys never leave the server."
+>
+  <app-confirm-button
+    actions
+    label="Rotate now"
+    title="Rotate the signing key?"
+    message="A new key is published at once and starts signing tokens after the publish lead time. Tokens signed by the current key stay valid."
+    confirmLabel="Rotate"
+    [disabled]="busy()"
+    (confirmed)="rotate()"
+  />
+</app-page-header>
+<dl class="legend">
+  <div>
+    <dt><span class="badge active">Active</span></dt>
+    <dd>Signs new tokens.</dd>
+  </div>
+  <div>
+    <dt><span class="badge pending">Pending</span></dt>
+    <dd>Published, signs from the time shown.</dd>
+  </div>
+  <div>
+    <dt><span class="badge retired">Retired</span></dt>
+    <dd>Still published for the tokens it signed.</dd>
+  </div>
+</dl>
+<app-problem [problem]="problem() ?? loadProblem()" />
+@if (sorted(); as list) {
+  @if (list.length === 0) {
+    <app-empty message="No signing keys yet." hint="A key is created on first use." />
+  } @else {
+    <div class="table-wrap">
+      <table class="data" appStack>
+        <thead>
+          <tr>
+            <th scope="col">Key ID</th>
+            <th scope="col">Status</th>
+            <th scope="col">Algorithm</th>
+            <th scope="col">Created</th>
+            <th scope="col">Signs from</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (key of list; track key.id) {
+            <tr [class.row-active]="key.status === 'active'">
+              <td><app-id [value]="key.id" label="key ID" /></td>
+              <td>
+                <span class="badge" [class]="key.status">{{ statusLabel(key.status) }}</span>
+              </td>
+              <td>{{ key.algorithm }}</td>
+              <td class="nowrap">{{ key.createdAt | date: 'medium' }}</td>
+              <td class="nowrap">{{ key.activatesAt | date: 'medium' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else if (keys.isLoading()) {
+  <app-loading />
+}

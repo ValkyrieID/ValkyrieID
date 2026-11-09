@@ -1,0 +1,70 @@
+<app-page-header
+  heading="Audit log"
+  lead="Authentication events and admin changes, newest first. Open an entry for its identifiers and details."
+/>
+<form class="filters" (ngSubmit)="apply()" aria-label="Filter the audit log">
+  <div class="field">
+    <label for="audit-type">Event type</label>
+    <input
+      id="audit-type"
+      name="type"
+      [(ngModel)]="type"
+      aria-describedby="audit-type-hint"
+      autocomplete="off"
+    />
+    <p class="hint" id="audit-type-hint">For example user.created, or user. for all user events.</p>
+  </div>
+  <div class="field">
+    <label for="audit-actor">Actor</label>
+    <input
+      id="audit-actor"
+      name="actor"
+      [(ngModel)]="actor"
+      aria-describedby="audit-actor-hint"
+      autocomplete="off"
+    />
+    <p class="hint" id="audit-actor-hint">cli, system, or admin:&lt;user id&gt;.</p>
+  </div>
+  <div class="field">
+    <label for="audit-subject">Subject (user id)</label>
+    <input id="audit-subject" name="subject" [(ngModel)]="subject" autocomplete="off" />
+  </div>
+  <div class="field">
+    <label for="audit-client">Client id</label>
+    <input id="audit-client" name="clientId" [(ngModel)]="clientId" autocomplete="off" />
+  </div>
+  <div class="field">
+    <label for="audit-success">Result</label>
+    <select id="audit-success" name="success" [(ngModel)]="success">
+      <option value="">Any</option>
+      <option value="true">Success</option>
+      <option value="false">Failure</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="audit-from">From</label>
+    <input id="audit-from" name="from" type="datetime-local" [(ngModel)]="from" />
+  </div>
+  <div class="field">
+    <label for="audit-to">Until</label>
+    <input id="audit-to" name="to" type="datetime-local" [(ngModel)]="to" />
+  </div>
+  <div class="actions">
+    <button type="submit">Apply filters</button>
+    <button type="button" class="secondary" (click)="clear()">Clear</button>
+  </div>
+</form>
+
+<app-problem [problem]="problem()" />
+@if (entries().length > 0) {
+  <app-audit-table [entries]="entries()" />
+} @else if (!loading() && !problem()) {
+  <app-empty message="No entries match the filters." />
+}
+@if (loading()) {
+  <app-loading />
+} @else if (next()) {
+  <div class="actions">
+    <button type="button" class="secondary" (click)="load(false)">Load more</button>
+  </div>
+}

@@ -1,0 +1,20 @@
+<div class="state state-empty">
+  <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true" focusable="false">
+    <rect
+      x="3.5"
+      y="5.5"
+      width="17"
+      height="13"
+      rx="2"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+    />
+    <path d="M3.5 13.5h5l1.5 2h4l1.5-2h5" fill="none" stroke="currentColor" stroke-width="1.5" />
+  </svg>
+  <p class="state-title">{{ message() }}</p>
+  @if (hint(); as text) {
+    <p class="state-hint">{{ text }}</p>
+  }
+  <ng-content />
+</div>

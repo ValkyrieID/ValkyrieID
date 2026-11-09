@@ -56,8 +56,8 @@ test('users', async ({ page }) => {
   await open(page, '/users', 'Users');
   await checkPage(page, 'users');
   await page.getByLabel('Search by username or email').fill('no-such-user');
-  await page.getByRole('button', { name: 'Search' }).click();
-  await expect(page.getByText('No users found.')).toBeVisible();
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByText('No users match your search.')).toBeVisible();
   await checkPage(page, 'users, none found');
 
   await open(page, '/users/new', 'New user');
@@ -89,14 +89,18 @@ test('roles and groups', async ({ page }) => {
     await open(page, path, title);
     await checkPage(page, title.toLowerCase());
     await page.getByLabel('Search').fill('no-such-name');
-    await page.getByRole('button', { name: 'Search' }).click();
-    await expect(page.getByText('None found.')).toBeVisible();
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(page.getByText(`No ${path.slice(1)} match your search.`)).toBeVisible();
     await checkPage(page, `${title.toLowerCase()}, none found`);
+
+    // The header's "New" action moves the focus to the form on the page.
+    await page.getByRole('button', { name: `New ${singular}` }).click();
+    await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
 
     await page.getByLabel('Name', { exact: true }).fill(`support-${singular}`);
     await page.getByRole('button', { name: 'Create' }).click();
     await page.getByLabel('Search').fill('');
-    await page.getByRole('button', { name: 'Search' }).click();
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('link', { name: `support-${singular}` }).click();
     await expect(
       page.getByRole('heading', { level: 1, name: `support-${singular}` }),
@@ -117,8 +121,8 @@ test('clients', async ({ page }) => {
   await open(page, '/clients', 'Clients');
   await checkPage(page, 'clients');
   await page.getByLabel('Search by client id or name').fill('no-such-client');
-  await page.getByRole('button', { name: 'Search' }).click();
-  await expect(page.getByText('No clients found.')).toBeVisible();
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByText('No clients match your search.')).toBeVisible();
   await checkPage(page, 'clients, none found');
 
   await open(page, '/clients/new', 'New client');
@@ -171,17 +175,72 @@ test('signing keys and audit log', async ({ page }) => {
 
   await open(page, '/audit', 'Audit log');
   await checkPage(page, 'audit log');
+
+  // An entry expands with the keyboard; its disclosure button controls the detail row (4.1.2).
+  const toggle = page.locator('table.audit button[aria-expanded]').first();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  const detail = page.locator(`#${await toggle.getAttribute('aria-controls')}`);
+  await expect(detail).toBeVisible();
+  await expect(detail.getByText('Entry ID')).toBeVisible();
+  await checkPage(page, 'audit log, entry expanded');
+
+  // Copying an identifier copies the full value and announces it (4.1.3).
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const copy = detail.getByRole('button', { name: 'Copy entry ID' });
+  await copy.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[aria-live="polite"]')).toHaveText('Entry ID copied.');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/^[0-9a-f-]{36}$/);
+  await expect(detail.getByText(copied)).toBeVisible();
+
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Space');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(detail).toHaveCount(0);
+
   await page.getByLabel('Actor').fill('nobody');
   await page.getByRole('button', { name: 'Apply filters' }).click();
-  await expect(page.getByText('No entries.')).toBeVisible();
+  await expect(page.getByText('No entries match the filters.')).toBeVisible();
   await checkPage(page, 'audit log, no entries');
+});
+
+test('small screens: stacked tables', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [path, heading] of [
+    ['/users', 'Users'],
+    ['/clients', 'Clients'],
+    ['/signing-keys', 'Signing keys'],
+    ['/audit', 'Audit log'],
+  ] as const) {
+    await open(page, path, heading);
+    // No horizontal page scrolling (1.4.10).
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    const table = page.locator('table.data.stack').first();
+    // Rows are cards, and the table keeps its semantics for assistive technology.
+    await expect(table).toHaveCSS('display', 'block');
+    await expect(table.getByRole('columnheader').first()).toBeAttached();
+    await expect(table.getByRole('row').nth(1).getByRole('cell').first()).toBeVisible();
+    await checkPage(page, `${heading}, 390 px`);
+  }
+
+  const toggle = page.locator('table.audit button[aria-expanded]').first();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator(`#${await toggle.getAttribute('aria-controls')}`)).toBeVisible();
+  await checkPage(page, 'audit log, entry expanded, 390 px');
 });
 
 test('settings', async ({ page }) => {
   await open(page, '/settings', 'Settings');
   await checkPage(page, 'settings');
   const sections = await page
-    .locator('.settings-list a')
+    .locator('.link-list a')
     .evaluateAll((links) => links.map((link) => link.getAttribute('href') ?? ''));
   expect(sections.length).toBeGreaterThan(0);
   for (const href of sections) {

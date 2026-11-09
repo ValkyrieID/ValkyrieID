@@ -9,84 +9,27 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AdminApi, NamedKind } from '../../api/admin-api';
 import { GroupDto, RoleDto } from '../../api/models';
 import { Problem, toProblem } from '../../api/problem';
 import { ConfirmButtonComponent } from '../../shared/confirm-button.component';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { ProblemComponent } from '../../shared/problem.component';
+import { LoadingComponent } from '../../shared/state.component';
 import { Notifier, optional, valueOf } from '../../shared/util';
 
 @Component({
   selector: 'app-named-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, ConfirmButtonComponent, ProblemComponent],
-  template: `
-    <p>
-      <a [routerLink]="['/' + kind()]">{{ kind() === 'roles' ? 'Roles' : 'Groups' }}</a>
-    </p>
-    @if (loadProblem()) {
-      <h1>{{ kind() === 'roles' ? 'Role' : 'Group' }}</h1>
-    }
-    <app-problem [problem]="loadProblem()" />
-    @if (item.hasValue() ? item.value() : undefined; as current) {
-      <h1>{{ current.name }}</h1>
-      <p class="muted">{{ current.members }} members</p>
-      <app-problem [problem]="problem()" />
-      @if (builtIn()) {
-        <p class="notice">This role is built in. It can't be renamed or deleted.</p>
-      } @else {
-        <form class="form" (ngSubmit)="save()">
-          <div class="field">
-            <label for="named-edit-name">Name</label>
-            <input
-              id="named-edit-name"
-              name="name"
-              [(ngModel)]="name"
-              required
-              maxlength="100"
-              autocomplete="off"
-              spellcheck="false"
-              aria-describedby="named-edit-name-hint"
-            />
-            @if (kind() === 'roles') {
-              <p class="hint" id="named-edit-name-hint">
-                Renaming a role signs out its members' sessions.
-              </p>
-            }
-          </div>
-          <div class="field">
-            <label for="named-edit-description"
-              >Description <span class="optional">(optional)</span></label
-            >
-            <input
-              id="named-edit-description"
-              name="description"
-              [(ngModel)]="description"
-              autocomplete="off"
-            />
-          </div>
-          <div class="actions">
-            <button type="submit" [disabled]="busy() || !name().trim()">Save</button>
-          </div>
-        </form>
-
-        <section class="danger-zone" aria-labelledby="named-delete-title">
-          <h2 id="named-delete-title">Delete</h2>
-          <app-confirm-button
-            [label]="'Delete ' + current.name"
-            [title]="'Delete ' + current.name + '?'"
-            [message]="deleteMessage()"
-            [danger]="true"
-            [disabled]="busy()"
-            (confirmed)="remove()"
-          />
-        </section>
-      }
-    } @else if (item.isLoading()) {
-      <p role="status">Loading…</p>
-    }
-  `,
+  imports: [
+    FormsModule,
+    ConfirmButtonComponent,
+    PageHeaderComponent,
+    ProblemComponent,
+    LoadingComponent,
+  ],
+  templateUrl: './named-detail.page.html',
 })
 export class NamedDetailPage {
   private readonly api = inject(AdminApi);
@@ -106,6 +49,9 @@ export class NamedDetailPage {
     const value = valueOf(this.item);
     return !!value && 'builtIn' in value && value.builtIn;
   });
+  protected readonly plural = computed(() => (this.kind() === 'roles' ? 'Roles' : 'Groups'));
+  protected readonly singular = computed(() => (this.kind() === 'roles' ? 'role' : 'group'));
+  protected readonly singularTitle = computed(() => (this.kind() === 'roles' ? 'Role' : 'Group'));
   protected readonly deleteMessage = computed(() =>
     this.kind() === 'roles'
       ? "Members lose the role, and their sessions are signed out. This can't be undone."
