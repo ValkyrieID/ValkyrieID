@@ -507,6 +507,24 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
     - **11e: responsive polish and verification** *(done 2026-11-09)*
       - desktop/mobile review, theme review, accessibility checks, regression tests, and documentation
       - Lighthouse script (`npm run lighthouse`, accessibility and best practices); contrast measurement extended to message, dialog, and signed-out states; account sessions show a short browser name
+    - **11f: .NET 11 upgrade** *(before the first release, so v0.1.0 ships on .NET 11)*:
+      - set `TargetFramework` to `net11.0` in `Directory.Build.props`; update packages with the CLI only (Central Package Management versions)
+      - update local tools with the CLI, not by hand: `dotnet tool update dotnet-ef` to the EF Core 11 release, which updates `dotnet-tools.json` (currently pinned to 10.0.14)
+      - add a `.config/dotnet-ef.json` so `--project` and `--startup-project` don't need repeating for both providers; keep the SQLite and PostgreSQL project paths explicit
+      - EF Core 11 packages; any schema changes as new migrations for both SQLite and PostgreSQL
+      - `[ShortCircuit]` on the discovery and JWKS endpoints, after confirming the middleware they skip (security headers, and CORS if it's ever added) isn't needed for those responses; tests assert the headers the metadata endpoints still send
+      - evaluate union types for the protocol and Admin API response models where they make the code clearer; the OAuth wire format (error codes, field names) must not change, and a test checks each response shape
+      - ASP.NET Core 11 review: rate limiter `Retry-After`, OpenTelemetry span attributes (no authorization query strings exported), response compression (token responses stay uncompressed)
+      - full tests on SQLite and PostgreSQL, conformance suite, and the accessibility scripts if UI output changed
+      - update the supported runtime in `/docs`
+      - use the stable GA SDK, not the RC
+      - reference:
+        - .NET 11 overview: https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-11/overview
+        - ASP.NET Core 11 release notes: https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-11
+        - ASP.NET Core 10 to 11 migration guide: https://learn.microsoft.com/en-us/aspnet/core/migration/100-to-110
+        - EF Core 11 what's new: https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-11.0/whatsnew
+        - C# 15 what's new: https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-15
+        - .NET breaking changes index: https://learn.microsoft.com/en-us/dotnet/core/compatibility/breaking-changes
 12. **Release** *(deferred: from phase 10e)*:
     - release workflow: multi-architecture image pushed to `ghcr.io/valkyrieid/valkyrieid` on version tags, with OCI labels
     - version stamping: assembly version from the tag (`--version`, OpenTelemetry), logged at startup, shown in the admin UI
