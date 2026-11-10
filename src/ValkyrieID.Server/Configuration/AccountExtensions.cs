@@ -160,6 +160,7 @@ internal static class AccountExtensions
     public static IEndpointRouteBuilder MapValkyrieAccounts(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapRazorPages();
+        endpoints.MapGet("/", (HttpContext context) => Results.Redirect(context.Request.PathBase + "/account"));
         endpoints.MapGet(ThemePath, (HttpContext context, ThemeStylesheet theme) =>
         {
             var (css, etag) = theme.Current;

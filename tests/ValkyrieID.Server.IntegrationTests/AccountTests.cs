@@ -459,6 +459,24 @@ public abstract class AccountTests
         Assert.DoesNotContain("<script", page, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData(null, "/", "/account")]
+    [InlineData("/auth", "/auth/", "/auth/account")]
+    public async Task Root_redirects_to_the_account_page(string? pathBase, string path, string location)
+    {
+        await using var factory = CreateFactory(settings: pathBase is null ? null : new()
+        {
+            ["Issuer:Url"] = "https://localhost" + pathBase,
+            ["ReverseProxy:PathBase"] = pathBase,
+        });
+        var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false, HandleCookies = false });
+
+        var response = await client.GetAsync(path, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
+        Assert.Equal(location, response.Headers.Location?.OriginalString);
+    }
+
     [Fact]
     public async Task Protocol_pages_render_the_stored_theme()
     {

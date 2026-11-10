@@ -23,6 +23,7 @@ Server-rendered pages for people, not clients. They work without JavaScript, and
 
 | Page | Description |
 |---|---|
+| `GET /` | Redirects (`302`) to `/account`. |
 | `/setup` | First-run setup wizard. Only available while no user exists; returns `404` afterwards. See [First run](/guide/first-run). |
 | `/account/login` | Sign in with a username or email address and password. Accepts a local `returnUrl`; other URLs are ignored. `prompt=login` shows the form even when a session exists; `login_hint` pre-fills the username. |
 | `/account/login/2fa` | Second sign-in step: the authenticator code. Counts against `RateLimits:TwoFactor`. |
