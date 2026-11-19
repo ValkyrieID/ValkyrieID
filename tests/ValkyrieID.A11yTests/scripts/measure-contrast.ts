@@ -5,6 +5,8 @@
 // dialogs, the admin UI's signed-out page, and a sign-in error. Run against a running test server
 // (node scripts/serve.ts, which configures email, so /account/email is measured too); see
 // docs/accessibility/index.md. Exits non-zero when anything is below 4.5:1 (text) or 3:1 (large text and icons).
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { chromium, type Page } from '@playwright/test';
 import {
   adminSignedOut,
@@ -16,7 +18,7 @@ import {
   signIn,
   type PageState,
 } from '../support/admin-session.ts';
-import { baseUrl } from '../support/env.ts';
+import { baseUrl, packageDir } from '../support/env.ts';
 import { decodePng, type Image } from '../support/png.ts';
 import { admin } from '../support/users.ts';
 
@@ -43,6 +45,11 @@ interface Box {
 interface Target {
   kind: Kind;
   label: string;
+  /** The element's tag and class attribute, for grouping the results. */
+  tag: string;
+  classes: string;
+  /** Inside the wordmark (`.product-name`), which is hidden from assistive technology on purpose (1.4.3 exception). */
+  logotype: boolean;
   /** The foreground color (sRGB 0-255) and its alpha, including the ancestors' opacity. */
   color: [number, number, number, number];
   /** The opaque background of generated content with its own background (e.g. a badge mark), if any. */
@@ -55,8 +62,40 @@ interface Result {
   size: string;
   kind: Kind;
   label: string;
+  tag: string;
+  classes: string;
+  color: [number, number, number, number];
+  category: string;
   ratio: number;
   minimum: number;
+}
+
+/**
+ * The group a result belongs to in docs/accessibility/index.md, from its element. Borders and focus outlines aren't
+ * measured here; they're checked by hand (docs/accessibility/checklist.md).
+ */
+const MUTED = [
+  'hint',
+  'muted',
+  'optional',
+  'lead',
+  'cell-sub',
+  'metric-label',
+  'metric-detail',
+  'nav-label',
+  'link-list-text',
+];
+function categoryOf(target: Target): string {
+  if (target.logotype) return 'logotype';
+  const classes = target.classes.split(/\s+/);
+  if (classes.includes('badge')) return 'badge';
+  if (target.kind === 'icon') return 'icon';
+  if (target.kind === 'large text') return 'large text';
+  if (target.tag === 'th') return 'table header';
+  if (target.tag === 'button' || classes.includes('button')) return 'button';
+  if (target.tag === 'a') return 'link';
+  if (classes.some((c) => MUTED.includes(c))) return 'muted text';
+  return 'text';
 }
 
 // --- In-page code (serialized by page.evaluate, so it can't use anything from this module). ---
@@ -158,8 +197,17 @@ function inPage(rects: boolean): Target[] | Box[][] {
 
   const targets: Target[] = [];
   const boxes: Box[][] = [];
-  const add = (target: Target, element: Element, list: Box[]) => {
-    targets.push(target);
+  const add = (
+    target: Omit<Target, 'tag' | 'classes' | 'logotype'>,
+    element: Element,
+    list: Box[],
+  ) => {
+    targets.push({
+      ...target,
+      tag: element.tagName.toLowerCase(),
+      classes: element.getAttribute('class') ?? '',
+      logotype: element.closest('.product-name') !== null,
+    });
     boxes.push(list.map((b) => visible(element, b)).filter((b): b is Box => b !== null));
   };
   const large = (style: CSSStyleDeclaration) => {
@@ -179,7 +227,7 @@ function inPage(rects: boolean): Target[] | Box[][] {
         !node.data.trim() ||
         hidden(parent) ||
         disabled(parent) ||
-        parent.closest('[aria-hidden="true"]')
+        (parent.closest('[aria-hidden="true"]') && !parent.closest('.product-name'))
       ) {
         continue;
       }
@@ -448,6 +496,10 @@ async function measure(page: Page, name: string, theme: string, size: string): P
             size,
             kind: target.kind,
             label: target.label,
+            tag: target.tag,
+            classes: target.classes,
+            color: target.color,
+            category: categoryOf(target),
             ratio,
             minimum: target.kind === 'text' ? 4.5 : 3,
           },
@@ -608,6 +660,10 @@ try {
 } finally {
   await browser.close();
 }
+
+const outputDir = join(packageDir, 'test-results', 'contrast');
+mkdirSync(outputDir, { recursive: true });
+writeFileSync(join(outputDir, 'measurements.json'), JSON.stringify(results, null, 2));
 
 const format = (r: Result) =>
   `${r.ratio.toFixed(2).padStart(6)}:1  ${r.kind.padEnd(10)}  ${r.page}, ${r.theme}, ${r.size}: "${r.label}"`;

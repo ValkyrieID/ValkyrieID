@@ -1,6 +1,28 @@
+import { copyFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 
+const brandingDir = fileURLToPath(new URL('../../assets/branding', import.meta.url))
+
+const brandingFiles: Record<string, string> = {
+  'wall-light.png': 'wall-light.png',
+  'wall-dark.png': 'wall-dark.png',
+  'favicon.ico': 'favicon.ico',
+  'ValkyrieID.png': 'logo.png',
+}
+
+const copyBranding = {
+  name: 'valkyrieid-branding',
+  configResolved(config: { publicDir: string }) {
+    for (const [source, target] of Object.entries(brandingFiles)) {
+      copyFileSync(join(brandingDir, source), join(config.publicDir, target))
+    }
+  },
+}
+
 export default defineConfig({
+  vite: { plugins: [copyBranding] },
   title: 'ValkyrieID',
   description: 'A minimal, lightweight OpenID Connect / OAuth 2.0 identity server for .NET',
   lang: 'en-US',

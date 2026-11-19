@@ -33,7 +33,7 @@ valkyrieid client create app-machine --scope app.access
 
 Set these as environment variables, with the secrets kept out of version control:
 
-```env
+```ini
 OAUTH2_PROXY_PROVIDER=oidc
 OAUTH2_PROXY_OIDC_ISSUER_URL=https://id.example.com
 OAUTH2_PROXY_CLIENT_ID=app-browser
@@ -70,7 +70,7 @@ What the settings do:
 
 `Caddyfile`:
 
-```caddy
+```txt
 app.example.com {
 	handle /oauth2/* {
 		reverse_proxy oauth2-proxy:4180

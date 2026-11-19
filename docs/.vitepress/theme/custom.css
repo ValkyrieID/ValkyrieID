@@ -30,13 +30,18 @@
   --vp-home-hero-name-background: linear-gradient(120deg, #5eead4 30%, #d4a84b);
 }
 
-/* The home page sits on the same wallpaper as the sign-in pages. */
-.VPHome {
-  background: url("/wall-light.png") center top / cover no-repeat fixed;
+/* The home page sits on the same wallpaper as the sign-in pages, and the footer is transparent so it doesn't cut it off. */
+.Layout:has(.VPHome) {
+  background: url("/wall-light.png") center top / cover no-repeat;
 }
 
-.dark .VPHome {
+.dark .Layout:has(.VPHome) {
   background-image: url("/wall-dark.png");
+}
+
+.Layout:has(.VPHome) .VPContent,
+.Layout:has(.VPHome) .VPFooter {
+  background: transparent;
 }
 
 .VPHome .VPFeature {

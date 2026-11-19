@@ -59,7 +59,7 @@ Tools can't tell whether announcements make sense. Before each release, go throu
 | Check | WCAG | Login pages | Admin UI | Method | Status |
 |---|---|---|---|---|---|
 | Text contrast | 1.4.3 | Light / dark theme: 17.7 / 15.7:1 (text), 7.7 / 7.2:1 (hints), 6.3 / 9.6:1 (links), 6.3:1 (buttons), 5.9 / 6.4:1 (errors) | Same palette in both themes: text, links, badges, and alerts at least 4.5:1; over the glass at least 4.76:1 (badges) | axe (`color-contrast`) on every page; `npm run measure-contrast` over the glass, including error, notice, dialog, and signed-out states (11e) | ✅ |
-| Non-text contrast (borders, focus) | 1.4.11 | Light / dark: input borders and the selected theme button 4.8 / 3.8:1, focus outline 6.3 / 9.6:1 | Same palette: input borders, the selected theme button, and focus outlines at least 3:1 | manual (DevTools contrast) | ✅ |
+| Non-text contrast (borders, focus) | 1.4.11 | Not measured by the script; checked by hand in Chrome DevTools. The last recorded values, from before the new wallpapers: input borders and the selected theme button 4.8 / 3.8:1, focus outline 6.3 / 9.6:1 | Same palette: input borders, the selected theme button, and focus outlines at least 3:1 | manual (DevTools contrast) | ✅ |
 | Branding colors | 1.4.3, 1.4.11 | Operator's choice: [requirements](/accessibility/#branding). The custom branding fixture passes all checks | ➖ the admin UI isn't branded | axe with `fixtures/branding` | ✅ (fixture) |
 | Use of color | 1.4.1 | Errors are text, not only a red border | States are text badges ("disabled", "locked out") | manual | ✅ |
 

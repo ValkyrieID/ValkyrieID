@@ -46,6 +46,23 @@
     <Exec Command="npm run build" WorkingDirectory="$(AdminUIProjectDir)" />
   </Target>
 
+  <!--
+    The branding files live once, in assets/branding. Before each build they are copied into wwwroot (git-ignored), so
+    the static files keep the names the pages use. The logo-192.png name is the same file as android-chrome-192x192.png.
+  -->
+  <Target Name="CopyBranding" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <BrandingDir>$(MSBuildProjectDirectory)\..\..\assets\branding\</BrandingDir>
+      <BrandingOutDir>$(MSBuildProjectDirectory)\wwwroot\img\</BrandingOutDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <BrandingFile Include="$(BrandingDir)wall-light.png;$(BrandingDir)wall-dark.png;$(BrandingDir)favicon-16x16.png;$(BrandingDir)favicon-32x32.png;$(BrandingDir)apple-touch-icon.png" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BrandingFile)" DestinationFolder="$(BrandingOutDir)" />
+    <Copy SourceFiles="$(BrandingDir)android-chrome-192x192.png" DestinationFiles="$(BrandingOutDir)logo-192.png" />
+    <Copy SourceFiles="$(BrandingDir)favicon.ico" DestinationFolder="$(MSBuildProjectDirectory)\wwwroot" />
+  </Target>
+
   <Target Name="PublishAdminUI" AfterTargets="ComputeFilesToPublish">
     <ItemGroup>
       <AdminUIFiles Include="$(AdminUIOutputDir)**" />

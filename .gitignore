@@ -499,3 +499,15 @@ security/zap/out/
 
 # Admin UI build output (built by npm run build / dotnet publish)
 src/ValkyrieID.Server/wwwroot/admin/
+
+# Branding files copied from assets/branding at build time
+src/ValkyrieID.Server/wwwroot/img/
+src/ValkyrieID.Server/wwwroot/favicon.ico
+src/ValkyrieID.AdminUI/public/img/
+src/ValkyrieID.AdminUI/public/android-chrome-*.png
+src/ValkyrieID.AdminUI/public/apple-touch-icon.png
+src/ValkyrieID.AdminUI/public/favicon*
+docs/public/wall-light.png
+docs/public/wall-dark.png
+docs/public/logo.png
+docs/public/favicon.ico
