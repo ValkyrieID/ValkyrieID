@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
@@ -102,19 +103,23 @@ internal sealed partial class AuthorizeEndpoint(
             return reply.Error(AuthorizeErrors.InvalidRequest, "A request parameter is too long.");
         }
 
-        var request = Validate(parameters, client);
-        if (request.Error is { } validationError)
+        var validation = Validate(parameters, client);
+        if (validation is not AuthorizationRequest request)
         {
-            return reply.Error(validationError.Code, validationError.Description);
+            return validation is AuthorizeError validationError
+                ? reply.Error(validationError.Code, validationError.Description)
+                : throw new UnreachableException();
         }
 
         var scopeResult = await ResolveScopesAsync(Get(parameters, "scope"), client, cancellationToken);
-        if (scopeResult.Error is { } scopeError)
+        if (scopeResult is not ScopeResolution scopes)
         {
-            return reply.Error(AuthorizeErrors.InvalidScope, scopeError);
+            return scopeResult is AuthorizeError scopeError
+                ? reply.Error(scopeError.Code, scopeError.Description)
+                : throw new UnreachableException();
         }
 
-        var isOpenId = scopeResult.Scopes.Contains(IdentityScopes.OpenId);
+        var isOpenId = scopes.Scopes.Contains(IdentityScopes.OpenId);
 
         // RFC 9700 §2.1.1: without PKCE, only an OpenID Connect nonce protects against code injection, so clients
         // allowed to skip PKCE may only do so in OpenID Connect requests (PROJECT.md, Spec deviations).
@@ -170,8 +175,8 @@ internal sealed partial class AuthorizeEndpoint(
             sessionId!,
             authTime!.Value,
             [.. user.FindAll(SessionClaims.AuthenticationMethod).Select(c => c.Value)],
-            scopeResult.Scopes,
-            scopeResult.Audiences,
+            scopes.Scopes,
+            scopes.Audiences,
             isOpenId ? Get(parameters, "nonce") : null,
             request.CodeChallenge,
             now + TokenOptions.AuthorizationCodeLifetime);
@@ -210,39 +215,39 @@ internal sealed partial class AuthorizeEndpoint(
         return reply.Success(code);
     }
 
-    private static AuthorizationRequest Validate(Dictionary<string, StringValues> parameters, Client client)
+    private static AuthorizationRequestResult Validate(Dictionary<string, StringValues> parameters, Client client)
     {
         // RFC 6749 A3.1.1: response_type is required; only "code" is supported.
         var responseType = Get(parameters, "response_type");
         if (responseType is null)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "The response_type parameter is required.");
+            return new AuthorizeError(AuthorizeErrors.InvalidRequest, "The response_type parameter is required.");
         }
 
         if (responseType != "code")
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.UnsupportedResponseType, "Only response_type=code is supported.");
+            return new AuthorizeError(AuthorizeErrors.UnsupportedResponseType, "Only response_type=code is supported.");
         }
 
         if (!client.AllowedGrantTypes.Contains(GrantTypes.AuthorizationCode))
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.UnauthorizedClient, "The client is not allowed to use the authorization code flow.");
+            return new AuthorizeError(AuthorizeErrors.UnauthorizedClient, "The client is not allowed to use the authorization code flow.");
         }
 
         // OIDC Core A6: request objects and dynamic registration are not supported.
         if (Get(parameters, "request") is not null)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.RequestNotSupported, "The request parameter is not supported.");
+            return new AuthorizeError(AuthorizeErrors.RequestNotSupported, "The request parameter is not supported.");
         }
 
         if (Get(parameters, "request_uri") is not null)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.RequestUriNotSupported, "The request_uri parameter is not supported.");
+            return new AuthorizeError(AuthorizeErrors.RequestUriNotSupported, "The request_uri parameter is not supported.");
         }
 
         if (Get(parameters, "registration") is not null)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.RegistrationNotSupported, "The registration parameter is not supported.");
+            return new AuthorizeError(AuthorizeErrors.RegistrationNotSupported, "The registration parameter is not supported.");
         }
 
         // RFC 7636 A4.3/A4.4.1, RFC 9700 A2.1.1: only S256; required for public clients and clients that require it.
@@ -252,28 +257,28 @@ internal sealed partial class AuthorizeEndpoint(
         {
             if (method is not null || client.PkceRequired)
             {
-                return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "A code_challenge with code_challenge_method=S256 is required.");
+                return new AuthorizeError(AuthorizeErrors.InvalidRequest, "A code_challenge with code_challenge_method=S256 is required.");
             }
         }
         else if (method != Pkce.S256)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "Only code_challenge_method=S256 is supported.");
+            return new AuthorizeError(AuthorizeErrors.InvalidRequest, "Only code_challenge_method=S256 is supported.");
         }
         else if (!Pkce.IsValidS256Challenge(challenge))
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "The code_challenge is malformed.");
+            return new AuthorizeError(AuthorizeErrors.InvalidRequest, "The code_challenge is malformed.");
         }
 
         // OIDC Core A3.1.2.1: prompt is a space-delimited list; "none" must not be combined with other values.
         var prompt = (Get(parameters, "prompt") ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
         if (prompt.Any(p => p is not ("none" or "login" or "consent" or "select_account")))
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "The prompt parameter has an unsupported value.");
+            return new AuthorizeError(AuthorizeErrors.InvalidRequest, "The prompt parameter has an unsupported value.");
         }
 
         if (prompt.Contains("none") && prompt.Count > 1)
         {
-            return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "prompt=none can't be combined with other values.");
+            return new AuthorizeError(AuthorizeErrors.InvalidRequest, "prompt=none can't be combined with other values.");
         }
 
         // OIDC Core §3.1.2.1: with prompt=consent the OP "SHOULD prompt the End-User for consent ... If it cannot
@@ -288,26 +293,26 @@ internal sealed partial class AuthorizeEndpoint(
         {
             if (!long.TryParse(maxAgeValue, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
             {
-                return AuthorizationRequest.Fail(AuthorizeErrors.InvalidRequest, "max_age must be a non-negative integer.");
+                return new AuthorizeError(AuthorizeErrors.InvalidRequest, "max_age must be a non-negative integer.");
             }
 
             maxAge = parsed;
         }
 
-        return new AuthorizationRequest(null, challenge, prompt, maxAge);
+        return new AuthorizationRequest(challenge, prompt, maxAge);
     }
 
-    private async Task<ScopeResolution> ResolveScopesAsync(string? scope, Client client, CancellationToken cancellationToken)
+    private async Task<ScopeResolutionResult> ResolveScopesAsync(string? scope, Client client, CancellationToken cancellationToken)
     {
         if (scope is null)
         {
-            return ScopeResolution.Fail("The scope parameter is required.");
+            return new AuthorizeError(AuthorizeErrors.InvalidScope, "The scope parameter is required.");
         }
 
         var requested = scope.Split(' ').Distinct(StringComparer.Ordinal).ToList();
         if (requested.Any(s => !ProtocolSyntax.IsValidScopeToken(s)))
         {
-            return ScopeResolution.Fail("The scope parameter is malformed.");
+            return new AuthorizeError(AuthorizeErrors.InvalidScope, "The scope parameter is malformed.");
         }
 
         // OIDC Core A11: offline_access requests a refresh token. ValkyrieID has no consent screen; an administrator
@@ -335,7 +340,7 @@ internal sealed partial class AuthorizeEndpoint(
         if (requested.Count == 0
             || requested.Any(s => !client.AllowedScopes.Contains(s) || (!isOpenId && IdentityScopes.All.Contains(s))))
         {
-            return ScopeResolution.Fail("The requested scope is invalid or not allowed.");
+            return new AuthorizeError(AuthorizeErrors.InvalidScope, "The requested scope is invalid or not allowed.");
         }
 
         var apiScopes = requested.Where(s => !IdentityScopes.All.Contains(s)).ToList();
@@ -347,11 +352,10 @@ internal sealed partial class AuthorizeEndpoint(
             .ToListAsync(cancellationToken);
         if (resolved.Count != apiScopes.Count)
         {
-            return ScopeResolution.Fail("The requested scope is invalid or not allowed.");
+            return new AuthorizeError(AuthorizeErrors.InvalidScope, "The requested scope is invalid or not allowed.");
         }
 
         return new ScopeResolution(
-            null,
             requested,
             [.. resolved.Select(r => r.Resource).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]);
     }
@@ -387,20 +391,16 @@ internal sealed partial class AuthorizeEndpoint(
     private static string? Get(Dictionary<string, StringValues> parameters, string name) =>
         parameters.TryGetValue(name, out var values) && values.Count == 1 && !string.IsNullOrEmpty(values[0]) ? values[0] : null;
 
-    private sealed record AuthorizationRequest(
-        (string Code, string Description)? Error,
-        string? CodeChallenge,
-        IReadOnlySet<string> Prompt,
-        long? MaxAge)
-    {
-        public static AuthorizationRequest Fail(string code, string description) =>
-            new((code, description), null, new HashSet<string>(), null);
-    }
+    private sealed record AuthorizationRequest(string? CodeChallenge, IReadOnlySet<string> Prompt, long? MaxAge);
 
-    private sealed record ScopeResolution(string? Error, List<string> Scopes, List<string> Audiences)
-    {
-        public static ScopeResolution Fail(string error) => new(error, [], []);
-    }
+    private sealed record ScopeResolution(List<string> Scopes, List<string> Audiences);
+
+    /// <summary>An RFC 6749 A4.1.2.1 error to send to the validated redirect URI.</summary>
+    private sealed record AuthorizeError(string Code, string Description);
+
+    private union AuthorizationRequestResult(AuthorizationRequest, AuthorizeError);
+
+    private union ScopeResolutionResult(ScopeResolution, AuthorizeError);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Authorization code could not be stored; the shared store is unavailable")]
     private static partial void LogCodeStoreUnavailable(ILogger logger, Exception exception);

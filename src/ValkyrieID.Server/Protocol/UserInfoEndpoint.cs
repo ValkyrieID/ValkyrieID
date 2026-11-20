@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
 using ValkyrieID.Core.Protocol;
@@ -17,16 +18,10 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
     public async Task<IResult> HandleAsync(HttpContext context)
     {
         var cancellationToken = context.RequestAborted;
-        var (token, error) = await ReadTokenAsync(context.Request, cancellationToken);
-        if (error is not null)
+        var tokenRead = await ReadTokenAsync(context.Request, cancellationToken);
+        if (tokenRead is not string token)
         {
-            return error;
-        }
-
-        if (token is null)
-        {
-            // RFC 6750 A3.1: without authentication information, no error code is included.
-            return new BearerChallenge(StatusCodes.Status401Unauthorized, null, null);
+            return tokenRead is BearerChallenge challenge ? challenge : throw new UnreachableException();
         }
 
         if (await validator.ValidateAsync(token, cancellationToken) is not { } jwt)
@@ -60,7 +55,7 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
     /// RFC 6750 A2.1 (Authorization header) and A2.2 (form body). The query parameter method (A2.3) isn't
     /// supported. More than one method in a request is an error.
     /// </summary>
-    private static async Task<(string? Token, IResult? Error)> ReadTokenAsync(HttpRequest request, CancellationToken cancellationToken)
+    private static async Task<TokenRead> ReadTokenAsync(HttpRequest request, CancellationToken cancellationToken)
     {
         string? headerToken = null;
         if (request.Headers.Authorization.Count > 0)
@@ -70,7 +65,7 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
                 || !string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)
                 || string.IsNullOrEmpty(header.Parameter))
             {
-                return (null, InvalidRequest("The Authorization header is malformed."));
+                return InvalidRequest("The Authorization header is malformed.");
             }
 
             headerToken = header.Parameter;
@@ -84,7 +79,7 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
             {
                 if (values.Count != 1)
                 {
-                    return (null, InvalidRequest("access_token must not be repeated."));
+                    return InvalidRequest("access_token must not be repeated.");
                 }
 
                 bodyToken = values.ToString();
@@ -93,11 +88,20 @@ internal sealed class UserInfoEndpoint(ValkyrieDbContext db, AccessTokenValidato
 
         if (headerToken is not null && bodyToken is not null)
         {
-            return (null, InvalidRequest("Only one method of sending the access token may be used."));
+            return InvalidRequest("Only one method of sending the access token may be used.");
         }
 
-        return (headerToken ?? bodyToken, null);
+        if ((headerToken ?? bodyToken) is not { } token)
+        {
+            // RFC 6750 A3.1: without authentication information, no error code is included.
+            return new BearerChallenge(StatusCodes.Status401Unauthorized, null, null);
+        }
+
+        return token;
     }
+
+    /// <summary>The access token, or the challenge to answer with when there is none or the request is malformed.</summary>
+    private union TokenRead(string, BearerChallenge);
 
     private static BearerChallenge InvalidToken() =>
         new(StatusCodes.Status401Unauthorized, "invalid_token", "The access token is invalid or expired.");

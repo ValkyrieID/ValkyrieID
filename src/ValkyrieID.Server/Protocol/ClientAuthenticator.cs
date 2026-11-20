@@ -8,7 +8,7 @@ using ValkyrieID.Server.Auditing;
 
 namespace ValkyrieID.Server.Protocol;
 
-internal sealed record ClientAuthenticationResult(Client? Client, OAuthError? Error);
+internal union ClientAuthenticationResult(Client, OAuthError);
 
 /// <summary>
 /// Authenticates confidential clients with <c>client_secret_basic</c> or <c>client_secret_post</c>, and identifies
@@ -32,7 +32,7 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             // RFC 6749 §2.3: the client MUST NOT use more than one authentication method per request.
             if (bodySecret is not null)
             {
-                return Fail(OAuthError.Request("Multiple client authentication methods were used."));
+                return OAuthError.Request("Multiple client authentication methods were used.");
             }
 
             if (!TryParseBasic(context.Request.Headers.Authorization.ToString(), out clientId, out secret))
@@ -42,7 +42,7 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
 
             if (bodyClientId is not null && bodyClientId != clientId)
             {
-                return Fail(OAuthError.Request("client_id does not match the authenticated client."));
+                return OAuthError.Request("client_id does not match the authenticated client.");
             }
         }
         else
@@ -58,7 +58,7 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             var publicClient = await db.Clients.SingleOrDefaultAsync(c => c.ClientId == clientId, cancellationToken);
             return publicClient switch
             {
-                { Enabled: true, Type: ClientType.Public } => new ClientAuthenticationResult(publicClient, null),
+                { Enabled: true, Type: ClientType.Public } => publicClient,
                 null => await RejectAsync(context, clientId, "unknown_client", cancellationToken),
                 { Type: ClientType.Public } => await RejectAsync(context, clientId, "client_not_usable", cancellationToken),
                 _ => await RejectAsync(context, clientId, "missing_credentials", cancellationToken),
@@ -80,7 +80,7 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             : Enumerable.Empty<byte[]>();
 
         // Always hash and compare, also for unknown or disabled clients, so timing doesn't reveal which clients exist.
-        if (!SecretHasher.Verify(secret, hashes) || !usable)
+        if (!SecretHasher.Verify(secret, hashes) || !usable || client is null)
         {
             var reason = client is null ? "unknown_client" : !usable ? "client_not_usable" : "invalid_secret";
             return await RejectAsync(context, clientId, reason, cancellationToken);
@@ -93,10 +93,10 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             return await RejectAsync(context, clientId, "client_secret_post_not_allowed", cancellationToken);
         }
 
-        return new ClientAuthenticationResult(client, null);
+        return client;
     }
 
-    private async Task<ClientAuthenticationResult> RejectAsync(HttpContext context, string? clientId, string reason, CancellationToken cancellationToken)
+    private async Task<OAuthError> RejectAsync(HttpContext context, string? clientId, string reason, CancellationToken cancellationToken)
     {
         audit.Add(
             "client.authentication_failed",
@@ -106,10 +106,8 @@ internal sealed class ClientAuthenticator(ValkyrieDbContext db, AuditRecorder au
             ipAddress: context.Connection.RemoteIpAddress?.ToString(),
             details: new Dictionary<string, object?> { ["reason"] = reason });
         await db.SaveChangesAsync(cancellationToken);
-        return Fail(OAuthError.Client());
+        return OAuthError.Client();
     }
-
-    private static ClientAuthenticationResult Fail(OAuthError error) => new(null, error);
 
     private static string? Single(IFormCollection form, string name) =>
         form.TryGetValue(name, out var values) ? values.ToString() : null;

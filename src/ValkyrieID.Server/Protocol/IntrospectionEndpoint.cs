@@ -50,10 +50,10 @@ internal sealed class IntrospectionEndpoint(
     public async Task<IResult> HandleAsync(HttpContext context)
     {
         var cancellationToken = context.RequestAborted;
-        var (form, error) = await ProtocolForm.ReadAsync(context);
-        if (form is null || error is not null)
+        var formResult = await ProtocolForm.ReadAsync(context);
+        if (formResult is not IFormCollection form)
         {
-            return error ?? OAuthError.Request("The request is malformed.");
+            return formResult is OAuthError formError ? formError : OAuthError.Request("The request is malformed.");
         }
 
         var caller = await AuthenticateAsync(context, form, cancellationToken);

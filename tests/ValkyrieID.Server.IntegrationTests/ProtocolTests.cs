@@ -623,6 +623,75 @@ public abstract class ProtocolTests
         return jwt;
     }
 
+    // Wire format pins: the exact error responses of the shared form and client authentication paths.
+
+    [Theory]
+    [InlineData("/connect/token")]
+    [InlineData("/connect/introspect")]
+    [InlineData("/connect/revocation")]
+    public async Task Invalid_client_response_is_exact(string path)
+    {
+        await using var factory = CreateFactory();
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = Form(("grant_type", "client_credentials"), ("token", "x")),
+        };
+        request.Headers.Authorization = Basic("unknown", "wrong");
+
+        var response = await factory.CreateClient().SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("Basic realm=\"ValkyrieID\"", response.Headers.WwwAuthenticate.ToString());
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Equal("no-cache", response.Headers.Pragma.ToString());
+        Assert.Equal(
+            """{"error":"invalid_client","error_description":"Client authentication failed."}""",
+            await response.Content.ReadAsStringAsync(CancellationToken));
+    }
+
+    [Fact]
+    public async Task Multiple_client_authentication_methods_response_is_exact()
+    {
+        await using var factory = CreateFactory();
+
+        var response = await factory.CreateClient().SendAsync(
+            TokenRequest(Form(("grant_type", "client_credentials"), ("client_secret", "x")), Basic("billing", "secret")),
+            CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(response.Headers.WwwAuthenticate);
+        Assert.Equal(
+            """{"error":"invalid_request","error_description":"Multiple client authentication methods were used."}""",
+            await response.Content.ReadAsStringAsync(CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("/connect/token")]
+    [InlineData("/connect/introspect")]
+    [InlineData("/connect/revocation")]
+    public async Task Malformed_form_responses_are_exact(string path)
+    {
+        await using var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var json = await client.PostAsync(path, new StringContent("{}", Encoding.UTF8, "application/json"), CancellationToken);
+        var repeated = await client.PostAsync(
+            path,
+            new StringContent("grant_type=a&grant_type=b&token=x", Encoding.UTF8, "application/x-www-form-urlencoded"),
+            CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, json.StatusCode);
+        Assert.Empty(json.Headers.WwwAuthenticate);
+        Assert.Equal("no-store", json.Headers.CacheControl?.ToString());
+        Assert.Equal(
+            """{"error":"invalid_request","error_description":"The request must use application/x-www-form-urlencoded."}""",
+            await json.Content.ReadAsStringAsync(CancellationToken));
+        Assert.Equal(HttpStatusCode.BadRequest, repeated.StatusCode);
+        Assert.Equal(
+            """{"error":"invalid_request","error_description":"Request parameters must not be repeated."}""",
+            await repeated.Content.ReadAsStringAsync(CancellationToken));
+    }
+
     private static HttpRequestMessage TokenRequest(FormUrlEncodedContent form, AuthenticationHeaderValue? authorization = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/connect/token") { Content = form };

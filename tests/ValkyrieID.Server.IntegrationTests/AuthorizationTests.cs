@@ -565,6 +565,57 @@ public abstract class AuthorizationTests
     }
 
     [Fact]
+    public async Task Userinfo_challenge_responses_are_exact()
+    {
+        await using var factory = CreateFactory();
+        var client = factory.CreateClient();
+
+        var none = await client.GetAsync("/connect/userinfo", CancellationToken);
+        var malformedRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
+        malformedRequest.Headers.TryAddWithoutValidation("Authorization", "Basic abc");
+        var malformed = await client.SendAsync(malformedRequest, CancellationToken);
+        var bothRequest = new HttpRequestMessage(HttpMethod.Post, "/connect/userinfo")
+        {
+            Content = new FormUrlEncodedContent([new("access_token", "b")]),
+        };
+        bothRequest.Headers.Authorization = new("Bearer", "a");
+        var both = await client.SendAsync(bothRequest, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, none.StatusCode);
+        Assert.Equal("Bearer realm=\"ValkyrieID\"", none.Headers.WwwAuthenticate.ToString());
+        Assert.Equal("no-store", none.Headers.CacheControl?.ToString());
+        Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+        Assert.Equal(
+            "Bearer realm=\"ValkyrieID\", error=\"invalid_request\", error_description=\"The Authorization header is malformed.\"",
+            malformed.Headers.WwwAuthenticate.ToString());
+        Assert.Equal(HttpStatusCode.BadRequest, both.StatusCode);
+        Assert.Equal(
+            "Bearer realm=\"ValkyrieID\", error=\"invalid_request\", error_description=\"Only one method of sending the access token may be used.\"",
+            both.Headers.WwwAuthenticate.ToString());
+    }
+
+    [Theory]
+    [InlineData("response_type", "token", "?error=unsupported_response_type&error_description=Only%20response_type%3Dcode%20is%20supported.&state=s1&iss=https%3A%2F%2Fid.example.test#_")]
+    [InlineData("scope", "openid email", "?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid%20or%20not%20allowed.&state=s1&iss=https%3A%2F%2Fid.example.test#_")]
+    [InlineData("scope", null, "?error=invalid_scope&error_description=The%20scope%20parameter%20is%20required.&state=s1&iss=https%3A%2F%2Fid.example.test#_")]
+    public async Task Authorization_error_redirects_are_exact(string name, string? value, string expected)
+    {
+        await using var factory = CreateFactory();
+        await CreatePublicClientAsync(factory, "spa");
+        var (_, challenge) = NewPkce();
+        var pairs = (Params("spa", "openid", challenge) with { State = "s1" }).Pairs.Where(p => p.Key != name).ToList();
+        if (value is not null)
+        {
+            pairs.Add(new(name, value));
+        }
+
+        var response = await factory.CreateBrowser().GetAsync("/connect/authorize" + QueryString(pairs), CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(RedirectUri + expected, response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
     public async Task Unknown_scopes_are_ignored_in_openid_requests_but_disallowed_scopes_are_rejected()
     {
         await using var factory = CreateFactory();

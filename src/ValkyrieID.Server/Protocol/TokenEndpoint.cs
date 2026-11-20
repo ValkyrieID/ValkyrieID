@@ -51,10 +51,10 @@ internal sealed partial class TokenEndpoint(
     {
         var cancellationToken = context.RequestAborted;
 
-        var (form, error) = await ProtocolForm.ReadAsync(context);
-        if (form is null || error is not null)
+        var formResult = await ProtocolForm.ReadAsync(context);
+        if (formResult is not IFormCollection form)
         {
-            return error ?? OAuthError.Request("The request is malformed.");
+            return formResult is OAuthError formError ? formError : OAuthError.Request("The request is malformed.");
         }
 
         var grantType = form["grant_type"].ToString();
@@ -64,9 +64,9 @@ internal sealed partial class TokenEndpoint(
         }
 
         var authentication = await authenticator.AuthenticateAsync(context, form, cancellationToken);
-        if (authentication is not { Client: { } client })
+        if (authentication is not Client client)
         {
-            return authentication.Error ?? OAuthError.Client();
+            return authentication is OAuthError authenticationError ? authenticationError : OAuthError.Client();
         }
 
         return grantType switch

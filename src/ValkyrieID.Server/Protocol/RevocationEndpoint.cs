@@ -6,6 +6,8 @@ using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.Protocol;
 
+internal union ProtocolFormResult(IFormCollection, OAuthError);
+
 /// <summary>Reads the form body of a POST-only protocol endpoint.</summary>
 internal static class ProtocolForm
 {
@@ -13,18 +15,21 @@ internal static class ProtocolForm
     /// RFC 6749 §3.2, RFC 7009 §2.1, RFC 7662 §2.1: parameters are sent as application/x-www-form-urlencoded and
     /// MUST NOT be repeated.
     /// </summary>
-    public static async Task<(IFormCollection? Form, OAuthError? Error)> ReadAsync(HttpContext context)
+    public static async Task<ProtocolFormResult> ReadAsync(HttpContext context)
     {
         if (!MediaTypeHeaderValue.TryParse(context.Request.ContentType, out var contentType)
             || !contentType.MediaType.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
         {
-            return (null, OAuthError.Request("The request must use application/x-www-form-urlencoded."));
+            return OAuthError.Request("The request must use application/x-www-form-urlencoded.");
         }
 
         var form = await context.Request.ReadFormAsync(context.RequestAborted);
-        return form.Any(p => p.Value.Count > 1)
-            ? (null, OAuthError.Request("Request parameters must not be repeated."))
-            : (form, null);
+        if (form.Any(p => p.Value.Count > 1))
+        {
+            return OAuthError.Request("Request parameters must not be repeated.");
+        }
+
+        return form;
     }
 }
 
@@ -45,17 +50,17 @@ internal sealed class RevocationEndpoint(
     public async Task<IResult> HandleAsync(HttpContext context)
     {
         var cancellationToken = context.RequestAborted;
-        var (form, error) = await ProtocolForm.ReadAsync(context);
-        if (form is null || error is not null)
+        var formResult = await ProtocolForm.ReadAsync(context);
+        if (formResult is not IFormCollection form)
         {
-            return error ?? OAuthError.Request("The request is malformed.");
+            return formResult is OAuthError formError ? formError : OAuthError.Request("The request is malformed.");
         }
 
         // RFC 7009 §2.1: the client authenticates as at the token endpoint; public clients identify themselves.
         var authentication = await authenticator.AuthenticateAsync(context, form, cancellationToken);
-        if (authentication is not { Client: { } client })
+        if (authentication is not Client client)
         {
-            return authentication.Error ?? OAuthError.Client();
+            return authentication is OAuthError authenticationError ? authenticationError : OAuthError.Client();
         }
 
         var token = form["token"].ToString();
