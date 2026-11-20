@@ -10,12 +10,13 @@ FROM --platform=$BUILDPLATFORM node:26-alpine AS admin-ui
 WORKDIR /src/src/ValkyrieID.AdminUI
 COPY src/ValkyrieID.AdminUI/package.json src/ValkyrieID.AdminUI/package-lock.json ./
 RUN npm ci --no-audit --no-fund
+COPY assets/ /src/assets/
 COPY src/ValkyrieID.AdminUI/ ./
 # Writes to ../ValkyrieID.Server/wwwroot/admin (angular.json).
 RUN npm run build
 
 # Server.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0-resolute AS build
 ARG TARGETARCH
 ENV DOTNET_NOLOGO=true DOTNET_CLI_TELEMETRY_OPTOUT=true
 WORKDIR /src
@@ -29,6 +30,7 @@ COPY src/ValkyrieID.Data.PostgreSql/ValkyrieID.Data.PostgreSql.csproj src/Valkyr
 COPY src/ValkyrieID.Server/ValkyrieID.Server.csproj src/ValkyrieID.Server/packages.lock.json src/ValkyrieID.Server/
 RUN dotnet restore src/ValkyrieID.Server --locked-mode
 
+COPY assets/ assets/
 COPY src/ src/
 COPY --from=admin-ui /src/src/ValkyrieID.Server/wwwroot/admin src/ValkyrieID.Server/wwwroot/admin/
 
@@ -41,7 +43,7 @@ RUN dotnet publish src/ValkyrieID.Server -c Release -o /app --no-restore -p:Skip
     && mkdir -p /data
 
 # Runtime: chiseled with ICU and time zone data (-extra), running as the non-root "app" user (UID 1654).
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-resolute-chiseled-extra
 WORKDIR /app
 COPY --from=build /app ./
 COPY --from=build --chown=1654:1654 /data /data

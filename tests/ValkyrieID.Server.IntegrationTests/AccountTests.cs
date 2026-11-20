@@ -276,6 +276,29 @@ public abstract class AccountTests
     }
 
     [Fact]
+    public async Task Cross_site_login_posts_are_rejected()
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        var browser = factory.CreateBrowser();
+        await browser.GetAsync("/account/login", CancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/account/login")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Identifier"] = "alice",
+                ["Password"] = Password,
+            }),
+        };
+        request.Headers.Add("Sec-Fetch-Site", "cross-site");
+        request.Headers.Add("Origin", "https://rp.example");
+
+        var response = await browser.SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Account_page_requires_a_session()
     {
         await using var factory = CreateFactory();

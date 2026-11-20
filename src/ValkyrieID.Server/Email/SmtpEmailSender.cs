@@ -1,3 +1,4 @@
+using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -55,7 +56,7 @@ internal sealed class SmtpEmailSender(IOptionsMonitor<SmtpOptions> smtpOptions, 
                 await client.AuthenticateAsync(options.UserName, options.Password ?? string.Empty, cancellationToken);
             }
 
-            await client.SendAsync(mime, cancellationToken);
+            await client.SendAsync(new SendRequest(mime), cancellationToken);
             await client.DisconnectAsync(quit: true, cancellationToken);
         }
         catch (SmtpCommandException ex)

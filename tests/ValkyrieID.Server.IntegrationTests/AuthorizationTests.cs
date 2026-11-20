@@ -332,6 +332,28 @@ public abstract class AuthorizationTests
         Assert.StartsWith(RedirectUri + "?code=", response.Headers.Location!.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Cross_site_authorize_posts_are_not_blocked_as_csrf()
+    {
+        await using var factory = CreateFactory();
+        await CreateUserAsync(factory, "alice");
+        await CreatePublicClientAsync(factory, "spa");
+        var browser = factory.CreateBrowser();
+        await Forms.LoginAsync(browser, "alice", Password);
+        var (_, challenge) = NewPkce();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/connect/authorize")
+        {
+            Content = new FormUrlEncodedContent(Params("spa", "openid", challenge).Pairs),
+        };
+        request.Headers.Add("Sec-Fetch-Site", "cross-site");
+        request.Headers.Add("Origin", "https://rp.example");
+
+        var response = await browser.SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.StartsWith(RedirectUri + "?code=", response.Headers.Location!.ToString(), StringComparison.Ordinal);
+    }
+
     // prompt and max_age
 
     [Fact]

@@ -1,5 +1,5 @@
 {
-  "openapi": "3.1.1",
+  "openapi": "3.1.2",
   "info": {
     "title": "ValkyrieID Admin API",
     "description": "Requires an access token for the valkyrieid-admin audience with the valkyrieid.admin scope, issued to a user with the admin role, sent as `Authorization: Bearer <token>`.",
@@ -3499,28 +3499,28 @@
   },
   "tags": [
     {
-      "name": "Users"
-    },
-    {
-      "name": "Roles"
-    },
-    {
-      "name": "Groups"
-    },
-    {
-      "name": "Clients"
-    },
-    {
       "name": "API resources"
-    },
-    {
-      "name": "Signing keys"
     },
     {
       "name": "Audit log"
     },
     {
+      "name": "Clients"
+    },
+    {
+      "name": "Groups"
+    },
+    {
+      "name": "Roles"
+    },
+    {
       "name": "Settings"
+    },
+    {
+      "name": "Signing keys"
+    },
+    {
+      "name": "Users"
     }
   ]
 }

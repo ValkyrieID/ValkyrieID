@@ -209,6 +209,23 @@ public abstract class LogoutTests
         Assert.Equal("/connect/endsession?client_id=web&state=a%20b", response.Headers.Location!.OriginalString);
     }
 
+    [Fact]
+    public async Task Cross_site_post_requests_are_not_blocked_as_csrf()
+    {
+        await using var factory = CreateFactory();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/connect/endsession")
+        {
+            Content = new FormUrlEncodedContent([new("client_id", "web"), new("state", "a b")]),
+        };
+        request.Headers.Add("Sec-Fetch-Site", "cross-site");
+        request.Headers.Add("Origin", "https://rp.example");
+
+        var response = await factory.CreateBrowser().SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.Equal("/connect/endsession?client_id=web&state=a%20b", response.Headers.Location!.OriginalString);
+    }
+
     // Attacks
 
     [Theory]

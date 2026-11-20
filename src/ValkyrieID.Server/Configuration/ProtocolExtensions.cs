@@ -87,18 +87,26 @@ internal static class ProtocolExtensions
     {
         endpoints.MapGet(DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.Configuration);
         endpoints.MapGet(DiscoveryEndpoints.JwksPath, DiscoveryEndpoints.Jwks);
+        // Protocol endpoints are cross-site by design (OIDC Core §3.1.2.1, RP-Initiated Logout §2) and are protected by
+        // state, PKCE, client authentication, and id_token_hint, not cookie CSRF checks, so they opt out of antiforgery.
         endpoints.MapPost(TokenEndpoint.Path, (HttpContext context, TokenEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Token);
+            .RequireRateLimiting(RateLimitPolicies.Token)
+            .DisableAntiforgery();
         endpoints.MapMethods(AuthorizeEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, AuthorizeEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Authorize);
+            .RequireRateLimiting(RateLimitPolicies.Authorize)
+            .DisableAntiforgery();
         endpoints.MapMethods(UserInfoEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, UserInfoEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Token);
+            .RequireRateLimiting(RateLimitPolicies.Token)
+            .DisableAntiforgery();
         endpoints.MapPost(RevocationEndpoint.Path, (HttpContext context, RevocationEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Token);
+            .RequireRateLimiting(RateLimitPolicies.Token)
+            .DisableAntiforgery();
         endpoints.MapPost(IntrospectionEndpoint.Path, (HttpContext context, IntrospectionEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Token);
+            .RequireRateLimiting(RateLimitPolicies.Token)
+            .DisableAntiforgery();
         endpoints.MapMethods(EndSessionEndpoint.Path, [HttpMethods.Get, HttpMethods.Post], (HttpContext context, EndSessionEndpoint endpoint) => endpoint.HandleAsync(context))
-            .RequireRateLimiting(RateLimitPolicies.Authorize);
+            .RequireRateLimiting(RateLimitPolicies.Authorize)
+            .DisableAntiforgery();
         return endpoints;
     }
 }

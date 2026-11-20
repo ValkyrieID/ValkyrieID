@@ -5,6 +5,7 @@
 !Directory.Packages.props
 !.editorconfig
 !src/
+!assets/
 
 # Build output, dependencies, and caches
 **/bin/

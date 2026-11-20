@@ -266,6 +266,17 @@ public abstract class ProtocolTests
     }
 
     [Fact]
+    public async Task Cross_site_token_requests_are_not_blocked_as_csrf()
+    {
+        await using var factory = CreateFactory();
+        var request = TokenRequest(Form(("grant_type", "client_credentials")), Basic("nobody", "secret"));
+        request.Headers.Add("Sec-Fetch-Site", "cross-site");
+        request.Headers.Add("Origin", "https://rp.example");
+
+        await AssertInvalidClientAsync(await factory.CreateClient().SendAsync(request, CancellationToken));
+    }
+
+    [Fact]
     public async Task Missing_client_authentication_is_rejected()
     {
         await using var factory = CreateFactory();

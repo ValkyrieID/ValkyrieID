@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.OpenApi;
 using ValkyrieID.Server.Administration;
 
 namespace ValkyrieID.Server.AdminApi;
@@ -16,6 +17,8 @@ internal static class AdminApiExtensions
         // The OpenAPI document describes the Admin API only; it is served in Development (see MapValkyrieAdminApi).
         services.AddOpenApi(options =>
         {
+            // OpenAPI 3.1 rather than the 3.2 default, which client generators don't widely support yet.
+            options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
             options.ShouldInclude = description =>
                 description.RelativePath?.StartsWith(AdminApiAuthentication.PathPrefix[1..], StringComparison.OrdinalIgnoreCase) == true;
             options.AddDocumentTransformer((document, _, _) =>
