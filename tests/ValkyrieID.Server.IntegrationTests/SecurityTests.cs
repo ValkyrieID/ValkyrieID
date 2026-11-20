@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -331,6 +332,27 @@ public abstract class SecurityTests
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync("/connect/authorize", CancellationToken)).StatusCode);
     }
 
+    [Theory]
+    [InlineData("POST", "/connect/token", "Token")]
+    [InlineData("GET", "/connect/authorize", "Authorize")]
+    public async Task Rate_limited_responses_say_when_to_retry_in_delta_seconds(string method, string path, string policy)
+    {
+        await using var factory = CreateFactory(new() { [$"RateLimits:{policy}:PermitLimit"] = "1", [$"RateLimits:{policy}:Window"] = "00:00:30" });
+        var client = factory.CreateClient();
+        Task<HttpResponseMessage> Send() => client.SendAsync(new HttpRequestMessage(new HttpMethod(method), path) { Content = method == "POST" ? Form() : null }, CancellationToken);
+
+        var allowed = await Send();
+        var limited = await Send();
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, allowed.StatusCode);
+        Assert.False(allowed.Headers.Contains("Retry-After"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        // RFC 9110 §10.2.3: delta-seconds, never more than the window.
+        var retryAfter = limited.Headers.GetValues("Retry-After").Single();
+        Assert.Matches("^[0-9]+$", retryAfter);
+        Assert.InRange(int.Parse(retryAfter, System.Globalization.CultureInfo.InvariantCulture), 1, 30);
+    }
+
     [Fact]
     public async Task Two_factor_code_submissions_are_rate_limited()
     {
@@ -475,6 +497,80 @@ public abstract class SecurityTests
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, notFound.StatusCode);
         Assert.All([userinfo, forbidden, notFound], r => Assert.Equal("no-store", r.Headers.CacheControl?.ToString()));
+    }
+
+    // Responses carrying secrets are never compressed (BREACH)
+
+    [Fact]
+    public async Task Token_and_userinfo_responses_are_not_compressed()
+    {
+        await using var factory = CreateFactory();
+        var userId = await CreateUserAsync(factory, "alice");
+        Assert.Equal(0, (await factory.RunCliAsync("resource", "create", "orders-api", "--scope", "orders.read")).ExitCode);
+        var (exitCode, output, error) = await factory.RunCliAsync("client", "create", "worker", "--scope", "orders.read");
+        Assert.True(exitCode == 0, error);
+        const string prefix = "client_secret: ";
+        var secret = output.Split('\n').Select(l => l.Trim()).Single(l => l.StartsWith(prefix, StringComparison.Ordinal))[prefix.Length..];
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("gzip, deflate, br, zstd");
+
+        var token = await PostWithAuthAsync(client, "/connect/token", new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"worker:{secret}"))), ("grant_type", "client_credentials"));
+        var userinfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
+        userinfoRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await ForgeAsync(factory, Claims(userId.ToString(), "web", "web", "openid")));
+        var userinfo = await client.SendAsync(userinfoRequest, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, token.StatusCode);
+        Assert.True((await ReadJsonAsync(token)).TryGetProperty("access_token", out _));
+        Assert.Equal("no-store", token.Headers.CacheControl?.ToString());
+        Assert.Equal(HttpStatusCode.OK, userinfo.StatusCode);
+        Assert.All([token, userinfo], r => Assert.Empty(r.Content.Headers.ContentEncoding));
+    }
+
+    // Telemetry
+
+    [Fact]
+    public async Task Exported_server_spans_never_contain_authorization_parameters()
+    {
+        var traceId = ActivityTraceId.CreateRandom();
+        var stopped = new System.Collections.Concurrent.ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a =>
+            {
+                if (a.TraceId == traceId)
+                {
+                    stopped.Enqueue(a);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        await using var factory = CreateFactory(new() { ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://127.0.0.1:1" });
+        await CreateClientAsync(factory, "web");
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
+        var sentinel = "sentinel" + Guid.NewGuid().ToString("N");
+
+        foreach (var path in new[]
+        {
+            $"/connect/authorize?response_type=code&client_id=web&redirect_uri={Uri.EscapeDataString(RedirectUri)}&scope=openid&code_challenge={sentinel}1&code_challenge_method=S256&state={sentinel}2&nonce={sentinel}3&login_hint={sentinel}4",
+            $"/connect/endsession?id_token_hint={sentinel}5&state={sentinel}6&post_logout_redirect_uri={Uri.EscapeDataString(PostLogoutUri)}",
+            $"/connect/userinfo?access_token={sentinel}7",
+            $"/connect/token?code={sentinel}8&refresh_token={sentinel}9&client_secret={sentinel}0",
+        })
+        {
+            await client.GetAsync(path, CancellationToken);
+        }
+
+        Assert.Contains(stopped, a => a.Kind == ActivityKind.Server);
+        Assert.All(stopped, a =>
+        {
+            Assert.DoesNotContain(sentinel, a.DisplayName, StringComparison.Ordinal);
+            Assert.DoesNotContain(sentinel, a.OperationName, StringComparison.Ordinal);
+            Assert.All(a.TagObjects, t => Assert.DoesNotContain(sentinel, $"{t.Key}={t.Value}", StringComparison.Ordinal));
+            Assert.All(a.Events.SelectMany(e => e.Tags), t => Assert.DoesNotContain(sentinel, $"{t.Key}={t.Value}", StringComparison.Ordinal));
+        });
     }
 
     // Helpers
