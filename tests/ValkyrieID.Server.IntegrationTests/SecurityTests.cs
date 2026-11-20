@@ -546,7 +546,12 @@ public abstract class SecurityTests
             },
         };
         ActivitySource.AddActivityListener(listener);
-        await using var factory = CreateFactory(new() { ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://127.0.0.1:1" });
+        await using var factory = CreateFactory(new()
+        {
+            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://127.0.0.1:1",
+            // Fail closed even when the instrumentation's own query redaction is switched off.
+            ["OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION"] = "true",
+        });
         await CreateClientAsync(factory, "web");
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("traceparent", $"00-{traceId}-{ActivitySpanId.CreateRandom()}-01");
@@ -568,6 +573,7 @@ public abstract class SecurityTests
         {
             Assert.DoesNotContain(sentinel, a.DisplayName, StringComparison.Ordinal);
             Assert.DoesNotContain(sentinel, a.OperationName, StringComparison.Ordinal);
+            Assert.DoesNotContain(a.TagObjects, t => t.Key == "url.query");
             Assert.All(a.TagObjects, t => Assert.DoesNotContain(sentinel, $"{t.Key}={t.Value}", StringComparison.Ordinal));
             Assert.All(a.Events.SelectMany(e => e.Tags), t => Assert.DoesNotContain(sentinel, $"{t.Key}={t.Value}", StringComparison.Ordinal));
         });

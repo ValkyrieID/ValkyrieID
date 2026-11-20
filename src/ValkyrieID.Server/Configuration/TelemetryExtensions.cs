@@ -27,7 +27,13 @@ internal static class TelemetryExtensions
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? ServiceName, serviceVersion: version))
             .WithTracing(t => t
-                .AddAspNetCoreInstrumentation(o => o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health"))
+                .AddAspNetCoreInstrumentation(o =>
+                {
+                    o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
+                    // Protocol query strings carry state, nonce, login_hint, and id_token_hint. Drop them outright
+                    // rather than relying on the instrumentation's value redaction, which configuration can disable.
+                    o.EnrichWithHttpResponse = (activity, _) => activity.SetTag("url.query", null);
+                })
                 .AddHttpClientInstrumentation())
             .WithMetrics(m => m
                 .AddAspNetCoreInstrumentation()
