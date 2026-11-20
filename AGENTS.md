@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository. The full specification
 
 ValkyrieID is a minimal, lightweight OpenID Connect / OAuth 2.0 identity server.
 
-- Backend: .NET 10, ASP.NET Core, C# 14. **The protocol layer is written from scratch**; do not add OpenIddict, Duende IdentityServer, or similar libraries.
+- Backend: .NET 11, ASP.NET Core, C# 15. **The protocol layer is written from scratch**; do not add OpenIddict, Duende IdentityServer, or similar libraries.
 - Storage: EF Core with SQLite and PostgreSQL; Redis only for multi-instance deployments.
 - Login/account pages: server-rendered Razor Pages (no SPA, no JavaScript required).
 - Admin UI: Angular (latest), served by the ASP.NET Core app, talking only to the Admin REST API.

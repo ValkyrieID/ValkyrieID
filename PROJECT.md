@@ -1,6 +1,6 @@
 # ValkyrieID
 
-A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 10 (ASP.NET Core).
+A minimal, lightweight OpenID Connect / OAuth 2.0 identity server built on .NET 11 (ASP.NET Core).
 
 - **License:** MIT
 - **Tenancy:** single tenant
@@ -316,7 +316,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
   - The server repo's README stays short (what it is, quick start) and links to the docs site.
   - Changes to configuration or behavior include the matching docs update in the same PR.
 - **Deployment:**
-  - small chiseled Docker image (`aspnet:10.0-noble-chiseled-extra`, framework-dependent, amd64 and arm64), running as non-root, with a health check through `valkyrieid healthcheck` (the image has no shell or curl)
+  - small chiseled Docker image (`aspnet:11.0-resolute-chiseled-extra`, framework-dependent, amd64 and arm64), running as non-root, with a health check through `valkyrieid healthcheck` (the image has no shell or curl)
   - plain `dotnet publish` output
 - **Footprint targets** (measured in CI on release builds and manual runs, `footprint/measure.*`):
   - Docker image < 210 MB
@@ -337,7 +337,7 @@ All lifetimes are configurable globally and per client. Token validation allows 
 - **NuGet lock files:** `RestorePackagesWithLockFile=true`; `packages.lock.json` is committed. CI restores with `--locked-mode` (`RestoreLockedMode=true` when `CI=true`).
 - **Shared build settings** in `Directory.Build.props`:
   - `TreatWarningsAsErrors=true`
-  - `LangVersion=latest` (C# 14 on .NET 10); use the latest syntax, e.g.:
+  - `LangVersion=latest` (C# 15 on .NET 11); use the latest syntax, e.g.:
     - file-scoped namespaces
     - primary constructors
     - collection expressions
@@ -507,17 +507,18 @@ Each phase ends with something usable and tested. Items marked *(early: phase N)
     - **11e: responsive polish and verification** *(done 2026-11-09)*
       - desktop/mobile review, theme review, accessibility checks, regression tests, and documentation
       - Lighthouse script (`npm run lighthouse`, accessibility and best practices); contrast measurement extended to message, dialog, and signed-out states; account sessions show a short browser name
-    - **11f: .NET 11 upgrade** *(before the first release, so v0.1.0 ships on .NET 11)*:
-      - set `TargetFramework` to `net11.0` in `Directory.Build.props`; update packages with the CLI only (Central Package Management versions)
-      - update local tools with the CLI, not by hand: `dotnet tool update dotnet-ef` to the EF Core 11 release, which updates `dotnet-tools.json` (currently pinned to 10.0.14)
-      - add a `.config/dotnet-ef.json` so `--project` and `--startup-project` don't need repeating for both providers; keep the SQLite and PostgreSQL project paths explicit
-      - EF Core 11 packages; any schema changes as new migrations for both SQLite and PostgreSQL
-      - `[ShortCircuit]` on the discovery and JWKS endpoints, after confirming the middleware they skip (security headers, and CORS if it's ever added) isn't needed for those responses; tests assert the headers the metadata endpoints still send
-      - evaluate union types for the protocol and Admin API response models where they make the code clearer; the OAuth wire format (error codes, field names) must not change, and a test checks each response shape
-      - ASP.NET Core 11 review: rate limiter `Retry-After`, OpenTelemetry span attributes (no authorization query strings exported), response compression (token responses stay uncompressed)
-      - full tests on SQLite and PostgreSQL, conformance suite, and the accessibility scripts if UI output changed
-      - update the supported runtime in `/docs`
-      - use the stable GA SDK, not the RC
+    - **11f: .NET 11 upgrade** *(done 2026-11-21)*:
+      - `TargetFramework` set to `net11.0` in `Directory.Build.props` (SDK 11.0.100 in `global.json`); packages updated with the CLI (EF Core 11, Npgsql 11.0.0, MailKit 5.0.0, OpenTelemetry 1.21.0)
+      - local tools moved to `.config/dotnet-tools.json` (`dotnet-ef` 11.0.0)
+      - `.config/dotnet-ef.json` sets the context (`ValkyrieDbContext`); the SQLite and PostgreSQL project paths stay explicit (`--project`), since each provider project is its own startup project with a design-time factory
+      - EF Core 11 packages; no schema changes, so no new migrations
+      - `[ShortCircuit]` on the discovery and JWKS endpoints (skips authentication, authorization, and rate limiting; security headers, CORS, and HTTPS still apply); tests assert the headers the metadata endpoints still send
+      - union types applied to four internal protocol results; the OAuth wire format (error codes, field names) is unchanged, and a test checks each response shape
+      - ASP.NET Core 11 review: rate limiter `Retry-After`, response compression (token responses stay uncompressed), and OpenTelemetry (`url.query` dropped from exported server spans) covered by tests; automatic CSRF protection (`Sec-Fetch-Site` / `Origin`) on, with the OAuth/OIDC protocol endpoints opted out; the Admin API OpenAPI document kept on 3.1 (3.1.2)
+      - container base images `sdk:11.0-resolute` and `aspnet:11.0-resolute-chiseled-extra` (Ubuntu 26.04; there are no noble images for .NET 11)
+      - full tests on SQLite and PostgreSQL and the conformance suite passed; the conformance sign-in steps skip the theme switch form
+      - supported runtime updated in `/docs`
+      - stable GA SDK, not the RC
       - reference:
         - .NET 11 overview: https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-11/overview
         - ASP.NET Core 11 release notes: https://learn.microsoft.com/en-us/aspnet/core/release-notes/aspnetcore-11

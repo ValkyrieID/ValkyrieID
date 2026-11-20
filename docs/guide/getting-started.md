@@ -7,7 +7,7 @@ ValkyrieID hasn't reached 1.0 yet: configuration and APIs may change between 0.x
 ## Requirements
 
 - [Docker](/guide/docker), or
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) to build from source
+- [.NET 11 SDK](https://dotnet.microsoft.com/download) to build from source
 - SQLite (built in) or PostgreSQL
 
 ## Run with Docker
@@ -68,9 +68,16 @@ dotnet format
 CI runs the tests on Linux. To catch Linux-only failures (case-sensitive paths, `Uri` parsing) before pushing, run the SQLite tests in a container:
 
 ```sh
-docker run --rm -v "$PWD:/src" -w /src mcr.microsoft.com/dotnet/sdk:10.0 \
+docker run --rm -v "$PWD:/src" -w /src mcr.microsoft.com/dotnet/sdk:11.0-resolute \
   dotnet test -c Release --artifacts-path /tmp/artifacts -- --filter-not-trait Category=PostgreSql --filter-not-trait Category=Redis
 ```
+
+- Schema changes need a migration for each provider. `dotnet tool restore` installs `dotnet-ef` (from `.config/dotnet-tools.json`), and `.config/dotnet-ef.json` sets the context, so only the project is needed:
+
+  ```sh
+  dotnet ef migrations add <Name> --project src/ValkyrieID.Data.Sqlite
+  dotnet ef migrations add <Name> --project src/ValkyrieID.Data.PostgreSql
+  ```
 
 - The admin UI (Angular) is in `src/ValkyrieID.AdminUI`; see [building from source](/guide/admin-ui#building-from-source).
 - Accessibility checks (Playwright and axe, WCAG 2.2 AA) are in `tests/ValkyrieID.A11yTests`; see [running the checks](/accessibility/#running-the-checks).

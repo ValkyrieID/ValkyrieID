@@ -15,6 +15,8 @@ All URLs are relative to the configured [issuer](/reference/configuration#issuer
 
 Discovery only advertises what is implemented. Front-channel logout and OpenID Connect Session Management (`check_session_iframe`) are not supported; clients are notified of logouts by [back-channel logout](#back-channel-logout).
 
+Discovery and JWKS are public and answered right after routing: they skip authentication and rate limiting, but still get the security headers, CORS, and the HTTPS redirect. The other protocol endpoints are cross-site by design, so they opt out of ASP.NET Core's `Sec-Fetch-Site` / `Origin` CSRF check; `state`, PKCE, client authentication, and `id_token_hint` protect them instead.
+
 The management API under `/api/admin` is described in the [Admin API reference](/reference/admin-api).
 
 ## Pages

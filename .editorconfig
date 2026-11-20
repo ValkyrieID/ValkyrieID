@@ -2,11 +2,22 @@ root = true
 
 # All files
 [*]
+charset = utf-8
 end_of_line = lf
 indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown: two trailing spaces are a line break
+[*.md]
+trim_trailing_whitespace = false
 
 # Xml files
 [*.xml]
+indent_size = 2
+
+# YAML (GitHub workflows, ZAP and conformance configs)
+[*.{yml,yaml}]
 indent_size = 2
 
 # Xml project files

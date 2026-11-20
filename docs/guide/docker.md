@@ -1,6 +1,6 @@
 # Docker
 
-ValkyrieID ships as a small container image for `linux/amd64` and `linux/arm64`, based on the [chiseled](https://learn.microsoft.com/dotnet/core/docker/container-images#scenario-based-images) ASP.NET Core runtime (`aspnet:10.0-noble-chiseled-extra`, with ICU and time zone data):
+ValkyrieID ships as a small container image for `linux/amd64` and `linux/arm64`, based on the [chiseled](https://learn.microsoft.com/dotnet/core/docker/container-images#scenario-based-images) ASP.NET Core runtime (`aspnet:11.0-resolute-chiseled-extra`, Ubuntu 26.04, with ICU and time zone data):
 
 - no shell, package manager, or `curl`; the health check is the server's own [`healthcheck`](#health-check) command
 - runs as the non-root user `app` (UID `1654`) and listens on port `8080`

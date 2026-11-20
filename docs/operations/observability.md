@@ -26,7 +26,7 @@ The service name is `valkyrieid`. Override it with `OTEL_SERVICE_NAME` or add at
 | Metrics | ASP.NET Core and HttpClient metrics, .NET runtime metrics (`System.Runtime`) |
 | Logs | All application logs |
 
-Traces record request URLs with the values of query parameters redacted, which is the OpenTelemetry instrumentation's default. Don't set `OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION` or `OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION`, which would export reset tokens and authorization codes to your tracing backend.
+Server spans record the method, route or path, and status code, but no query string: ValkyrieID drops the `url.query` attribute before export, even if `OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION` is set. Outgoing HTTP spans redact query values, which is the instrumentation's default. Don't set `OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION`.
 
 ## Health
 

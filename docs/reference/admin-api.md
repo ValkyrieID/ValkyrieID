@@ -2,7 +2,7 @@
 
 The Admin API is a JSON API under `/api/admin` for managing users, roles, groups, custom claims, clients, API resources, signing keys, sessions, and runtime settings, and for reading the audit log. The admin UI uses it, and you can use it for automation.
 
-The full request and response schemas are in the [OpenAPI document](/openapi/admin-api.json). A server running in the `Development` environment also serves it at `/openapi/v1.json`.
+The full request and response schemas are in the [OpenAPI document](/openapi/admin-api.json) (OpenAPI 3.1, with tags sorted by name). A server running in the `Development` environment also serves it at `/openapi/v1.json`.
 
 ## Authorization
 

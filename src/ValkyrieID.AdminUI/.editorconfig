@@ -3,11 +3,14 @@ root = true
 
 [*]
 charset = utf-8
+end_of_line = lf
 indent_style = space
 indent_size = 2
+max_line_length = 100
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+# Prettier reads printWidth and singleQuote from .prettierrc; these keys are for JetBrains IDEs
 [*.ts]
 quote_type = single
 ij_typescript_use_double_quotes = false

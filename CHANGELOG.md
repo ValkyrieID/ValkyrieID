@@ -45,6 +45,13 @@ The first release, v0.1.0, will be cut from this section ([roadmap](PROJECT.md#1
 - **User interface:** server-rendered sign-in and account pages that work without JavaScript; light, dark, and system themes; branding (logo, wallpapers, colors, custom CSS); WCAG 2.2 AA, checked with axe, a contrast script, and Lighthouse.
 - **Documentation** at <https://valkyrieid.liesel.dev>, including a production checklist, backups, and upgrades.
 
+### Changed
+
+- Runs on .NET 11. The container image is based on `aspnet:11.0-resolute-chiseled-extra` (Ubuntu 26.04) and still runs as the non-root UID `1654`.
+- Exported server spans no longer carry `url.query`, even with `OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION` set ([Observability](https://valkyrieid.liesel.dev/operations/observability)).
+- The sign-in and account pages also reject cross-site posts by `Sec-Fetch-Site` / `Origin` (ASP.NET Core 11), on top of anti-forgery tokens.
+- The Admin API's OpenAPI document stays on OpenAPI 3.1 (3.1.2), with tags sorted.
+
 ### Security
 
 - The issuer must be an `https` URL, also on loopback hosts (OIDC Core §2, OIDC Discovery §3, RFC 8414 §2). The server refuses to start with an `http` issuer. Local setups use HTTPS too (see the [Docker quick start](https://valkyrieid.liesel.dev/guide/docker#quick-start)).
