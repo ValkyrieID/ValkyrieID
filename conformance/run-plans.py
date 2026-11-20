@@ -63,7 +63,7 @@ def sign_in(user):
         'commands': [
             ['text', 'id', 'identifier', user['username']],
             ['text', 'id', 'password', user['password']],
-            ['click', 'css', 'form button[type=submit]'],
+            ['click', 'css', 'form:not(.theme-switch) button[type=submit]'],
         ],
     }
 
@@ -103,7 +103,7 @@ def end_session(redirected):
     tasks = [{
         'task': 'Confirm sign-out',
         'match': f'{ISSUER}/account/logout*',
-        'commands': [['click', 'css', 'form button[type=submit]']],
+        'commands': [['click', 'css', 'form:not(.theme-switch) button[type=submit]']],
     }]
     if redirected:
         tasks.append({'task': 'Verify Complete', 'match': '*/test/*/post_logout_redirect*'})
