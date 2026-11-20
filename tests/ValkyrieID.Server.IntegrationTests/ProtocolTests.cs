@@ -3,11 +3,15 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ValkyrieID.Data;
+using ValkyrieID.Server.Configuration;
 using ValkyrieID.Server.Tokens;
 
 namespace ValkyrieID.Server.IntegrationTests;
@@ -77,6 +81,35 @@ public abstract class ProtocolTests
         Assert.Equal(256, Base64UrlEncoder.DecodeBytes(key.GetProperty("n").GetString()).Length);
         Assert.False(key.TryGetProperty("d", out _));
         Assert.False(key.TryGetProperty("p", out _));
+    }
+
+    [Theory]
+    [InlineData("/.well-known/openid-configuration")]
+    [InlineData("/.well-known/jwks.json")]
+    public async Task Discovery_and_jwks_are_short_circuited_and_keep_their_headers(string path)
+    {
+        await using var factory = CreateFactory();
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Origin", "https://rp.example.test");
+
+        var response = await factory.CreateClient().SendAsync(request, CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        var maxAge = path.EndsWith("jwks.json", StringComparison.Ordinal)
+            ? (int)Math.Min(factory.Services.GetRequiredService<IOptions<SigningKeyOptions>>().Value.CheckInterval.TotalSeconds, 3600)
+            : 3600;
+        Assert.Equal($"public, max-age={maxAge}", response.Headers.CacheControl?.ToString());
+        Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        Assert.Equal("DENY", Assert.Single(response.Headers.GetValues("X-Frame-Options")));
+        Assert.Equal("no-referrer", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+        Assert.Contains("default-src 'none'", Assert.Single(response.Headers.GetValues("Content-Security-Policy")), StringComparison.Ordinal);
+        Assert.Equal("*", Assert.Single(response.Headers.GetValues("Access-Control-Allow-Origin")));
+
+        var endpoint = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Single(e => "/" + e.RoutePattern.RawText?.TrimStart('/') == path);
+        Assert.NotNull(endpoint.Metadata.GetMetadata<ShortCircuitAttribute>());
     }
 
     [Fact]

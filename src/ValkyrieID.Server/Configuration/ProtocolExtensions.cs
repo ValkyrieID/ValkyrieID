@@ -85,8 +85,9 @@ internal static class ProtocolExtensions
 
     public static IEndpointRouteBuilder MapValkyrieProtocol(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet(DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.Configuration);
-        endpoints.MapGet(DiscoveryEndpoints.JwksPath, DiscoveryEndpoints.Jwks);
+        // Public, anonymous, and unlimited: skip authentication, authorization, and rate limiting after routing.
+        endpoints.MapGet(DiscoveryEndpoints.ConfigurationPath, DiscoveryEndpoints.Configuration).ShortCircuit();
+        endpoints.MapGet(DiscoveryEndpoints.JwksPath, DiscoveryEndpoints.Jwks).ShortCircuit();
         // Protocol endpoints are cross-site by design (OIDC Core §3.1.2.1, RP-Initiated Logout §2) and are protected by
         // state, PKCE, client authentication, and id_token_hint, not cookie CSRF checks, so they opt out of antiforgery.
         endpoints.MapPost(TokenEndpoint.Path, (HttpContext context, TokenEndpoint endpoint) => endpoint.HandleAsync(context))
