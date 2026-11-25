@@ -5,6 +5,17 @@ ValkyrieID runs as a single instance by default. To run several instances behind
 - a **PostgreSQL** database (SQLite is for a single instance only), and
 - a **Redis** server.
 
+The instances share state like this:
+
+```mermaid
+flowchart TD
+    LB[Load balancer] --> I1[Instance 1]
+    LB --> I2[Instance 2]
+    LB --> IN[Instance N]
+    I1 & I2 & IN --> DB[(PostgreSQL: clients, users, sessions, refresh tokens, signing keys, settings)]
+    I1 & I2 & IN --> R[(Redis: authorization codes, rate-limit counters, change notifications)]
+```
+
 ## What Redis is used for
 
 | Data | Why it must be shared | How it is stored |

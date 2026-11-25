@@ -19,6 +19,21 @@ After the password, the user is asked for a code from the app. The session is on
 - Each code works only once, so an intercepted code can't be replayed.
 - Wrong codes count towards the [account lockout](/reference/configuration#lockout), and code submissions are [rate limited](/reference/configuration#rate-limits).
 
+The sign-in steps after the password, including setup when 2FA is [required](#require-2fa):
+
+```mermaid
+flowchart TD
+    P[Password correct] --> E{2FA set up?}
+    E -- yes --> C[Enter code from the app]
+    C -- use a recovery code instead --> R[Enter recovery code]
+    E -- no, but required --> S[Set up authenticator, enter code]
+    E -- no, not required --> Done[Session created]
+    C -- correct --> Done
+    R -- correct --> Done
+    S -- correct, recovery codes shown --> Done
+    C & R & S -- after 5 minutes --> L[Back to sign-in]
+```
+
 ID tokens report the sign-in methods in `amr` (RFC 8176): `pwd otp mfa` after a code, or `pwd mfa` after a recovery code.
 
 ## Recovery codes

@@ -2,6 +2,7 @@ import { copyFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const brandingDir = fileURLToPath(new URL('../../assets/branding', import.meta.url))
 
@@ -21,7 +22,7 @@ const copyBranding = {
   },
 }
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   vite: { plugins: [copyBranding] },
   title: 'ValkyrieID',
   description: 'A minimal, lightweight OpenID Connect / OAuth 2.0 identity server for .NET',
@@ -43,7 +44,14 @@ export default defineConfig({
           { text: 'Docker', link: '/guide/docker' },
           { text: 'First run', link: '/guide/first-run' },
           { text: 'Protect an API', link: '/guide/protect-an-api' },
-          { text: 'Protect an app', link: '/guide/protect-an-app' },
+          {
+            text: 'Protect an app',
+            link: '/guide/protect-an-app',
+            items: [
+              { text: 'With oauth2-proxy', link: '/guide/protect-an-app-oauth2-proxy' },
+              { text: 'SAML apps', link: '/guide/protect-a-saml-app' },
+            ],
+          },
           { text: 'Sign in users', link: '/guide/sign-in-users' },
           { text: 'Two-factor authentication', link: '/guide/two-factor' },
           { text: 'Your account', link: '/guide/account' },
@@ -99,4 +107,4 @@ export default defineConfig({
     },
     footer: { message: 'Released under the MIT License.' },
   },
-})
+}))

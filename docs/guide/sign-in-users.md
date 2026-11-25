@@ -15,6 +15,27 @@ valkyrieid client create webapp --grant authorization_code \
 
 The ASP.NET Core handler sends the client secret in the request body (`client_secret_post`) and can't use HTTP Basic, so the client needs `--allow-secret-post`. ValkyrieID refuses `client_secret_post` for other clients, because RFC 6749 §2.3.1 recommends HTTP Basic.
 
+The sign-in uses the authorization code flow with PKCE (RFC 7636, `S256` only):
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant App as Web app
+    participant V as ValkyrieID
+    B->>App: Open protected page
+    App->>B: Redirect to /connect/authorize<br/>(code_challenge, S256, state, nonce)
+    B->>V: GET /connect/authorize
+    V->>B: No session: redirect to /account/login
+    B->>V: Sign in, then back to /connect/authorize
+    V->>V: Check redirect_uri (exact match)
+    V->>B: Redirect to redirect_uri with code + state
+    B->>App: GET /signin-oidc?code&state
+    App->>V: POST /connect/token<br/>(code, code_verifier, client secret)
+    V->>V: Consume code (single use, 60 s), verify PKCE
+    V->>App: ID token + access token
+    App->>B: Set session cookie
+```
+
 Configure the app with the printed secret:
 
 ```csharp
@@ -57,6 +78,22 @@ options.SaveTokens = true;
 ```
 
 Each refresh returns a new refresh token; always store the newest one. Sending an old one again revokes all of them and the user has to sign in again. See [Refresh tokens](/reference/endpoints#refresh-token-grant).
+
+Rotation and reuse detection follow RFC 9700 §4.14:
+
+```mermaid
+sequenceDiagram
+    participant App as Web app
+    participant V as ValkyrieID
+    participant X as Old copy of RT1
+    App->>V: POST /connect/token (refresh_token=RT1)
+    V->>App: New access token + RT2 (RT1 now used)
+    X->>V: POST /connect/token (refresh_token=RT1)
+    V->>V: RT1 already used: revoke whole family
+    V->>X: invalid_grant
+    App->>V: POST /connect/token (refresh_token=RT2)
+    V->>App: invalid_grant: user signs in again
+```
 
 ### Sign out
 

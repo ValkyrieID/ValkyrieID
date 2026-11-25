@@ -134,6 +134,22 @@ If `client_id` or `redirect_uri` is missing, unknown, disabled, or doesn't match
 | `login_required` | `prompt=none` and the user must sign in |
 | `interaction_required` | `prompt=none` and the user must first verify their email address ([`Email:VerificationAtSignIn`](/reference/configuration#email-links) `Require`) |
 | `request_not_supported`, `request_uri_not_supported`, `registration_not_supported` | Request objects and registration aren't supported |
+| `temporarily_unavailable` | [Redis](/operations/multi-instance#failure-behavior) became unreachable while the authorization code was being stored |
+
+The client and redirect URI are checked first; only after both are valid can an error be sent back to the application (RFC 6749 §4.1.2.1):
+
+```mermaid
+flowchart TD
+    A[Authorization request] --> B{client_id or redirect_uri repeated?}
+    B -- yes --> E[Error page, no redirect]
+    B -- no --> C{Client known and enabled?}
+    C -- no --> E
+    C -- yes --> D{redirect_uri matches a registered URI exactly?}
+    D -- no --> E
+    D -- yes --> F{Request valid?}
+    F -- no --> R[Redirect to redirect_uri with error, error_description, state, iss]
+    F -- yes --> S[Sign in if needed, then redirect with code, state, iss]
+```
 
 ## Token endpoint
 
@@ -403,6 +419,23 @@ Location: https://app.example.com/signed-out?state=af0ifjsldkj
 ```
 
 The browser is never sent to an unvalidated URI. If the hint is invalid (wrong signature or issuer, not an ID token), `client_id` doesn't match the hint or is unknown or disabled, or the URI isn't registered for the client, the request is treated as untrusted: the user is asked to confirm, sees a notice that the request was invalid, and stays at ValkyrieID after signing out.
+
+A sign-out of a signed-in user with a valid request looks like this (RP-Initiated Logout §2–3, Back-Channel Logout §2.5):
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant V as ValkyrieID
+    participant RP as Client back-channel URIs
+    B->>V: GET /connect/endsession (id_token_hint, post_logout_redirect_uri, state)
+    V->>V: Validate hint, client_id, and exact post_logout_redirect_uri
+    V-->>B: 302 to /account/logout
+    B->>V: User confirms sign-out (POST)
+    V->>V: End session, queue notifications
+    V->>RP: POST logout_token (waits up to RequestTimeout)
+    RP-->>V: 200 / 204 (failures retried later in the background)
+    V-->>B: 302 to post_logout_redirect_uri?state=...
+```
 
 Register post-logout redirect URIs with `--post-logout-redirect-uri` (see [CLI](/reference/cli#clients)).
 
